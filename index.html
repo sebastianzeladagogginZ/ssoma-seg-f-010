@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema SSOMA · SEG-F-010 · ON Infraestructura</title>
+<style>
+  :root{--brand:#0c4a6e;--brand2:#0284c7;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;display:grid;place-items:center;padding:20px;color:var(--ink);
+    background:radial-gradient(1200px 600px at 15% -10%,#0e5a85 0%,transparent 60%),
+               radial-gradient(900px 500px at 110% 10%,#0ea5e9 0%,transparent 55%),
+               linear-gradient(160deg,#072f47,#0c4a6e 55%,#083349)}
+  .card{width:100%;max-width:460px;background:#fff;border-radius:22px;padding:34px 30px;
+    box-shadow:0 12px 40px rgba(15,23,42,.3)}
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:20px}
+  .brand .logo{width:42px;height:42px;border-radius:12px;flex:none;
+    background:linear-gradient(135deg,var(--brand),#0ea5e9);display:grid;place-items:center;
+    color:#fff;font-weight:800;font-size:18px}
+  .brand b{font-size:15px;display:block}
+  .brand span{font-size:11px;color:var(--muted)}
+  h1{font-size:20px;margin:4px 0 6px}
+  p.lead{color:var(--muted);font-size:13px;margin:0 0 22px}
+  a.opt{display:flex;align-items:center;gap:14px;border:1.5px solid var(--line);border-radius:14px;
+    padding:16px;margin:12px 0;text-decoration:none;color:var(--ink);transition:border-color .15s,transform .12s}
+  a.opt:hover{border-color:var(--brand2);transform:translateY(-2px)}
+  a.opt .ic{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:20px}
+  a.opt .ic.form{background:#dcfce7}
+  a.opt .ic.panel{background:#e0f2fe}
+  a.opt b{display:block;font-size:14.5px}
+  a.opt span{font-size:12px;color:var(--muted)}
+  footer{margin-top:20px;font-size:11px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <div class="logo">ON</div>
+    <div><b>ON Infraestructura</b><span>Sistema SSOMA · SEG-F-010</span></div>
+  </div>
+  <h1>Herramientas de inspección</h1>
+  <p class="lead">Selecciona la herramienta que necesitas.</p>
+  <a class="opt" href="./formulario/">
+    <div class="ic form">📋</div>
+    <div><b>Auto-inspección de campo</b><span>Formulario SEG-F-010 para cuadrillas y técnicos</span></div>
+  </a>
+  <a class="opt" href="./panel/">
+    <div class="ic panel">🛡️</div>
+    <div><b>Panel SSOMA</b><span>Levantamiento de observaciones · jefes de área y SSOMA</span></div>
+  </a>
+  <footer>OPTICAL NETWORKS S.A.C. · Operaciones 2026</footer>
+</div>
+</body>
+</html>
