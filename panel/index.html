@@ -719,7 +719,7 @@ function cargarDatos(silent){
   if(!tieneEndpoint()){ APP.demo=true; APP.error=false; APP.datos=generarDemo(); refrescar(); return; }
   APP.demo=false;
   if(silent) setRefreshSpinning(true); else { APP.cargando=true; APP.error=false; renderCargando(); }
-  var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=observaciones";
+  var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=observaciones"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(data){
     if(data && data.ok===false) throw new Error(data.error||"backend");
     APP.datos=(data.observaciones||[]).map(normalizarObs);
