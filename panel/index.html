@@ -968,7 +968,9 @@ function renderResumen(){
     kpi("#fee2e2","#b91c1c",iconBan(),rech,"Rechazadas SOMA",null,{lev:"rechazado"})
   ].join("");
   document.querySelectorAll("#kpis .kpi.clk").forEach(function(el){
-    el.onclick=function(){ irAObservaciones(JSON.parse(el.getAttribute("data-goto"))); };
+    var ir=function(){ irAObservaciones(JSON.parse(el.getAttribute("data-goto"))); };
+    el.onclick=ir;
+    el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); ir(); } };
   });
 
   // tendencia: observaciones por fecha
@@ -1000,7 +1002,7 @@ function renderResumen(){
 }
 function kpi(bg,fg,icon,val,label,trend,goto){
   var clk=goto?' clk':'';
-  var dg=goto?" data-goto='"+JSON.stringify(goto)+"'":'';
+  var dg=goto?" data-goto='"+JSON.stringify(goto)+"' role='button' tabindex='0'":'';
   return '<div class="kpi'+clk+'"'+dg+'><div class="ic" style="background:'+bg+';color:'+fg+'">'+icon+'</div>'+
     '<div class="v tnum">'+val+'</div><div class="l">'+label+'</div>'+
     (trend?'<div class="trend" style="background:'+bg+';color:'+fg+'">'+trend+'</div>':'')+'</div>';
@@ -1145,9 +1147,23 @@ function cerrarDrawer(){
 document.getElementById("scrim").onclick=function(e){ if(e.target.id==="scrim") cerrarDrawer(); };
 // ESC cierra el drawer abierto (o el menú móvil).
 document.addEventListener("keydown",function(e){
-  if(e.key!=="Escape") return;
-  if(document.getElementById("scrim").classList.contains("open")) cerrarDrawer();
-  else if(document.getElementById("aside").classList.contains("open")) cerrarMenu();
+  if(e.key==="Escape"){
+    if(document.getElementById("scrim").classList.contains("open")) cerrarDrawer();
+    else if(document.getElementById("aside").classList.contains("open")) cerrarMenu();
+    return;
+  }
+  // Atrapa el foco dentro del drawer mientras está abierto (a11y).
+  if(e.key==="Tab" && document.getElementById("scrim").classList.contains("open")){
+    var drw=document.getElementById("drawer");
+    var foc=Array.prototype.filter.call(
+      drw.querySelectorAll('a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'),
+      function(el){ return el.offsetParent!==null; });
+    if(!foc.length) return;
+    var first=foc[0], last=foc[foc.length-1];
+    if(!drw.contains(document.activeElement)){ e.preventDefault(); first.focus(); }
+    else if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  }
 });
 
 // Traduce los códigos de error del backend a un mensaje claro.
@@ -1163,9 +1179,12 @@ function errTxt(res){
 // POST al backend leyendo la RESPUESTA real (ya no mode:'no-cors'). Adjunta el token.
 function apiPost(body){
   body=body||{}; if(APP.token) body.token=APP.token;
-  return fetch(CONFIG.ENDPOINT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
+  var ctrl=("AbortController" in window)?new AbortController():null;
+  var to=ctrl?setTimeout(function(){ ctrl.abort(); },45000):null;   // recupera el drawer si la red se cuelga
+  var fin=function(res){ if(to){ clearTimeout(to); to=null; } return res; };
+  return fetch(CONFIG.ENDPOINT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body),signal:ctrl?ctrl.signal:undefined})
     .then(function(r){return r.json();})
-    .catch(function(){ return {ok:false,error:"red"}; });
+    .then(fin,function(){ return fin({ok:false,error:"red"}); });
 }
 // Bloquea el drawer mientras hay una acción en curso (evita dobles envíos).
 function drawerBusy(on){
