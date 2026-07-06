@@ -618,7 +618,7 @@ function poblarAreasLogin(){
   });
   areas.sort(function(a,b){ if(a.val==="*")return 1; if(b.val==="*")return -1; return a.lbl.localeCompare(b.lbl); });
   sel.innerHTML='<option value="">— Selecciona tu área —</option>'+areas.map(function(a){
-    return '<option value="'+String(a.val).replace(/"/g,"&quot;")+'">'+a.lbl+'</option>';
+    return '<option value="'+esc(a.val)+'">'+esc(a.lbl)+'</option>';
   }).join("");
   if(prev) sel.value=prev;
 }
