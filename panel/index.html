@@ -694,7 +694,7 @@ function iniciarSesion(user){
   if(tieneEndpoint()){
     rb.style.display=""; rb.onclick=function(){ cargarDatos(true); };
     if(APP.pollTimer) clearInterval(APP.pollTimer);
-    APP.pollTimer=setInterval(function(){ if(!document.hidden) cargarDatos(true); }, 150000); // cada 2.5 min
+    APP.pollTimer=setInterval(function(){ if(!document.hidden) cargarDatos(true); }, 60000); // cada 1 min
   }
   cargarDatos();
 }
