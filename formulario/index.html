@@ -152,8 +152,17 @@
 var ENDPOINT_URL="https://script.google.com/macros/s/AKfycbwcwca3e3ERoz5gfV0WovRSri0slBu9uimKykB4ThxIsja7_LEX-Q9dRP69OnWDDGHmZw/exec";
 
 /* ===== Catálogos ===== */
-var AREAS=["ON NEGOCIOS INSTALACIONES","NORMALIZACIÓN DE RED","ACTUALIZACIÓN DE RED",
-  "MANTENIMIENTO ON NEGOCIOS","MANTENIMIENTO MANGAS CRITICAS","INSTALACIÓN DE PLANTA EXTERNA"];
+/* Jerarquía Área ▸ División · SEG-F-010 (distribución final).
+   "ACTUALIZACIÓN DE RED" se retiró del formulario; su histórico se conserva en la base. */
+var SEP=" ▸ ";
+var AREAS_DIV={
+  "INSPECCIÓN Y DISEÑO":["Inspección y Diseño - Corporativo"],
+  "MANTENIMIENTO":["Mantenimiento - Corporativo","Mantenimiento - Ultra","Mangas Críticas","ON Negocios","Normalización de Red"],
+  "NETWORKING":["Instalaciones - Corporativo","ON-Site - Corporativo"],
+  "PLANTA EXTERNA":["Planta Externa - Corporativo","ON Negocios","Normalización - Preventivo"]
+};
+var AREAS=Object.keys(AREAS_DIV);
+function areaComposite(){ return (ST.area&&ST.division)?(ST.area+SEP+ST.division):(ST.area||""); }
 var ROLES=[
   {id:"T1",label:"T1 · Líder de Cuadrilla / Empalmador",tools:true},
   {id:"T2",label:"T2 · Técnico Chofer",tools:true},
@@ -194,7 +203,7 @@ var EMPRESA={razon:"OPTICAL NETWORKS S.A.C.",ruc:"20602576702",
   actividad:"Telecomunicaciones alámbricas (CIIU 6110)"};
 
 /* ===== Estado ===== */
-var ST={area:"",fecha:"",hora:"",cuadrilla:"",presence:{T1:false,T2:false,T3:false,T4:false},docs:{},
+var ST={area:"",division:"",fecha:"",hora:"",cuadrilla:"",presence:{T1:false,T2:false,T3:false,T4:false},docs:{},
   ans:{}, branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
   modalidad:"Autoinspección", tipo:"Planeada", conclusiones:"",
   resp:{nombre:"",cargo:"",documento:""}, firma:"", fotoResp:""};
@@ -272,6 +281,10 @@ function render(){
   '<div class="grid2">'+
     '<div class="field"><label>1.1 Área a inspeccionar <span class="req">*</span></label><select id="f_area" required>'+
       '<option value="">— Seleccionar —</option>'+AREAS.map(function(a){return '<option'+(ST.area===a?' selected':'')+'>'+a+'</option>';}).join("")+
+    '</select></div>'+
+    '<div class="field"><label>División <span class="req">*</span></label><select id="f_division" required'+(ST.area?'':' disabled')+'>'+
+      '<option value="">'+(ST.area?'— Seleccionar —':'— Elige primero el área —')+'</option>'+
+      (ST.area&&AREAS_DIV[ST.area]?AREAS_DIV[ST.area].map(function(dv){return '<option'+(ST.division===dv?' selected':'')+'>'+dv+'</option>';}).join(""):"")+
     '</select></div>'+
     '<div class="field"><label>1.2 Fecha de inspección <span class="req">*</span></label><input type="date" id="f_fecha" value="'+ST.fecha+'" required></div>'+
     '<div class="field"><label>1.3 Hora de la inspección <span class="req">*</span></label><input type="time" id="f_hora" value="'+ST.hora+'" required></div>'+
@@ -522,7 +535,7 @@ function openSheet(){
   var m=metrics(),f=findingsList();
   var semR=semaforo(m.pct);
   document.getElementById("sumMeta").innerHTML=
-    eh((ST.area||"(sin área)")+" · Cuadrilla "+(ST.cuadrilla||"?")+" · "+(ST.fecha||"sin fecha")+" "+(ST.hora||"")+" · "+ROLES.filter(function(r){return ST.presence[r.id];}).length+" técnico(s)")+
+    eh((areaComposite()||"(sin área)")+" · Cuadrilla "+(ST.cuadrilla||"?")+" · "+(ST.fecha||"sin fecha")+" "+(ST.hora||"")+" · "+ROLES.filter(function(r){return ST.presence[r.id];}).length+" técnico(s)")+
     '<br>'+eh(ST.modalidad)+' · <b style="color:var('+semR.col+')">'+semR.estado+'</b>';
   document.getElementById("kpis").innerHTML=
     '<div class="kpi"><b>'+(m.pct===null?"—":m.pct+"%")+'</b><span>conformidad</span></div>'+
@@ -541,6 +554,7 @@ function closeSheet(){ document.getElementById("scrim").classList.remove("open")
 /* ===== Validación (campos obligatorios) ===== */
 function validar(){
   if(!ST.area) return "Selecciona el Área (1.1).";
+  if(!ST.division) return "Selecciona la División (1.1).";
   if(!ST.fecha) return "Indica la Fecha (1.2).";
   if(!ST.hora) return "Indica la Hora (1.3).";
   if(!String(ST.cuadrilla).trim()) return "Indica el N° de cuadrilla (1.4).";
@@ -581,7 +595,7 @@ function exportFindings(){
 function exportSummary(){
   var m=metrics();
   var head=["Marca temporal","Área","Fecha","N° cuadrilla","Técnicos","Revisados","Buen estado","Requiere cambio","No tiene","No aplica","% Conformidad","Observaciones"];
-  var row=[new Date().toISOString(),ST.area,ST.fecha,ST.cuadrilla,ROLES.filter(function(r){return ST.presence[r.id];}).map(function(r){return r.id;}).join(" "),m.rev,m.ok,m.warn,m.no,m.na,(m.pct===null?"":m.pct),ST.obs];
+  var row=[new Date().toISOString(),areaComposite(),ST.fecha,ST.cuadrilla,ROLES.filter(function(r){return ST.presence[r.id];}).map(function(r){return r.id;}).join(" "),m.rev,m.ok,m.warn,m.no,m.na,(m.pct===null?"":m.pct),ST.obs];
   var csv="﻿"+[head,row].map(function(r){return r.map(csvCell).join(";");}).join("\r\n");
   dl("Resumen_"+stamp()+".csv",csv,"text/csv;charset=utf-8");
 }
@@ -590,7 +604,7 @@ function buildPayload(){
   var hall=f.map(function(x){return x.seccion+(x.recurso&&x.recurso!=="—"?" ["+x.recurso+"]":"")+": "+x.item+" = "+x.estado;}).join(" | ");
   var pr=ROLES.filter(function(r){return ST.presence[r.id];});
   var ra=responsableActual(), sem=semaforo(m.pct);
-  return {ts:new Date().toISOString(),area:ST.area,fecha:ST.fecha,hora:ST.hora,cuadrilla:ST.cuadrilla,
+  return {ts:new Date().toISOString(),area:areaComposite(),fecha:ST.fecha,hora:ST.hora,cuadrilla:ST.cuadrilla,
     tecnicos:pr.map(function(r){return r.id;}).join(","),
     nombres:pr.map(function(r){var d=ST.docs[r.id]||{}; return r.id+": "+((d.ape||"")+" "+(d.nom||"")).trim()+" ("+(d.tipo||"")+" "+(d.num||"")+")";}).join(" | "),
     modalidad:ST.modalidad, tipo_inspeccion:ST.tipo,
@@ -630,8 +644,7 @@ document.getElementById("app").addEventListener("click",function(e){
 });
 document.getElementById("app").addEventListener("input",function(e){
   var t=e.target;
-  if(t.id==="f_area") ST.area=t.value;
-  else if(t.id==="f_fecha") ST.fecha=t.value;
+  if(t.id==="f_fecha") ST.fecha=t.value;
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_cuad") ST.cuadrilla=t.value;
   else if(t.id==="f_obs") ST.obs=t.value;
@@ -649,7 +662,8 @@ document.getElementById("app").addEventListener("change",function(e){
   var t=e.target;
   if(t.id==="f_photos") addPhotos(t.files);
   else if(t.id==="f_resp") addRespPhoto(t.files[0]);
-  else if(t.id==="f_area") ST.area=t.value;
+  else if(t.id==="f_area"){ ST.area=t.value; ST.division=""; render(); }
+  else if(t.id==="f_division") ST.division=t.value;
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
   else if(t.dataset && t.dataset.doc==="tipo"){ doc(t.dataset.id).tipo=t.value; doc(t.dataset.id).num=""; render(); }

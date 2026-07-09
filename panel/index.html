@@ -371,6 +371,7 @@
         <p id="viewSub">Estado general del levantamiento de observaciones</p>
       </div>
       <div class="spacer"></div>
+      <select class="area-select" id="areaSelectL1" style="display:none"></select>
       <select class="area-select" id="areaSelect" style="display:none"></select>
       <span class="area-pill"><span class="dot"></span><span id="areaLabel">—</span></span>
       <button class="refresh-btn" id="refreshBtn" title="Actualizar datos" style="display:none">
@@ -490,8 +491,22 @@ var USUARIOS = [
   {area:"*",                             nombre:"Usuario Demo SSOMA", dni:"00000006", correo:"demo6@ejemplo.pe", rol:"SSOMA · Todas las áreas"}
 ];
 
+/* Áreas DEMO (solo sin endpoint, para la maqueta). En producción el login y los
+   filtros usan la jerarquía Área ▸ División de abajo + lo que devuelve el servidor. */
 var AREAS = ["ON NEGOCIOS INSTALACIONES","NORMALIZACIÓN DE RED","ACTUALIZACIÓN DE RED",
   "MANTENIMIENTO ON NEGOCIOS","MANTENIMIENTO MANGAS CRITICAS","INSTALACIÓN DE PLANTA EXTERNA"];
+
+/* Jerarquía Área ▸ División (producción · SEG-F-010 distribución final). */
+var SEP=" ▸ ";
+var AREAS_DIV={
+  "INSPECCIÓN Y DISEÑO":["Inspección y Diseño - Corporativo"],
+  "MANTENIMIENTO":["Mantenimiento - Corporativo","Mantenimiento - Ultra","Mangas Críticas","ON Negocios","Normalización de Red"],
+  "NETWORKING":["Instalaciones - Corporativo","ON-Site - Corporativo"],
+  "PLANTA EXTERNA":["Planta Externa - Corporativo","ON Negocios","Normalización - Preventivo"]
+};
+function parentArea(a){ a=String(a||""); var i=a.indexOf(SEP); return i<0?a:a.slice(0,i); }
+function divName(a){ a=String(a||""); var i=a.indexOf(SEP); return i<0?a:a.slice(i+SEP.length); }
+function allCatalogComposites(){ var out=[]; Object.keys(AREAS_DIV).forEach(function(A){ AREAS_DIV[A].forEach(function(d){ out.push(A+SEP+d); }); }); return out; }
 
 /* ===== Catálogos (subconjunto del SEG-F-010 para datos demo) ===== */
 var CAT = {
@@ -561,7 +576,7 @@ function generarDemo(){
 /* ============================================================
    ESTADO DE LA APP
    ============================================================ */
-var APP = { user:null, token:null, areaActiva:null, datos:[], filtros:{q:"",estado:"",seccion:"",lev:""},
+var APP = { user:null, token:null, userAreas:[], fArea:"", fDiv:"", datos:[], filtros:{q:"",estado:"",seccion:"",lev:""},
   demo:true, cargando:false, error:false, pollTimer:null };
 // ¿hay endpoint real configurado? (si no, el panel corre en modo demostración)
 function tieneEndpoint(){ return !!(CONFIG.ENDPOINT_URL && CONFIG.ENDPOINT_URL.indexOf("http")===0); }
@@ -599,10 +614,10 @@ function cargarAreas(){
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=areas";
   return fetch(url).then(function(r){return r.json();}).then(function(data){
     var lista=(data.areas||[]).filter(Boolean);
-    ROSTER = (lista.length?lista:AREAS.concat(["*"])).map(function(a){return {area:a};});
+    ROSTER = (lista.length?lista:Object.keys(AREAS_DIV).concat(["*"])).map(function(a){return {area:a};});
     renderDemoHint();
   }).catch(function(){
-    ROSTER = AREAS.concat(["*"]).map(function(a){return {area:a};});   // respaldo: solo áreas, nunca DNIs
+    ROSTER = Object.keys(AREAS_DIV).concat(["*"]).map(function(a){return {area:a};});   // respaldo: solo áreas, nunca DNIs
     renderDemoHint();
   });
 }
@@ -614,7 +629,7 @@ function poblarAreasLogin(){
   var prev=sel.value, areas=[], vistos={};
   ROSTER.forEach(function(u){
     if(u.area==="*"){ if(vistos["*"])return; vistos["*"]=1; areas.push({val:"*",lbl:"SSOMA · Todas las áreas"}); }
-    else { var k=norm(u.area); if(!u.area||vistos[k])return; vistos[k]=1; areas.push({val:u.area,lbl:u.area}); }
+    else { var pa=parentArea(u.area); var k=norm(pa); if(!pa||vistos[k])return; vistos[k]=1; areas.push({val:pa,lbl:pa}); }
   });
   areas.sort(function(a,b){ if(a.val==="*")return 1; if(b.val==="*")return -1; return a.lbl.localeCompare(b.lbl); });
   sel.innerHTML='<option value="">— Selecciona tu área —</option>'+areas.map(function(a){
@@ -674,7 +689,9 @@ document.getElementById("loginForm").addEventListener("submit",function(e){
 
 function iniciarSesion(user){
   APP.user=user;
-  APP.areaActiva = user.area==="*" ? AREAS[0] : user.area;
+  APP.userAreas = (user.areas && user.areas.length) ? user.areas.slice()
+                  : (user.area==="*" ? ["*"] : [user.area]);
+  APP.fArea=""; APP.fDiv="";
   document.getElementById("login").style.display="none";
   var app=document.getElementById("app"); app.hidden=false;
   // usuario sidebar
@@ -682,13 +699,8 @@ function iniciarSesion(user){
   document.getElementById("uAv").textContent=ini;
   document.getElementById("uName").textContent=user.nombre||"—";
   document.getElementById("uRole").textContent=user.rol||"—";
-  // selector de área para SSOMA
-  if(user.area==="*"){
-    var sel=document.getElementById("areaSelect"); sel.style.display="";
-    sel.innerHTML='<option value="__ALL__">▦ Todas las áreas</option>';
-    sel.value="__ALL__"; APP.areaActiva="__ALL__";
-    sel.onchange=function(){ APP.areaActiva=sel.value; refrescar(); };
-  }
+  // filtros Área ▸ División (SSOMA: todas; jefe: sus divisiones)
+  configurarFiltrosArea();
   // botón "Actualizar" + refresco periódico (solo con datos reales)
   var rb=document.getElementById("refreshBtn");
   if(tieneEndpoint()){
@@ -697,6 +709,13 @@ function iniciarSesion(user){
     APP.pollTimer=setInterval(function(){ if(!document.hidden) cargarDatos(true); }, 60000); // cada 1 min
   }
   cargarDatos();
+}
+// Cablea los selectores de Área (L1) y División (L2) y los rellena según el alcance del usuario.
+function configurarFiltrosArea(){
+  var l1=document.getElementById("areaSelectL1"), l2=document.getElementById("areaSelect");
+  if(l1) l1.onchange=function(){ APP.fArea=l1.value; APP.fDiv=""; refrescar(); };
+  if(l2) l2.onchange=function(){ APP.fDiv=l2.value; refrescar(); };
+  poblarAreaSelect();
 }
 
 document.getElementById("logoutBtn").onclick=function(){ if(APP.pollTimer) clearInterval(APP.pollTimer); location.reload(); };
@@ -779,13 +798,16 @@ function baseDatos(){
 function datosArea(){
   if(!APP.user) return [];
   var base=baseDatos();
-  if(APP.user.area==="*"){
-    if(APP.areaActiva==="__ALL__") return base;
-    var aa=norm(APP.areaActiva);
-    return base.filter(function(o){return norm(o.area)===aa;});
-  }
-  var a=norm(APP.user.area);
-  return base.filter(function(o){return norm(o.area)===a;});
+  var all=APP.userAreas.indexOf("*")>=0;
+  var permit={}; if(!all) APP.userAreas.forEach(function(a){ permit[norm(a)]=1; });
+  var fa=norm(APP.fArea), fd=norm(APP.fDiv);
+  return base.filter(function(o){
+    var a=o.area||"";
+    if(!all && !permit[norm(a)]) return false;                 // fuera del alcance del jefe
+    if(APP.fArea && norm(parentArea(a))!==fa) return false;    // filtro Área (L1)
+    if(APP.fDiv && norm(a)!==fd) return false;                 // filtro División (L2)
+    return true;
+  });
 }
 // Áreas realmente presentes en los datos vigentes (para el selector y comparativo del SSOMA)
 function areasPresentes(){
@@ -793,14 +815,40 @@ function areasPresentes(){
   baseDatos().forEach(function(o){ if(o.area && !s[o.area]){ s[o.area]=1; out.push(o.area); } });
   return out.sort();
 }
-// Rellena el selector de área del SSOMA con las áreas que existen en los datos
+// Divisiones/áreas que el usuario puede filtrar: SSOMA = catálogo ∪ presentes en datos; jefe = sus divisiones.
+function allowedComposites(){
+  if(APP.userAreas.indexOf("*")>=0){
+    var set={}, out=[];
+    allCatalogComposites().concat(areasPresentes()).forEach(function(a){ if(a && !set[a]){ set[a]=1; out.push(a); } });
+    return out;
+  }
+  return APP.userAreas.slice();
+}
+// Rellena los dos selectores en cascada: Área (L1) → División (L2).
 function poblarAreaSelect(){
-  if(!APP.user || APP.user.area!=="*") return;
-  var sel=document.getElementById("areaSelect"); if(!sel) return;
-  var prev=sel.value||"__ALL__";
-  sel.innerHTML='<option value="__ALL__">▦ Todas las áreas</option>'+
-    areasPresentes().map(function(a){return '<option value="'+esc(a)+'">'+esc(a)+'</option>';}).join("");
-  sel.value=prev||"__ALL__"; if(!sel.value) sel.value="__ALL__";
+  if(!APP.user) return;
+  var l1=document.getElementById("areaSelectL1"), l2=document.getElementById("areaSelect");
+  var comps=allowedComposites();
+  var parents=[], seen={};
+  comps.forEach(function(c){ var p=parentArea(c); if(p && !seen[p]){ seen[p]=1; parents.push(p); } });
+  parents.sort(function(a,b){ return a.localeCompare(b); });
+  if(l1){
+    if(parents.length>1){
+      l1.style.display="";
+      l1.innerHTML='<option value="">▦ Todas las áreas</option>'+parents.map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join("");
+      if(parents.indexOf(APP.fArea)<0) APP.fArea="";
+      l1.value=APP.fArea;
+    } else { l1.style.display="none"; APP.fArea=parents.length?parents[0]:""; }
+  }
+  var scope=comps.filter(function(c){ return !APP.fArea || parentArea(c)===APP.fArea; });
+  if(l2){
+    if(scope.length>1){
+      l2.style.display="";
+      l2.innerHTML='<option value="">— Todas las divisiones —</option>'+scope.map(function(c){return '<option value="'+esc(c)+'">'+esc(divName(c))+'</option>';}).join("");
+      if(scope.indexOf(APP.fDiv)<0) APP.fDiv="";
+      l2.value=APP.fDiv;
+    } else { l2.style.display="none"; APP.fDiv=""; }
+  }
 }
 
 /* ============================================================
@@ -871,7 +919,10 @@ function refrescar(){
   if(!APP.user) return;
   poblarAreaSelect();
   poblarSecciones();
-  var et = APP.user.area==="*" ? (APP.areaActiva==="__ALL__"?"Todas las áreas":APP.areaActiva) : APP.user.area;
+  var et = APP.fDiv ? divName(APP.fDiv)
+         : APP.fArea ? APP.fArea
+         : (APP.userAreas.indexOf("*")>=0 ? "Todas las áreas"
+            : APP.userAreas.length>1 ? "Todas mis divisiones" : divName(APP.userAreas[0]||"—"));
   document.getElementById("areaLabel").textContent=et;
   document.getElementById("demoBanner").innerHTML = APP.demo
     ? '<div class="banner-demo">⚠️ <b>Modo demostración</b> · datos de ejemplo. Configura <code>CONFIG.ENDPOINT_URL</code> para conectar tu base de datos en la nube en tiempo real.</div>' : '';
@@ -1399,7 +1450,7 @@ function renderAnalisis(){
 
   // comparación entre áreas (solo SSOMA viendo todas)
   var cmp=document.getElementById("areaCompare");
-  if(APP.user.area==="*" && APP.areaActiva==="__ALL__"){
+  if(APP.userAreas.indexOf("*")>=0 && !APP.fArea){
     cmp.style.display="grid";
     cmp.innerHTML=areasPresentes().map(function(a){
       var da=baseDatos().filter(function(o){return o.area===a;});
