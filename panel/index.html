@@ -1405,21 +1405,62 @@ function renderEvidencias(){
   d.forEach(function(o){ (porFolder[o.fecha]=porFolder[o.fecha]||[]).push(o); });
   var fechas=Object.keys(porFolder).sort().reverse();
   var cont=document.getElementById("folders");
+  cont.style.display="";   // restaura la grilla (pudo quedar en 'block' desde el detalle)
   if(!fechas.length){ cont.innerHTML=emptyChart("Aún no hay evidencias de levantamiento cargadas."); return; }
   cont.innerHTML=fechas.map(function(f){
     var arr=porFolder[f], lev=arr.filter(function(o){return o.levantamiento==="levantado";}).length;
     var rech=arr.filter(function(o){return o.soma_rechazo;}).length;
-    return '<div class="folder" data-f="'+f+'">'+
+    return '<div class="folder" data-f="'+f+'" tabindex="0" role="button" aria-label="Ver evidencias del '+f+'">'+
       '<div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>'+
       '<b>'+f+'</b><span>'+arr.length+' evidencia(s)</span>'+
       '<div class="fcount"><span class="pill ok">'+lev+' validadas</span>'+
         (rech?'<span class="pill bad">'+rech+' rechazadas</span>':'')+'</div></div>';
   }).join("");
   cont.querySelectorAll(".folder").forEach(function(el){
-    el.onclick=function(){
-      if(CONFIG.DRIVE_EVIDENCIAS_URL) window.open(CONFIG.DRIVE_EVIDENCIAS_URL,"_blank");
-      else toast("Carpeta en la nube: Evidencias Levantamiento/"+el.dataset.f+" · configura DRIVE_EVIDENCIAS_URL","bad");
-    };
+    el.onclick=function(){ renderEvidenciasDetalle(el.dataset.f); };
+    el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); renderEvidenciasDetalle(el.dataset.f); } };
+  });
+}
+
+// Detalle de una carpeta fechada: lista las evidencias de esa fecha, cada una
+// con su ENLACE REAL de Drive (evidencia_url, ANYONE_WITH_LINK) y clic para
+// abrir el detalle completo de la observación. No depende de configurar nada.
+function renderEvidenciasDetalle(fecha){
+  var d=datosArea().filter(function(o){return o.evidencia_lev && o.fecha===fecha;});
+  var cont=document.getElementById("folders");
+  if(!d.length){ renderEvidencias(); return; }
+  d.sort(function(a,b){ return (a.area<b.area?-1:a.area>b.area?1:0); });
+  cont.style.display="block";
+  var driveBtn = CONFIG.DRIVE_EVIDENCIAS_URL
+    ? '<a class="act" style="width:auto;text-decoration:none;margin-left:auto" href="'+esc(CONFIG.DRIVE_EVIDENCIAS_URL)+'" target="_blank" rel="noopener">📂 Abrir carpeta raíz en Drive</a>'
+    : '';
+  var rows=d.map(function(o){
+    var u=safeUrl(o.evidencia_url);
+    var l=EST_LEV[o.levantamiento]||EST_LEV.pendiente;
+    var estCls=o.estado==="No tiene"?"bad":"warn";
+    return '<div class="ev-row" data-id="'+esc(o.id)+'" tabindex="0" role="button" aria-label="Ver detalle: '+esc(o.item)+'" '+
+      'style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-bottom:8px;cursor:pointer">'+
+      '<div style="min-width:0;flex:1">'+
+        '<div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.item)+'</div>'+
+        '<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.area)+' · N° '+esc(o.cuadrilla)+'</div>'+
+      '</div>'+
+      '<span class="pill '+estCls+'">'+esc(o.estado)+'</span>'+
+      '<span class="pill '+l.cls+'"><span class="dot-s" style="background:'+l.dot+'"></span>'+l.label+'</span>'+
+      (u?'<a class="ev-open" href="'+esc(u)+'" target="_blank" rel="noopener" style="color:var(--brand2);font-weight:700;font-size:12.5px;text-decoration:none;white-space:nowrap">Ver evidencia →</a>'
+         :'<span style="color:#94a3b8;font-size:12px;white-space:nowrap">sin enlace</span>')+
+      '</div>';
+  }).join("");
+  cont.innerHTML=
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">'+
+      '<button class="act" id="evBack" style="width:auto">← Volver a carpetas</button>'+
+      '<div><b style="font-size:15px">'+esc(fechaLarga(fecha))+'</b>'+
+        '<div style="font-size:12px;color:var(--muted)">'+d.length+' evidencia(s) · carpeta <code>'+esc(fecha)+'</code></div></div>'+
+      driveBtn+
+    '</div>'+rows;
+  document.getElementById("evBack").onclick=function(){ renderEvidencias(); };
+  cont.querySelectorAll(".ev-row").forEach(function(el){
+    el.onclick=function(e){ if(e.target.closest("a.ev-open")) return; abrirDrawer(el.dataset.id); };
+    el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); abrirDrawer(el.dataset.id); } };
   });
 }
 
