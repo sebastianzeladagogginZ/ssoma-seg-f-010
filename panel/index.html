@@ -561,6 +561,7 @@ function generarDemo(){
             obs.push({
               id:inspId+"-"+o, insp:inspId, area:area, fecha:fechaISO(d), cuadrilla:cuad,
               seccion:sec, item:item, recurso:tec, estado:estado, levantamiento:lev, soma_rechazo:somaRech,
+              responsable:TECNICOS[Math.floor(rnd()*TECNICOS.length)], responsable_cargo:"Supervisor de cuadrilla", responsable_doc:"", pdf_url:"",
               evidencia_insp:true,
               evidencia_lev:(lev==="levantado"||lev==="en_proceso"),
               folder:"Evidencias Levantamiento/"+fechaISO(d)+"/"+area
@@ -760,6 +761,8 @@ function normalizarObs(o){
     id:String(o.id||(o.insp+"-"+(o.item||""))), insp:o.insp||o.id_inspeccion||o.id, area:o.area||"",
     fecha:o.fecha||"", cuadrilla:o.cuadrilla, seccion:o.seccion||"", item:o.item||"",
     recurso:o.recurso||"", estado:o.estado||"",
+    responsable:o.responsable||"", responsable_cargo:o.responsable_cargo||"",
+    responsable_doc:o.responsable_doc||"", pdf_url:o.pdf_url||"",
     levantamiento:lev, soma_rechazo:!!o.soma_rechazo || lev==="rechazado",
     evidencia_insp:o.evidencia_insp!==false, evidencia_lev:!!o.evidencia_lev,
     evidencia_url:o.evidencia_url||"", mensaje_jefe:o.mensaje_jefe||"", mensaje_ssoma:o.mensaje_ssoma||"",
@@ -1124,6 +1127,19 @@ function abrirDrawer(id){
     : '<p class="msg-empty">Aún no se ha cargado evidencia del levantamiento.</p>';
   var somaWarn = o.soma_rechazo
     ? '<div class="banner-demo" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;margin:14px 0 0">🚫 <b>Rechazada por SOMA.</b> La evidencia fue eliminada automáticamente de la nube. Debe volver a gestionarse.</div>' : '';
+  // Apartado: quién llenó el registro de inspección + link al PDF (SEG-F-010).
+  var pdfUrl=safeUrl(o.pdf_url);
+  var respLinea=(o.responsable?esc(o.responsable):'<span style="color:#94a3b8">No registrado</span>')+
+    (o.responsable_cargo?' · '+esc(o.responsable_cargo):'')+
+    (o.responsable_doc?' · Doc. '+esc(o.responsable_doc):'');
+  var docInsp=
+    '<div class="sect">Documento de inspección (SEG-F-010)</div>'+
+    '<div style="font-size:13px;line-height:1.5">'+
+      '<div><span style="color:#64748b">Responsable del llenado:</span> <b>'+respLinea+'</b></div>'+
+      (pdfUrl
+        ? '<p style="margin:8px 0 0"><a href="'+esc(pdfUrl)+'" target="_blank" rel="noopener" style="color:var(--brand2);font-weight:700">📄 Abrir documento de inspección (PDF) →</a></p>'
+        : '<p style="font-size:11.5px;color:#64748b;margin:8px 0 0">El PDF de esta inspección no está disponible.</p>')+
+    '</div>';
 
   var html=
     '<div class="dh"><button class="x" id="drwClose" aria-label="Cerrar detalle">×</button>'+
@@ -1137,6 +1153,7 @@ function abrirDrawer(id){
         meta("Recurso / Técnico",o.recurso||"Recurso general")+
         meta("ID inspección",o.insp)+
       '</div>'+
+      docInsp+
       somaWarn+
       '<div class="sect">Evidencia del levantamiento</div>'+evLev+
       '<div class="sect">Estado del levantamiento</div>'+
