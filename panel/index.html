@@ -415,7 +415,7 @@
       <!-- ===== OBSERVACIONES ===== -->
       <section class="view" id="view-observaciones">
         <div class="filters">
-          <input type="search" id="search" placeholder="Buscar ítem, recurso, cuadrilla…">
+          <input type="search" id="search" placeholder="Buscar ítem, recurso, cuadrilla, responsable…">
           <select id="fEstado"><option value="">Todos los estados</option><option>Requiere cambio</option><option>No tiene</option></select>
           <select id="fSeccion"><option value="">Todas las secciones</option></select>
           <select id="fLev"><option value="">Todo el levantamiento</option><option value="abiertas">Abiertas (pend. + proceso)</option><option value="pendiente">Pendiente</option><option value="en_proceso">En revisión</option><option value="levantado">Levantado</option><option value="rechazado">Rechazado SOMA</option></select>
@@ -1074,7 +1074,7 @@ function renderObservaciones(){
       if(f.lev==="abiertas"){ if(o.levantamiento!=="pendiente" && o.levantamiento!=="en_proceso") return false; }
       else if(o.levantamiento!==f.lev) return false;
     }
-    if(f.q){ var q=norm(f.q); if(norm(o.item+" "+o.recurso+" "+o.cuadrilla+" "+o.seccion+" "+o.area).indexOf(q)<0) return false; }
+    if(f.q){ var q=norm(f.q); if(norm(o.item+" "+o.recurso+" "+o.cuadrilla+" "+o.seccion+" "+o.area+" "+o.responsable).indexOf(q)<0) return false; }
     return true;
   }).sort(function(a,b){
     if(a.area!==b.area) return a.area<b.area?-1:1;   // agrupa por área
