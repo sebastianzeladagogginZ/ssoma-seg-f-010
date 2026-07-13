@@ -480,6 +480,18 @@
           #view-historico .pdf-link{color:var(--brand2);text-decoration:none;font-weight:600;white-space:nowrap}
           #view-historico .pdf-link:hover{text-decoration:underline}
           #view-historico .muted-sm{color:var(--soft)}
+          #view-historico .hist-subt{font-size:13px;font-weight:700;color:var(--ink);margin:6px 0 10px}
+          #view-historico .hist-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:4px}
+          #view-historico .hist-card{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 16px;cursor:pointer;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}
+          #view-historico .hist-card:hover{border-color:var(--brand2)}
+          #view-historico .hist-card.sel{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand) inset}
+          #view-historico .hc-count{font-size:28px;font-weight:800;color:var(--brand);line-height:1;min-width:42px;text-align:center}
+          #view-historico .hc-area{display:flex;flex-direction:column;min-width:0;flex:1}
+          #view-historico .hc-area b{font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-historico .hc-area span{font-size:11px;color:var(--muted)}
+          #view-historico .hc-cta{font-size:11px;color:var(--brand2);font-weight:700;white-space:nowrap}
+          #view-historico .hist-detarea{margin-top:16px;border-top:2px dashed var(--line);padding-top:14px}
+          #view-historico .hd-title{font-size:14.5px;font-weight:800;color:var(--brand);margin:0 0 12px}
         </style>
         <div id="histContent"></div>
       </section>
@@ -509,7 +521,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V18";
+var PANEL_VERSION = "V19";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1044,30 +1056,63 @@ function renderHistorico(){
   '</div>';
   if(!arr.length){ cont.innerHTML=h+'<div class="load-note" style="justify-content:flex-start">Aún no hay inspecciones registradas en este alcance.</div>'; return; }
 
-  // Agrupa por mes (desc) → por área (alfabético) → inspecciones (por N°).
-  var byMonth={}, months=[];
-  arr.forEach(function(r){ var ym=String(r.fecha||"").slice(0,7)||"—"; if(!byMonth[ym]){ byMonth[ym]=[]; months.push(ym); } byMonth[ym].push(r); });
-  months.sort(function(a,b){ return a<b?1:(a>b?-1:0); });
-  months.forEach(function(ym){
-    var items=byMonth[ym];
-    h+='<div class="hist-month"><div class="hm-head"><h3>'+esc(nombreMes(ym))+'</h3><span class="hm-count">'+items.length+(items.length===1?' inspección':' inspecciones')+'</span></div>';
-    var byArea={}, areas=[];
-    items.forEach(function(r){ var a=r.area||"(sin área)"; if(!byArea[a]){ byArea[a]=[]; areas.push(a); } byArea[a].push(r); });
-    areas.sort(function(a,b){ return a.localeCompare(b); });
-    areas.forEach(function(a){
-      var list=byArea[a].slice().sort(function(x,y){ return (x.n||0)-(y.n||0); });
-      h+='<div class="hist-area"><div class="ha-head">'+esc(a)+' <span class="ha-count">('+list.length+')</span></div>';
-      h+='<div class="tbl-wrap"><table class="data hist-tbl"><thead><tr><th>N° histórico</th><th>Fecha</th><th>Cuadrilla</th><th>Responsable del llenado</th><th>Documento SEG-F-010</th></tr></thead><tbody>';
-      list.forEach(function(r){
-        var pdf=safeUrl(r.pdf_url);
-        var docCell=pdf?'<a href="'+esc(pdf)+'" target="_blank" rel="noopener" class="pdf-link">📄 Ver PDF</a>':'<span class="muted-sm">— no disponible</span>';
-        h+='<tr><td><b>N°'+pad4(r.n)+'</b></td><td>'+esc(fechaLarga(r.fecha))+'</td><td>'+esc(String(r.cuadrilla==null?"—":r.cuadrilla))+'</td><td>'+esc(r.responsable||"—")+'</td><td>'+docCell+'</td></tr>';
-      });
-      h+='</tbody></table></div></div>';
-    });
-    h+='</div>';
+  // Resumen en CARTILLAS por área (compuesto), ordenadas por cantidad desc.
+  var byArea={}, areas=[];
+  arr.forEach(function(r){ var a=r.area||"(sin área)"; if(!byArea[a]){ byArea[a]=[]; areas.push(a); } byArea[a].push(r); });
+  areas.sort(function(a,b){ return byArea[b].length-byArea[a].length || a.localeCompare(b); });
+  APP._histByArea=byArea; APP._histAreas=areas; APP._histSel=-1;
+
+  h+='<div class="hist-subt">Resumen por área <span class="muted-sm">· toca una cartilla para desplegar su detalle</span></div>';
+  h+='<div class="hist-cards">';
+  areas.forEach(function(a,idx){
+    var pa=parentArea(a), dv=divName(a), n=byArea[a].length;
+    h+='<div class="hist-card" data-a="'+idx+'" role="button" tabindex="0">'+
+        '<div class="hc-count">'+n+'</div>'+
+        '<div class="hc-area"><b>'+esc(dv)+'</b><span>'+esc(pa===dv?'':pa)+'</span></div>'+
+        '<div class="hc-cta">Ver detalle ▾</div>'+
+      '</div>';
   });
+  h+='</div><div id="histDetalle"></div>';
   cont.innerHTML=h;
+
+  cont.querySelectorAll(".hist-card").forEach(function(card){
+    card.onclick=function(){ toggleHistArea(+card.dataset.a); };
+    card.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggleHistArea(+card.dataset.a); } };
+  });
+}
+
+// Despliega/oculta el detalle (lista con especificaciones) del área elegida.
+function toggleHistArea(idx){
+  var det=document.getElementById("histDetalle"); if(!det) return;
+  var cards=document.querySelectorAll(".hist-card");
+  function setCta(c,txt){ var e=c.querySelector(".hc-cta"); if(e) e.textContent=txt; }
+  if(APP._histSel===idx){   // clic en la ya abierta → cerrar
+    APP._histSel=-1; det.innerHTML="";
+    cards.forEach(function(c){ c.classList.remove("sel"); setCta(c,"Ver detalle ▾"); });
+    return;
+  }
+  APP._histSel=idx;
+  cards.forEach(function(c){ var on=(+c.dataset.a===idx); c.classList.toggle("sel",on); setCta(c,on?"Ocultar ▴":"Ver detalle ▾"); });
+
+  var a=APP._histAreas[idx], list=APP._histByArea[a];
+  // Detalle del área agrupado por mes (desc).
+  var byMonth={}, months=[];
+  list.forEach(function(r){ var ym=String(r.fecha||"").slice(0,7)||"—"; if(!byMonth[ym]){ byMonth[ym]=[]; months.push(ym); } byMonth[ym].push(r); });
+  months.sort(function(x,y){ return x<y?1:(x>y?-1:0); });
+  var dh='<div class="hist-detarea"><div class="hd-title">'+esc(a)+' · '+list.length+(list.length===1?' inspección':' inspecciones')+'</div>';
+  months.forEach(function(ym){
+    var items=byMonth[ym].slice().sort(function(x,y){ return (x.n||0)-(y.n||0); });
+    dh+='<div class="hist-month"><div class="hm-head"><h3>'+esc(nombreMes(ym))+'</h3><span class="hm-count">'+items.length+(items.length===1?' inspección':' inspecciones')+'</span></div>';
+    dh+='<div class="tbl-wrap"><table class="data hist-tbl"><thead><tr><th>N° histórico</th><th>Fecha</th><th>Cuadrilla</th><th>Responsable del llenado</th><th>Documento SEG-F-010</th></tr></thead><tbody>';
+    items.forEach(function(r){
+      var pdf=safeUrl(r.pdf_url);
+      var docCell=pdf?'<a href="'+esc(pdf)+'" target="_blank" rel="noopener" class="pdf-link">📄 Ver PDF</a>':'<span class="muted-sm">— no disponible</span>';
+      dh+='<tr><td><b>N°'+pad4(r.n)+'</b></td><td>'+esc(fechaLarga(r.fecha))+'</td><td>'+esc(String(r.cuadrilla==null?"—":r.cuadrilla))+'</td><td>'+esc(r.responsable||"—")+'</td><td>'+docCell+'</td></tr>';
+    });
+    dh+='</tbody></table></div></div>';
+  });
+  dh+='</div>';
+  det.innerHTML=dh;
 }
 
 /* ============================================================
