@@ -316,7 +316,7 @@
       <button class="btn-primary" type="submit">Ingresar al panel</button>
       <div class="login-err" id="lerr" role="alert" aria-live="assertive"></div>
     </form>
-    <div class="demo-hint" id="demoHint">
+    <div class="demo-hint" id="demoHint" style="display:none">
       <b>Modo demostración.</b> Usuarios de prueba (uno por área). Haz clic en un área para autocompletar.
       <details>
         <summary>Ver usuarios de prueba</summary>
@@ -509,7 +509,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V17";
+var PANEL_VERSION = "V18";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -637,7 +637,7 @@ function padDni(s){ s=String(s||"").trim(); return /^\d{1,8}$/.test(s)?("0000000
      login demo queda deshabilitado. El <select> de áreas se llena con ?action=areas.
    - DEMO (sin endpoint): usuarios de prueba locales para la maqueta/el video. */
 var ROSTER = USUARIOS.slice();   // DEMO: usuarios de prueba · PRODUCCIÓN: solo {area} (sin DNIs)
-var rosterDemo = true;
+var rosterDemo = !tieneEndpoint();   // en producción arranca en FALSE → el aviso demo nunca se muestra
 var rosterReady = null;
 
 // Llena el <select> de áreas del login. En producción pide solo las ÁREAS (sin DNIs);
@@ -678,7 +678,7 @@ function renderDemoHint(){
   poblarAreasLogin();
   var hint=document.getElementById("demoHint");
   if(!rosterDemo){ hint.style.display="none"; return; }
-  hint.style.display="";
+  hint.style.display="block";
   document.getElementById("demoTable").innerHTML=ROSTER.map(function(u){
     var et=u.area==="*"?"SSOMA · Todas las áreas":u.area;
     return '<tr><td class="pick" data-area="'+String(u.area).replace(/"/g,"&quot;")+'" data-p="'+u.dni+'">'+et+'</td>'+
