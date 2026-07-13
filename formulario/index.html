@@ -163,11 +163,25 @@ var AREAS_DIV={
 };
 var AREAS=Object.keys(AREAS_DIV);
 function areaComposite(){ return (ST.area&&ST.division)?(ST.area+SEP+ST.division):(ST.area||""); }
-var ROLES=[
+/* Puestos por defecto (todas las áreas salvo Normalización de Red). */
+var ROLES_DEFAULT=[
   {id:"T1",label:"T1 · Líder de Cuadrilla / Empalmador",tools:true},
   {id:"T2",label:"T2 · Técnico Chofer",tools:true},
   {id:"T3",label:"T3 · Técnico Instalador",tools:false},
   {id:"T4",label:"T4 · Técnico Ayudante",tools:false}];
+/* MANTENIMIENTO ▸ Normalización de Red maneja puestos propios (cuadrillas CU1–CU6):
+   Chofer + 2 Instaladores, y un Ayudante en las cuadrillas de 4 (CU5, CU6). */
+var ROLES_NORMALIZACION=[
+  {id:"T1",label:"T1 · Técnico Chofer",tools:true},
+  {id:"T2",label:"T2 · Técnico Instalador",tools:true},
+  {id:"T3",label:"T3 · Técnico Instalador",tools:false},
+  {id:"T4",label:"T4 · Técnico Ayudante",tools:false}];
+var ROLES=ROLES_DEFAULT.slice();
+/* Elige el esquema de puestos según el área/división seleccionada. */
+function actualizarRoles(){
+  var esNorm=(ST.area==="MANTENIMIENTO" && ST.division==="Normalización de Red");
+  ROLES=(esNorm?ROLES_NORMALIZACION:ROLES_DEFAULT).slice();
+}
 var EPP=["Fotocheck","Chaleco de seguridad","Uniforme · Polo","Uniforme · Pantalón","Calzado de seguridad",
   "Lentes de seguridad transparentes","Lentes de seguridad negros","Casco de seguridad","Tafilete","Barbiquejo",
   "Tapa nuca","Guantes de poliuretano","Guantes de cuero","Guantes dieléctricos","Cinturón con 2 estrobos",
@@ -606,7 +620,7 @@ function buildPayload(){
   var ra=responsableActual(), sem=semaforo(m.pct);
   return {ts:new Date().toISOString(),area:areaComposite(),fecha:ST.fecha,hora:ST.hora,cuadrilla:ST.cuadrilla,
     tecnicos:pr.map(function(r){return r.id;}).join(","),
-    nombres:pr.map(function(r){var d=ST.docs[r.id]||{}; return r.id+": "+((d.ape||"")+" "+(d.nom||"")).trim()+" ("+(d.tipo||"")+" "+(d.num||"")+")";}).join(" | "),
+    nombres:pr.map(function(r){var d=ST.docs[r.id]||{}; return r.label+": "+((d.ape||"")+" "+(d.nom||"")).trim()+" ("+(d.tipo||"")+" "+(d.num||"")+")";}).join(" | "),
     modalidad:ST.modalidad, tipo_inspeccion:ST.tipo,
     revisados:m.rev,buen_estado:m.ok,requiere_cambio:m.warn,no_tiene:m.no,no_aplica:m.na,
     conformidad_pct:(m.pct===null?"":m.pct), estado_semaforo:sem.estado,
@@ -662,8 +676,8 @@ document.getElementById("app").addEventListener("change",function(e){
   var t=e.target;
   if(t.id==="f_photos") addPhotos(t.files);
   else if(t.id==="f_resp") addRespPhoto(t.files[0]);
-  else if(t.id==="f_area"){ ST.area=t.value; ST.division=""; render(); }
-  else if(t.id==="f_division") ST.division=t.value;
+  else if(t.id==="f_area"){ ST.area=t.value; ST.division=""; actualizarRoles(); render(); }
+  else if(t.id==="f_division"){ ST.division=t.value; actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
   else if(t.dataset && t.dataset.doc==="tipo"){ doc(t.dataset.id).tipo=t.value; doc(t.dataset.id).num=""; render(); }
