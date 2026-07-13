@@ -480,18 +480,30 @@
           #view-historico .pdf-link{color:var(--brand2);text-decoration:none;font-weight:600;white-space:nowrap}
           #view-historico .pdf-link:hover{text-decoration:underline}
           #view-historico .muted-sm{color:var(--soft)}
-          #view-historico .hist-subt{font-size:13px;font-weight:700;color:var(--ink);margin:6px 0 10px}
-          #view-historico .hist-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:4px}
-          #view-historico .hist-card{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 16px;cursor:pointer;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}
-          #view-historico .hist-card:hover{border-color:var(--brand2)}
-          #view-historico .hist-card.sel{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand) inset}
-          #view-historico .hc-count{font-size:28px;font-weight:800;color:var(--brand);line-height:1;min-width:42px;text-align:center}
-          #view-historico .hc-area{display:flex;flex-direction:column;min-width:0;flex:1}
-          #view-historico .hc-area b{font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-          #view-historico .hc-area span{font-size:11px;color:var(--muted)}
-          #view-historico .hc-cta{font-size:11px;color:var(--brand2);font-weight:700;white-space:nowrap}
-          #view-historico .hist-detarea{margin-top:16px;border-top:2px dashed var(--line);padding-top:14px}
-          #view-historico .hd-title{font-size:14.5px;font-weight:800;color:var(--brand);margin:0 0 12px}
+          #view-historico .hist-subt{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
+          #view-historico .hist-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
+          /* Desglose ranqueado por área (un solo panel, filas con barra proporcional + acordeón) */
+          #view-historico .hist-breakdown{display:flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow)}
+          #view-historico .hb-item{border-radius:11px}
+          #view-historico .hb-item.open{background:var(--bg2)}
+          #view-historico .hb-row{width:100%;display:grid;grid-template-columns:minmax(130px,1.3fr) minmax(80px,2fr) auto 18px;align-items:center;gap:16px;background:none;border:0;cursor:pointer;padding:12px 14px;text-align:left;border-radius:11px;transition:background .15s ease}
+          #view-historico .hb-row:hover{background:var(--infobg)}
+          #view-historico .hb-item.open .hb-row:hover{background:transparent}
+          #view-historico .hb-name{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+          #view-historico .hb-name b{font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-historico .hb-name span{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-historico .hb-bar{height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
+          #view-historico .hb-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--brand),var(--brand3));min-width:8px}
+          #view-historico .hb-num{font-size:19px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums;text-align:right;min-width:24px}
+          #view-historico .hb-chev{display:inline-flex;width:18px;height:18px;color:var(--soft);transition:transform .2s ease,color .2s ease}
+          #view-historico .hb-chev svg{width:18px;height:18px;display:block}
+          #view-historico .hb-item.open .hb-chev{transform:rotate(180deg);color:var(--brand2)}
+          #view-historico .hb-detail{padding:4px 14px 12px}
+          #view-historico .hb-detail .hist-month:first-child{margin-top:2px}
+          @media(max-width:640px){
+            #view-historico .hb-row{grid-template-columns:1fr auto 18px}
+            #view-historico .hb-bar{display:none}
+          }
         </style>
         <div id="histContent"></div>
       </section>
@@ -521,7 +533,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V19";
+var PANEL_VERSION = "V20";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1056,50 +1068,49 @@ function renderHistorico(){
   '</div>';
   if(!arr.length){ cont.innerHTML=h+'<div class="load-note" style="justify-content:flex-start">Aún no hay inspecciones registradas en este alcance.</div>'; return; }
 
-  // Resumen en CARTILLAS por área (compuesto), ordenadas por cantidad desc.
+  // Desglose por área (compuesto), ordenado por cantidad desc, con barra proporcional.
   var byArea={}, areas=[];
   arr.forEach(function(r){ var a=r.area||"(sin área)"; if(!byArea[a]){ byArea[a]=[]; areas.push(a); } byArea[a].push(r); });
   areas.sort(function(a,b){ return byArea[b].length-byArea[a].length || a.localeCompare(b); });
-  APP._histByArea=byArea; APP._histAreas=areas; APP._histSel=-1;
+  var max=byArea[areas[0]].length||1;
 
-  h+='<div class="hist-subt">Resumen por área <span class="muted-sm">· toca una cartilla para desplegar su detalle</span></div>';
-  h+='<div class="hist-cards">';
-  areas.forEach(function(a,idx){
-    var pa=parentArea(a), dv=divName(a), n=byArea[a].length;
-    h+='<div class="hist-card" data-a="'+idx+'" role="button" tabindex="0">'+
-        '<div class="hc-count">'+n+'</div>'+
-        '<div class="hc-area"><b>'+esc(dv)+'</b><span>'+esc(pa===dv?'':pa)+'</span></div>'+
-        '<div class="hc-cta">Ver detalle ▾</div>'+
+  h+='<div class="hist-subt">Resumen por área <span>toca una fila para desplegar el detalle</span></div>';
+  h+='<div class="hist-breakdown">';
+  areas.forEach(function(a){
+    var pa=parentArea(a), dv=divName(a), n=byArea[a].length, pct=Math.round(n/max*100);
+    h+='<div class="hb-item">'+
+        '<button class="hb-row" type="button" aria-expanded="false">'+
+          '<div class="hb-name"><b>'+esc(dv)+'</b>'+(pa&&pa!==dv?'<span>'+esc(pa)+'</span>':'')+'</div>'+
+          '<div class="hb-bar" aria-hidden="true"><i style="width:'+pct+'%"></i></div>'+
+          '<div class="hb-num">'+n+'</div>'+
+          '<span class="hb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
+        '</button>'+
+        '<div class="hb-detail" hidden>'+detalleAreaHTML(byArea[a])+'</div>'+
       '</div>';
   });
-  h+='</div><div id="histDetalle"></div>';
+  h+='</div>';
   cont.innerHTML=h;
 
-  cont.querySelectorAll(".hist-card").forEach(function(card){
-    card.onclick=function(){ toggleHistArea(+card.dataset.a); };
-    card.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggleHistArea(+card.dataset.a); } };
+  // Acordeón de una sola fila abierta.
+  cont.querySelectorAll(".hb-row").forEach(function(row){
+    row.onclick=function(){
+      var item=row.parentNode, det=item.querySelector(".hb-detail"), abrir=det.hidden;
+      cont.querySelectorAll(".hb-item").forEach(function(it){
+        it.classList.remove("open");
+        it.querySelector(".hb-detail").hidden=true;
+        it.querySelector(".hb-row").setAttribute("aria-expanded","false");
+      });
+      if(abrir){ det.hidden=false; item.classList.add("open"); row.setAttribute("aria-expanded","true"); }
+    };
   });
 }
 
-// Despliega/oculta el detalle (lista con especificaciones) del área elegida.
-function toggleHistArea(idx){
-  var det=document.getElementById("histDetalle"); if(!det) return;
-  var cards=document.querySelectorAll(".hist-card");
-  function setCta(c,txt){ var e=c.querySelector(".hc-cta"); if(e) e.textContent=txt; }
-  if(APP._histSel===idx){   // clic en la ya abierta → cerrar
-    APP._histSel=-1; det.innerHTML="";
-    cards.forEach(function(c){ c.classList.remove("sel"); setCta(c,"Ver detalle ▾"); });
-    return;
-  }
-  APP._histSel=idx;
-  cards.forEach(function(c){ var on=(+c.dataset.a===idx); c.classList.toggle("sel",on); setCta(c,on?"Ocultar ▴":"Ver detalle ▾"); });
-
-  var a=APP._histAreas[idx], list=APP._histByArea[a];
-  // Detalle del área agrupado por mes (desc).
+// Detalle de un área: inspecciones agrupadas por mes (desc), con especificaciones.
+function detalleAreaHTML(list){
   var byMonth={}, months=[];
   list.forEach(function(r){ var ym=String(r.fecha||"").slice(0,7)||"—"; if(!byMonth[ym]){ byMonth[ym]=[]; months.push(ym); } byMonth[ym].push(r); });
   months.sort(function(x,y){ return x<y?1:(x>y?-1:0); });
-  var dh='<div class="hist-detarea"><div class="hd-title">'+esc(a)+' · '+list.length+(list.length===1?' inspección':' inspecciones')+'</div>';
+  var dh="";
   months.forEach(function(ym){
     var items=byMonth[ym].slice().sort(function(x,y){ return (x.n||0)-(y.n||0); });
     dh+='<div class="hist-month"><div class="hm-head"><h3>'+esc(nombreMes(ym))+'</h3><span class="hm-count">'+items.length+(items.length===1?' inspección':' inspecciones')+'</span></div>';
@@ -1111,8 +1122,7 @@ function toggleHistArea(idx){
     });
     dh+='</tbody></table></div></div>';
   });
-  dh+='</div>';
-  det.innerHTML=dh;
+  return dh;
 }
 
 /* ============================================================
