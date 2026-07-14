@@ -533,7 +533,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V20";
+var PANEL_VERSION = "V21";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -741,6 +741,7 @@ document.getElementById("loginForm").addEventListener("submit",function(e){
       fin();
       if(res && res.ok && res.token){ APP.token=res.token; iniciarSesion(res.user); }
       else if(res && res.error==="credenciales"){ err.textContent="DNI incorrecto para el área seleccionada."; }
+      else if(res && res.error==="muchos_intentos"){ err.textContent="Demasiados intentos fallidos para esta área. Espera unos minutos e inténtalo de nuevo."; }
       else { err.textContent="No se pudo verificar el acceso. Reintenta."; }
     })
     .catch(function(){ fin(); err.textContent="Sin conexión con el servidor. Reintenta."; });
@@ -777,7 +778,11 @@ function configurarFiltrosArea(){
   poblarAreaSelect();
 }
 
-document.getElementById("logoutBtn").onclick=function(){ if(APP.pollTimer) clearInterval(APP.pollTimer); location.reload(); };
+document.getElementById("logoutBtn").onclick=function(){
+  if(APP.pollTimer) clearInterval(APP.pollTimer);
+  try{ localStorage.removeItem(obsCacheKey()); }catch(e){}   // no dejar PII en caché local al salir
+  location.reload();
+};
 
 // Mostrar / ocultar el DNI en el login
 document.getElementById("pwdEye").onclick=function(){
