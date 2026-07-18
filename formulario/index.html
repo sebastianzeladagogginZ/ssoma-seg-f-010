@@ -182,6 +182,12 @@ function actualizarRoles(){
   var esNorm=(ST.area==="MANTENIMIENTO" && ST.division==="Normalización de Red");
   ROLES=(esNorm?ROLES_NORMALIZACION:ROLES_DEFAULT).slice();
 }
+/* Áreas que trabajan de forma INDIVIDUAL (no en cuadrilla): el personal es unitario
+   en campo. Para ellas el formulario pide SOLO nombres + documento (sin N° de
+   cuadrilla, sin roles T1–T4 y sin checklists de EPP/herramientas). */
+var AREAS_INDIVIDUALES={"INSPECCIÓN Y DISEÑO":1,"NETWORKING":1};
+function esIndividual(){ return !!AREAS_INDIVIDUALES[ST.area]; }
+function personaNueva(){ return {tipo:"DNI",num:"",ape:"",nom:""}; }
 var EPP=["Fotocheck","Chaleco de seguridad","Uniforme · Polo","Uniforme · Pantalón","Calzado de seguridad",
   "Lentes de seguridad transparentes","Lentes de seguridad negros","Casco de seguridad","Tafilete","Barbiquejo",
   "Tapa nuca","Guantes de poliuretano","Guantes de cuero","Guantes dieléctricos","Cinturón con 2 estrobos",
@@ -218,6 +224,7 @@ var EMPRESA={razon:"OPTICAL NETWORKS S.A.C.",ruc:"20602576702",
 
 /* ===== Estado ===== */
 var ST={area:"",division:"",fecha:"",hora:"",cuadrilla:"",presence:{T1:false,T2:false,T3:false,T4:false},docs:{},
+  personas:[], enviado:false,
   ans:{}, branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
   modalidad:"Autoinspección", tipo:"Planeada", conclusiones:"",
   resp:{nombre:"",cargo:"",documento:""}, firma:"", fotoResp:""};
@@ -237,6 +244,13 @@ function semaforo(pct){
   return {estado:"No conforme",col:"--bad",bg:"--badbg"};
 }
 function responsableAuto(){
+  if(esIndividual()){
+    var p0=(ST.personas||[])[0];
+    if(!p0||!((p0.ape||"")+(p0.nom||"")).trim()) return {nombre:"",cargo:"",documento:""};
+    return {nombre:((p0.ape||"")+" "+(p0.nom||"")).trim(),
+      cargo:"Personal de campo"+(ST.division?" · "+ST.division:""),
+      documento:((p0.tipo||"DNI")+" "+(p0.num||"")).trim()};
+  }
   var pr=ROLES.filter(function(r){return ST.presence[r.id];});
   var lead=pr.filter(function(r){return r.id==="T1";})[0]||pr[0];
   if(!lead) return {nombre:"",cargo:"",documento:""};
@@ -290,6 +304,9 @@ function render(){
   var presentRoles=ROLES.filter(function(r){return ST.presence[r.id];});
   var H="";
 
+  var indiv=esIndividual();
+  if(indiv && !ST.personas.length) ST.personas=[personaNueva()];
+
   /* 1. Datos generales */
   var g='<div class="note" style="margin:2px 0 12px;border-left-color:var(--brand)"><b>'+EMPRESA.razon+'</b> · RUC '+EMPRESA.ruc+'<br>'+EMPRESA.domicilio+'<br>'+EMPRESA.actividad+'</div>'+
   '<div class="grid2">'+
@@ -302,26 +319,51 @@ function render(){
     '</select></div>'+
     '<div class="field"><label>1.2 Fecha de inspección <span class="req">*</span></label><input type="date" id="f_fecha" value="'+ST.fecha+'" required></div>'+
     '<div class="field"><label>1.3 Hora de la inspección <span class="req">*</span></label><input type="time" id="f_hora" value="'+ST.hora+'" required></div>'+
-    '<div class="field"><label>1.4 N° de cuadrilla <span class="req">*</span></label><input type="number" inputmode="numeric" id="f_cuad" value="'+ST.cuadrilla+'" required></div>'+
-  '</div>'+
-  '<div class="field"><label>1.4 ¿Qué técnicos integran la cuadrilla hoy? <span class="req">*</span></label><div class="roles">'+
-    ROLES.map(function(r){return '<div class="chip'+(ST.presence[r.id]?' on':'')+'" data-act="role" data-id="'+r.id+'">'+(ST.presence[r.id]?'✓ ':'')+r.id+'</div>';}).join("")+
-  '</div><div class="hint">Solo se mostrarán los datos de los técnicos presentes.</div></div>';
-  presentRoles.forEach(function(r){
-    var d=doc(r.id); var esDNI=d.tipo!=="CE";
-    g+='<div class="subblock"><h3>1.4 Identificación · '+r.label+'</h3>'+
-      '<div class="field"><label>Tipo de documento <span class="req">*</span></label>'+
-        '<select data-doc="tipo" data-id="'+r.id+'" required>'+
-          '<option value="DNI"'+(esDNI?' selected':'')+'>DNI</option>'+
-          '<option value="CE"'+(!esDNI?' selected':'')+'>Carnet de Extranjería</option></select></div>'+
-      '<div class="field"><label>'+(esDNI?'N° de DNI (8 dígitos)':'N° de Carnet de Extranjería (9 a 12 caracteres)')+' <span class="req">*</span></label>'+
-        '<input type="text" inputmode="'+(esDNI?'numeric':'text')+'" maxlength="'+(esDNI?8:12)+'" placeholder="'+(esDNI?'8 dígitos':'9 a 12 caracteres')+'" data-doc="num" data-id="'+r.id+'" value="'+(d.num||"")+'" required></div>'+
-      '<div class="field"><label>Apellidos <span class="req">*</span></label><input type="text" placeholder="Apellidos" data-doc="ape" data-id="'+r.id+'" value="'+(d.ape||"")+'" required></div>'+
-      '<div class="field"><label>Nombres <span class="req">*</span></label><input type="text" placeholder="Nombres" data-doc="nom" data-id="'+r.id+'" value="'+(d.nom||"")+'" required></div>'+
-    '</div>';
-  });
+    /* N° de cuadrilla: solo para áreas que trabajan en cuadrilla. */
+    (indiv?'':'<div class="field"><label>1.4 N° de cuadrilla <span class="req">*</span></label><input type="number" inputmode="numeric" id="f_cuad" value="'+ST.cuadrilla+'" required></div>')+
+  '</div>';
+
+  if(indiv){
+    /* Personal INDIVIDUAL (sin cuadrilla): solo nombres + documento. */
+    g+='<div class="field"><label>1.4 Personal inspeccionado (individual) <span class="req">*</span></label>'+
+      '<div class="hint" style="margin-bottom:8px">Esta área trabaja de forma individual (sin cuadrilla). Registra a la(s) persona(s) por sus nombres y documento.</div>';
+    ST.personas.forEach(function(p,i){
+      var esDNI=p.tipo!=="CE";
+      g+='<div class="subblock"><h3>Persona '+(i+1)+(ST.personas.length>1?' <button class="linkbtn" data-act="delpersona" data-i="'+i+'" type="button" style="float:right">✕ Quitar</button>':'')+'</h3>'+
+        '<div class="field"><label>Tipo de documento <span class="req">*</span></label>'+
+          '<select data-per="tipo" data-i="'+i+'">'+
+            '<option value="DNI"'+(esDNI?' selected':'')+'>DNI</option>'+
+            '<option value="CE"'+(!esDNI?' selected':'')+'>Carnet de Extranjería</option></select></div>'+
+        '<div class="field"><label>'+(esDNI?'N° de DNI (8 dígitos)':'N° de Carnet de Extranjería (9 a 12 caracteres)')+' <span class="req">*</span></label>'+
+          '<input type="text" inputmode="'+(esDNI?'numeric':'text')+'" maxlength="'+(esDNI?8:12)+'" placeholder="'+(esDNI?'8 dígitos':'9 a 12 caracteres')+'" data-per="num" data-i="'+i+'" value="'+eh(p.num||"")+'"></div>'+
+        '<div class="field"><label>Apellidos <span class="req">*</span></label><input type="text" placeholder="Apellidos" data-per="ape" data-i="'+i+'" value="'+eh(p.ape||"")+'"></div>'+
+        '<div class="field"><label>Nombres <span class="req">*</span></label><input type="text" placeholder="Nombres" data-per="nom" data-i="'+i+'" value="'+eh(p.nom||"")+'"></div>'+
+      '</div>';
+    });
+    g+='<button type="button" class="uploadbtn" data-act="addpersona" style="margin-top:4px">＋ Agregar persona</button></div>';
+  } else {
+    /* Cuadrilla: roles T1–T4 con su identificación. */
+    g+='<div class="field"><label>1.4 ¿Qué técnicos integran la cuadrilla hoy? <span class="req">*</span></label><div class="roles">'+
+      ROLES.map(function(r){return '<div class="chip'+(ST.presence[r.id]?' on':'')+'" data-act="role" data-id="'+r.id+'">'+(ST.presence[r.id]?'✓ ':'')+r.id+'</div>';}).join("")+
+    '</div><div class="hint">Solo se mostrarán los datos de los técnicos presentes.</div></div>';
+    presentRoles.forEach(function(r){
+      var d=doc(r.id); var esDNI=d.tipo!=="CE";
+      g+='<div class="subblock"><h3>1.4 Identificación · '+r.label+'</h3>'+
+        '<div class="field"><label>Tipo de documento <span class="req">*</span></label>'+
+          '<select data-doc="tipo" data-id="'+r.id+'" required>'+
+            '<option value="DNI"'+(esDNI?' selected':'')+'>DNI</option>'+
+            '<option value="CE"'+(!esDNI?' selected':'')+'>Carnet de Extranjería</option></select></div>'+
+        '<div class="field"><label>'+(esDNI?'N° de DNI (8 dígitos)':'N° de Carnet de Extranjería (9 a 12 caracteres)')+' <span class="req">*</span></label>'+
+          '<input type="text" inputmode="'+(esDNI?'numeric':'text')+'" maxlength="'+(esDNI?8:12)+'" placeholder="'+(esDNI?'8 dígitos':'9 a 12 caracteres')+'" data-doc="num" data-id="'+r.id+'" value="'+(d.num||"")+'" required></div>'+
+        '<div class="field"><label>Apellidos <span class="req">*</span></label><input type="text" placeholder="Apellidos" data-doc="ape" data-id="'+r.id+'" value="'+(d.ape||"")+'" required></div>'+
+        '<div class="field"><label>Nombres <span class="req">*</span></label><input type="text" placeholder="Nombres" data-doc="nom" data-id="'+r.id+'" value="'+(d.nom||"")+'" required></div>'+
+      '</div>';
+    });
+  }
   H+=card(1,"Datos generales de la inspección",g,null);
 
+  /* Secciones 2–8 (EPP, herramientas y recursos de la cuadrilla) SOLO en modo cuadrilla. */
+  if(!indiv){
   /* 2. EPP por técnico */
   if(presentRoles.length){
     var e="";
@@ -371,11 +413,12 @@ function render(){
   if(ST.branch.botiquin===true) bo+=checklist("botiquin",null,BOT,S_SEG);
   else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (registrar en observaciones).</p>';
   H+=card(8,"Estado del botiquín",bo,"botiquin");
+  } /* fin secciones 2–8 (solo cuadrilla) */
 
   /* 9. Evidencias y observaciones */
   var ev='<div class="field"><label>9.1 Evidencias fotográficas <span class="req">*</span></label>'+
     '<label class="uploadbtn">📷 Tomar / adjuntar fotos<input type="file" accept="image/*" capture="environment" multiple style="display:none" id="f_photos"></label>'+
-    '<div class="photos" id="ph"></div><div class="hint">Cuadrilla, EPP, vehículo y todo recurso dañado.</div></div>'+
+    '<div class="photos" id="ph"></div><div class="hint">'+(indiv?'Personal en campo, EPP y todo recurso relevante.':'Cuadrilla, EPP, vehículo y todo recurso dañado.')+'</div></div>'+
     '<div class="field"><label>9.2 Observaciones <span class="req">*</span></label>'+
     '<textarea id="f_obs" placeholder="Recursos que requieren reparación, cambio o asignación. Si es EPP/uniforme, indica el técnico." required>'+ST.obs+'</textarea></div>';
   H+=card(9,"Evidencias y observaciones",ev,null);
@@ -384,13 +427,14 @@ function render(){
   var sem=semaforo(metrics().pct), ra=responsableActual();
   var c10='<div class="field"><label>10.1 Modalidad de la inspección <span class="req">*</span></label><div class="seg2">'+
     ["Autoinspección","Inspección inopinada"].map(function(o){return '<button data-act="modal" data-v="'+o+'" class="'+(ST.modalidad===o?"on":"")+'">'+o+'</button>';}).join("")+
-    '</div><div class="hint">Autoinspección: la propia cuadrilla revisa sus recursos (el responsable es el líder T1). Inopinada: la realiza un inspector externo sin aviso.</div></div>'+
+    '</div><div class="hint">Autoinspección: '+(indiv?'el propio personal revisa sus recursos (el responsable es la primera persona registrada).':'la propia cuadrilla revisa sus recursos (el responsable es el líder T1).')+' Inopinada: la realiza un inspector externo sin aviso.</div></div>'+
     '<div class="field"><label>10.2 Tipo de inspección (RM 050-2013-TR) <span class="req">*</span></label><select id="f_tipo">'+
       ["Planeada","No planeada"].map(function(o){return '<option'+(ST.tipo===o?" selected":"")+'>'+o+'</option>';}).join("")+
     '</select></div>'+
-    '<div class="field"><label>10.3 Estado de conformidad</label><br>'+
+    /* 10.3 Conformidad: solo en modo cuadrilla (el modo individual no tiene checklist de recursos). */
+    (indiv?'':'<div class="field"><label>10.3 Estado de conformidad</label><br>'+
       '<span class="badge" id="semBadge" style="color:var('+sem.col+');background:var('+sem.bg+');border-color:var('+sem.col+')">'+sem.estado+' · '+(metrics().pct===null?"—":metrics().pct+"%")+'</span>'+
-      '<div class="hint">Cálculo automático: ≥90% Conforme · 70–89% Observado · &lt;70% No conforme.</div></div>'+
+      '<div class="hint">Cálculo automático: ≥90% Conforme · 70–89% Observado · &lt;70% No conforme.</div></div>')+
     '<div class="field"><label>10.4 Conclusiones y recomendaciones <span class="req">*</span></label>'+
       '<textarea id="f_concl" placeholder="Resumen de hallazgos, acciones correctivas, responsables y plazos.">'+eh(ST.conclusiones)+'</textarea></div>';
   if(ST.modalidad==="Inspección inopinada"){
@@ -400,7 +444,7 @@ function render(){
       '<div class="field"><label>Documento (DNI / CE) <span class="req">*</span></label><input type="text" id="r_doc" value="'+eh(ST.resp.documento)+'" placeholder="N° de documento"></div></div>';
   } else {
     c10+='<div class="subblock"><h3>10.5 Responsable de la inspección</h3>'+
-      '<div class="hint">Tomado del líder de cuadrilla (T1). Cambia a “Inspección inopinada” si la realiza un externo.</div>'+
+      '<div class="hint">'+(indiv?'Tomado de la primera persona registrada.':'Tomado del líder de cuadrilla (T1).')+' Cambia a “Inspección inopinada” si la realiza un externo.</div>'+
       '<div class="field"><label>Apellidos y nombres</label><input type="text" value="'+eh(ra.nombre)+'" disabled></div>'+
       '<div class="field"><label>Cargo</label><input type="text" value="'+eh(ra.cargo)+'" disabled></div>'+
       '<div class="field"><label>Documento</label><input type="text" value="'+eh(ra.documento)+'" disabled></div></div>';
@@ -432,6 +476,17 @@ function setBranch(b,val){
   ST.branch[b]=val;
   if(!val){ for(var k in ST.ans){ if(k.indexOf(b+"||")===0) delete ST.ans[k]; } }
   render();
+}
+/* ── Personal individual (áreas sin cuadrilla) ── */
+function addPersona(){ ST.personas.push(personaNueva()); render(); }
+function delPersona(i){ ST.personas.splice(i,1); if(!ST.personas.length) ST.personas=[personaNueva()]; render(); }
+/* Al cambiar de área se limpia el estado dependiente del modo (cuadrilla ↔ individual)
+   para que respuestas/roles/personas de un modo no contaminen al otro. */
+function resetPorArea(){
+  ST.division=""; ST.cuadrilla=""; ST.ans={};
+  ST.branch={escalera:null,extintor:null,botiquin:null};
+  ST.presence={T1:false,T2:false,T3:false,T4:false}; ST.docs={};
+  ST.personas=[];
 }
 function addPhotos(files){
   Array.prototype.forEach.call(files,function(f){
@@ -503,6 +558,7 @@ function metrics(){
   return {rev:rev,ok:ok,warn:warn,no:no,na:na,base:base,pct:pct};
 }
 function visibleQuestionCount(){
+  if(esIndividual()) return (ST.personas||[]).length;   // modo individual: solo identificación
   var pr=ROLES.filter(function(r){return ST.presence[r.id];});
   var n=4+pr.length*4;
   n+=pr.length*EPP.length;
@@ -523,7 +579,9 @@ function updateMetrics(){
   g.style.color=m.pct===null?"#fff":(m.pct>=90?"#bbf7d0":m.pct>=70?"#fde68a":"#fecaca");
   document.getElementById("fRev").textContent=m.rev;
   document.getElementById("fHall").textContent=m.warn+m.no;
-  document.getElementById("counter").innerHTML=' <b>Hoy ves '+visibleQuestionCount()+' ítems</b> (el formato original tenía 172).';
+  document.getElementById("counter").innerHTML= esIndividual()
+    ? ' <b>Registro individual</b> — solo identificación del personal (sin cuadrilla).'
+    : ' <b>Hoy ves '+visibleQuestionCount()+' ítems</b> (el formato original tenía 172).';
   var sem=semaforo(m.pct), sb=document.getElementById("semBadge");
   if(sb){ sb.textContent=sem.estado+" · "+(m.pct===null?"—":m.pct+"%");
     sb.style.color="var("+sem.col+")"; sb.style.background="var("+sem.bg+")"; sb.style.borderColor="var("+sem.col+")"; }
@@ -548,8 +606,11 @@ function buildDetalle(){
 function openSheet(){
   var m=metrics(),f=findingsList();
   var semR=semaforo(m.pct);
+  var quien=esIndividual()
+    ? "Personal individual · "+(ST.personas||[]).filter(function(p){return ((p.ape||"")+(p.nom||"")).trim();}).length+" persona(s)"
+    : "Cuadrilla "+(ST.cuadrilla||"?")+" · "+ROLES.filter(function(r){return ST.presence[r.id];}).length+" técnico(s)";
   document.getElementById("sumMeta").innerHTML=
-    eh((areaComposite()||"(sin área)")+" · Cuadrilla "+(ST.cuadrilla||"?")+" · "+(ST.fecha||"sin fecha")+" "+(ST.hora||"")+" · "+ROLES.filter(function(r){return ST.presence[r.id];}).length+" técnico(s)")+
+    eh((areaComposite()||"(sin área)")+" · "+quien+" · "+(ST.fecha||"sin fecha")+" "+(ST.hora||""))+
     '<br>'+eh(ST.modalidad)+' · <b style="color:var('+semR.col+')">'+semR.estado+'</b>';
   document.getElementById("kpis").innerHTML=
     '<div class="kpi"><b>'+(m.pct===null?"—":m.pct+"%")+'</b><span>conformidad</span></div>'+
@@ -571,16 +632,28 @@ function validar(){
   if(!ST.division) return "Selecciona la División (1.1).";
   if(!ST.fecha) return "Indica la Fecha (1.2).";
   if(!ST.hora) return "Indica la Hora (1.3).";
-  if(!String(ST.cuadrilla).trim()) return "Indica el N° de cuadrilla (1.4).";
-  var pr=ROLES.filter(function(r){return ST.presence[r.id];});
-  if(!pr.length) return "Marca al menos un técnico presente (1.4).";
-  for(var i=0;i<pr.length;i++){
-    var id=pr[i].id, d=ST.docs[id]||{};
-    if(!(d.ape||"").trim()) return "Falta Apellidos de "+id+".";
-    if(!(d.nom||"").trim()) return "Falta Nombres de "+id+".";
-    var num=(d.num||"").trim();
-    if((d.tipo||"DNI")==="DNI"){ if(!/^[0-9]{8}$/.test(num)) return "El DNI de "+id+" debe tener 8 dígitos."; }
-    else { if(!/^[A-Za-z0-9]{9,12}$/.test(num)) return "El Carnet de Extranjería de "+id+" debe tener 9 a 12 caracteres."; }
+  if(esIndividual()){
+    var per=(ST.personas||[]).filter(function(p){return ((p.ape||"")+(p.nom||"")+(p.num||"")).trim();});
+    if(!per.length) return "Registra al menos una persona (1.4).";
+    for(var pi=0;pi<per.length;pi++){
+      var q=per[pi], n2=(q.num||"").trim();
+      if(!(q.ape||"").trim()) return "Falta Apellidos de la persona "+(pi+1)+" (1.4).";
+      if(!(q.nom||"").trim()) return "Falta Nombres de la persona "+(pi+1)+" (1.4).";
+      if((q.tipo||"DNI")==="DNI"){ if(!/^[0-9]{8}$/.test(n2)) return "El DNI de la persona "+(pi+1)+" debe tener 8 dígitos."; }
+      else { if(!/^[A-Za-z0-9]{9,12}$/.test(n2)) return "El Carnet de Extranjería de la persona "+(pi+1)+" debe tener 9 a 12 caracteres."; }
+    }
+  } else {
+    if(!String(ST.cuadrilla).trim()) return "Indica el N° de cuadrilla (1.4).";
+    var pr=ROLES.filter(function(r){return ST.presence[r.id];});
+    if(!pr.length) return "Marca al menos un técnico presente (1.4).";
+    for(var i=0;i<pr.length;i++){
+      var id=pr[i].id, d=ST.docs[id]||{};
+      if(!(d.ape||"").trim()) return "Falta Apellidos de "+id+".";
+      if(!(d.nom||"").trim()) return "Falta Nombres de "+id+".";
+      var num=(d.num||"").trim();
+      if((d.tipo||"DNI")==="DNI"){ if(!/^[0-9]{8}$/.test(num)) return "El DNI de "+id+" debe tener 8 dígitos."; }
+      else { if(!/^[A-Za-z0-9]{9,12}$/.test(num)) return "El Carnet de Extranjería de "+id+" debe tener 9 a 12 caracteres."; }
+    }
   }
   if(!ST.photos.length) return "Adjunta al menos una foto (9.1).";
   if(!String(ST.obs).trim()) return "Completa las Observaciones (9.2).";
@@ -590,7 +663,9 @@ function validar(){
     if(!String(ST.resp.cargo).trim()) return "Falta el cargo del responsable externo (10.5).";
     if(!String(ST.resp.documento).trim()) return "Falta el documento del responsable externo (10.5).";
   } else if(!responsableAuto().nombre){
-    return "Completa los datos de T1: es el responsable de la autoinspección.";
+    return esIndividual()
+      ? "Completa los datos de la primera persona: es el responsable de la autoinspección."
+      : "Completa los datos de T1: es el responsable de la autoinspección.";
   }
   if(!ST.firma) return "Falta la firma del responsable (10.7).";
   return "";
@@ -613,14 +688,25 @@ function exportSummary(){
   var csv="﻿"+[head,row].map(function(r){return r.map(csvCell).join(";");}).join("\r\n");
   dl("Resumen_"+stamp()+".csv",csv,"text/csv;charset=utf-8");
 }
+/* Cadena "nombres" del registro — mode-aware (cuadrilla T1–T4 · personal individual). */
+function nombresPayload(){
+  if(esIndividual()){
+    return (ST.personas||[]).filter(function(p){return ((p.ape||"")+(p.nom||"")).trim();})
+      .map(function(p){ return "Personal: "+((p.ape||"")+" "+(p.nom||"")).trim()+" ("+(p.tipo||"DNI")+" "+(p.num||"")+")"; }).join(" | ");
+  }
+  var pr=ROLES.filter(function(r){return ST.presence[r.id];});
+  return pr.map(function(r){var d=ST.docs[r.id]||{}; return r.label+": "+((d.ape||"")+" "+(d.nom||"")).trim()+" ("+(d.tipo||"")+" "+(d.num||"")+")";}).join(" | ");
+}
 function buildPayload(){
-  var m=metrics(), f=findingsList();
+  var m=metrics(), f=findingsList(), indiv=esIndividual();
   var hall=f.map(function(x){return x.seccion+(x.recurso&&x.recurso!=="—"?" ["+x.recurso+"]":"")+": "+x.item+" = "+x.estado;}).join(" | ");
   var pr=ROLES.filter(function(r){return ST.presence[r.id];});
   var ra=responsableActual(), sem=semaforo(m.pct);
-  return {ts:new Date().toISOString(),area:areaComposite(),fecha:ST.fecha,hora:ST.hora,cuadrilla:ST.cuadrilla,
-    tecnicos:pr.map(function(r){return r.id;}).join(","),
-    nombres:pr.map(function(r){var d=ST.docs[r.id]||{}; return r.label+": "+((d.ape||"")+" "+(d.nom||"")).trim()+" ("+(d.tipo||"")+" "+(d.num||"")+")";}).join(" | "),
+  var nombres=nombresPayload();
+  var p={ts:new Date().toISOString(),area:areaComposite(),fecha:ST.fecha,hora:ST.hora,
+    cuadrilla:(indiv?"":ST.cuadrilla),
+    tecnicos:(indiv?"Individual":pr.map(function(r){return r.id;}).join(",")),
+    nombres:nombres,
     modalidad:ST.modalidad, tipo_inspeccion:ST.tipo,
     revisados:m.rev,buen_estado:m.ok,requiere_cambio:m.warn,no_tiene:m.no,no_aplica:m.na,
     conformidad_pct:(m.pct===null?"":m.pct), estado_semaforo:sem.estado,
@@ -633,16 +719,49 @@ function buildPayload(){
     respuestas:buildDetalle(),
     fotos_count:ST.photos.length,
     fotos:ST.photos.map(function(p){return {nombre:p.name,contenido:(String(p.data).split(",")[1]||"")};})};
+  // Clave anti-duplicado: identifica el CONTENIDO de la inspección (sin el ts, que
+  // cambia en cada clic). Dos envíos idénticos → misma clave → el servidor los deduplica.
+  p.dedup_key=_hash36([p.area,p.fecha,p.hora,p.cuadrilla,nombres,ra.documento,
+    m.rev,(m.pct===null?"":m.pct),ST.obs,ST.conclusiones].join("¦"));
+  return p;
 }
+/* Hash corto y estable (djb2 → base36). Para la clave anti-duplicado. */
+function _hash36(s){ s=String(s||""); var h=5381,i=s.length; while(i){ h=(h*33)^s.charCodeAt(--i); } return (h>>>0).toString(36); }
+
+/* Registro local de envíos (anti-duplicado en el navegador · ventana 10 min). */
+var SENT_STORE="seg010_envios", SENT_WINDOW=600000;
+function _enviosMap(){ try{ return JSON.parse(localStorage.getItem(SENT_STORE)||"{}")||{}; }catch(e){ return {}; } }
+function _marcarEnviado(k){
+  try{ var e=_enviosMap(), now=Date.now(); e[k]=now;
+    for(var x in e){ if(now-e[x]>SENT_WINDOW) delete e[x]; }   // limpia claves viejas
+    localStorage.setItem(SENT_STORE,JSON.stringify(e)); }catch(_){}
+}
+function _bloqueoRestante(k){ var t=_enviosMap()[k]; if(!t) return 0; var r=SENT_WINDOW-(Date.now()-t); return r>0?r:0; }
+
 function setCloudStatus(msg,err){var el=document.getElementById("cloudStatus");if(el){el.textContent=msg;el.style.color=err?"var(--bad)":"var(--ok)";}}
 function submitToCloud(){
   if(!ENDPOINT_URL||ENDPOINT_URL.indexOf("http")!==0){setCloudStatus("Falta configurar la URL del script (ver instrucciones).",true);return;}
   var err=validar();
   if(err){ setCloudStatus(err,true); return; }
+  var payload=buildPayload(), k=payload.dedup_key;
+  // Anti-duplicidad: si esta MISMA inspección ya se envió hace <10 min, se bloquea.
+  var rest=_bloqueoRestante(k);
+  if(rest>0){
+    setCloudStatus("Esta inspección ya fue enviada. Para evitar duplicados espera ~"+Math.ceil(rest/60000)+" min; si es una inspección distinta, modifica los datos.",true);
+    return;
+  }
+  var btn=document.getElementById("cloudSave"); if(btn) btn.disabled=true;
   setCloudStatus("Enviando…",false);
-  fetch(ENDPOINT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(buildPayload())})
-    .then(function(){setCloudStatus("✓ Guardado en la nube. Revisa tu hoja de Google.",false);})
-    .catch(function(){setCloudStatus("No se pudo enviar (revisa tu conexión). Puedes exportar el CSV como respaldo.",true);});
+  fetch(ENDPOINT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)})
+    .then(function(){
+      _marcarEnviado(k); ST.enviado=true;
+      setCloudStatus("✓ Guardado en la nube. Revisa tu hoja de Google. (Bloqueado 10 min para evitar duplicados.)",false);
+      if(btn) btn.disabled=false;   // se rehabilita: un reenvío idéntico queda bloqueado por la clave
+    })
+    .catch(function(){
+      if(btn) btn.disabled=false;
+      setCloudStatus("No se pudo enviar (revisa tu conexión). Puedes exportar el CSV como respaldo.",true);
+    });
 }
 
 /* ===== Wiring ===== */
@@ -654,6 +773,8 @@ document.getElementById("app").addEventListener("click",function(e){
   else if(act==="role") togglePresence(b.dataset.id);
   else if(act==="branch") setBranch(b.dataset.b, b.dataset.v==="1");
   else if(act==="modal"){ ST.modalidad=b.dataset.v; render(); }
+  else if(act==="addpersona") addPersona();
+  else if(act==="delpersona") delPersona(+b.dataset.i);
   else if(act==="clearsig") clearSignature();
 });
 document.getElementById("app").addEventListener("input",function(e){
@@ -666,20 +787,27 @@ document.getElementById("app").addEventListener("input",function(e){
   else if(t.id==="r_nom") ST.resp.nombre=t.value;
   else if(t.id==="r_car") ST.resp.cargo=t.value;
   else if(t.id==="r_doc") ST.resp.documento=t.value;
+  else if(t.dataset && t.dataset.per){          // persona individual
+    var pi=+t.dataset.i, campo=t.dataset.per, p=ST.personas[pi], val=t.value;
+    if(!p) return;
+    if(campo==="num"){ val=(p.tipo==="CE")?val.replace(/[^A-Za-z0-9]/g,"").slice(0,12):val.replace(/[^0-9]/g,"").slice(0,8); t.value=val; }
+    p[campo]=val;
+  }
   else if(t.dataset && t.dataset.doc){
-    var id=t.dataset.id, campo=t.dataset.doc, d=doc(id), val=t.value;
-    if(campo==="num"){ val=(d.tipo==="CE")?val.replace(/[^A-Za-z0-9]/g,"").slice(0,12):val.replace(/[^0-9]/g,"").slice(0,8); t.value=val; }
-    d[campo]=val;
+    var id=t.dataset.id, campo2=t.dataset.doc, d=doc(id), val2=t.value;
+    if(campo2==="num"){ val2=(d.tipo==="CE")?val2.replace(/[^A-Za-z0-9]/g,"").slice(0,12):val2.replace(/[^0-9]/g,"").slice(0,8); t.value=val2; }
+    d[campo2]=val2;
   }
 });
 document.getElementById("app").addEventListener("change",function(e){
   var t=e.target;
   if(t.id==="f_photos") addPhotos(t.files);
   else if(t.id==="f_resp") addRespPhoto(t.files[0]);
-  else if(t.id==="f_area"){ ST.area=t.value; ST.division=""; actualizarRoles(); render(); }
+  else if(t.id==="f_area"){ ST.area=t.value; resetPorArea(); actualizarRoles(); render(); }
   else if(t.id==="f_division"){ ST.division=t.value; actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
+  else if(t.dataset && t.dataset.per==="tipo"){ var pp=ST.personas[+t.dataset.i]; if(pp){ pp.tipo=t.value; pp.num=""; } render(); }
   else if(t.dataset && t.dataset.doc==="tipo"){ doc(t.dataset.id).tipo=t.value; doc(t.dataset.id).num=""; render(); }
 });
 document.getElementById("finish").onclick=openSheet;

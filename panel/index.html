@@ -480,6 +480,8 @@
           #view-historico .pdf-link{color:var(--brand2);text-decoration:none;font-weight:600;white-space:nowrap}
           #view-historico .pdf-link:hover{text-decoration:underline}
           #view-historico .muted-sm{color:var(--soft)}
+          #view-historico .hist-obs{display:inline-block;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;color:var(--muted);cursor:help}
+          #view-historico .hist-week{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;box-shadow:var(--shadow);margin-bottom:6px}
           #view-historico .hist-subt{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
           #view-historico .hist-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
           /* Desglose ranqueado por área (un solo panel, filas con barra proporcional + acordeón) */
@@ -533,7 +535,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V21";
+var PANEL_VERSION = "V22";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1025,12 +1027,20 @@ function nombreMes(ym){ var p=String(ym||"").split("-"); if(p.length<2) return y
 function pad4(n){ n=parseInt(n,10)||0; var s=""+n; return s.length>=4?s:("000"+s).slice(-4); }
 
 // Deriva un histórico de las observaciones demo (agrupa por inspección) para la maqueta.
+// Cada inspección resume sus hallazgos como texto de "observaciones" (identificación).
 function historicoDemo(){
-  var vistos={}, out=[], n=0;
+  var vistos={}, out=[], n=0, obsPorInsp={};
+  baseDatos().forEach(function(o){
+    if(!o.insp) return;
+    (obsPorInsp[o.insp]=obsPorInsp[o.insp]||[]).push(
+      (o.seccion||"")+(o.item?": "+o.item:"")+(o.estado?" = "+o.estado:""));
+  });
   baseDatos().slice().sort(function(a,b){ return String(a.fecha)<String(b.fecha)?-1:1; }).forEach(function(o){
     if(vistos[o.insp]) return; vistos[o.insp]=1;
+    var lista=obsPorInsp[o.insp]||[];
     out.push({ n:++n, insp:o.insp, area:o.area||"", fecha:o.fecha||"", cuadrilla:o.cuadrilla,
-      responsable:o.responsable||"", pdf_url:o.pdf_url||"" });
+      responsable:o.responsable||"", pdf_url:o.pdf_url||"",
+      observaciones:(lista.length?lista.join(" · "):"Sin hallazgos"), hallazgos:lista.join(" | ") });
   });
   return out;
 }
@@ -1063,15 +1073,53 @@ function histFiltrado(){
   });
 }
 
+/* ── Desglose SEMANAL: nº de inspecciones por semana (lun–dom) ──
+   Agrupa por lunes de cada semana, rellena semanas sin datos con 0 y
+   muestra la ventana más reciente (hasta 12 semanas con registros). */
+var MES3=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+function lunesDe(fecha){
+  var p=String(fecha||"").split("-"); if(p.length<3) return null;
+  var d=new Date(+p[0],+p[1]-1,+p[2]); if(isNaN(d.getTime())) return null;
+  var wd=(d.getDay()+6)%7;                 // 0=lunes … 6=domingo
+  d.setDate(d.getDate()-wd); d.setHours(0,0,0,0); return d;
+}
+function rangoSemana(lun){
+  var dom=new Date(lun); dom.setDate(lun.getDate()+6);
+  return pad(lun.getDate())+" "+MES3[lun.getMonth()]+" – "+pad(dom.getDate())+" "+MES3[dom.getMonth()];
+}
+function histPorSemana(arr){
+  var map={}, min=null, max=null;
+  arr.forEach(function(r){ var m=lunesDe(r.fecha); if(!m) return; var k=fechaISO(m);
+    map[k]=(map[k]||0)+1; if(!min||m<min) min=m; if(!max||m>max) max=m; });
+  if(!max) return [];
+  var semanas=[], cur=new Date(max), guard=0;
+  while(cur>=min && guard++<60){
+    semanas.unshift({ lun:new Date(cur), value:map[fechaISO(cur)]||0 });
+    cur.setDate(cur.getDate()-7);
+  }
+  return semanas.slice(-12);               // ventana: últimas 12 semanas con datos
+}
+
 function renderHistorico(){
   var cont=document.getElementById("histContent"); if(!cont) return;
   var arr=histFiltrado();
+  var semanas=histPorSemana(arr);
+  var promSem=semanas.length?Math.round(arr.length/semanas.length*10)/10:0;
   var h='<div class="hist-kpis">'+
     '<div class="hist-kpi"><span class="hk-num">'+arr.length+'</span><span class="hk-lbl">Inspecciones en esta vista</span></div>'+
-    '<div class="hist-kpi"><span class="hk-num">'+((APP.historico||[]).length)+'</span><span class="hk-lbl">En tu alcance</span></div>'+
+    '<div class="hist-kpi"><span class="hk-num">'+(semanas.length?semanas[semanas.length-1].value:0)+'</span><span class="hk-lbl">Última semana con registros</span></div>'+
+    '<div class="hist-kpi"><span class="hk-num">'+promSem+'</span><span class="hk-lbl">Promedio por semana</span></div>'+
     '<div class="hist-kpi"><span class="hk-num">'+(APP.historicoTotalGlobal||0)+'</span><span class="hk-lbl">Histórico global (toda la empresa)</span></div>'+
   '</div>';
   if(!arr.length){ cont.innerHTML=h+'<div class="load-note" style="justify-content:flex-start">Aún no hay inspecciones registradas en este alcance.</div>'; return; }
+
+  // Inspecciones por semana (barras) — respeta el filtro de Área/División activo.
+  if(semanas.length){
+    h+='<div class="hist-subt">Inspecciones por semana <span>últimas '+semanas.length+' semana(s) · lunes a domingo</span></div>';
+    h+='<div class="hist-week">'+barChart(semanas.map(function(s){
+      return { label:"Semana "+rangoSemana(s.lun), short:pad(s.lun.getDate())+"/"+pad(s.lun.getMonth()+1), value:s.value };
+    }))+'</div>';
+  }
 
   // Desglose por área (compuesto), ordenado por cantidad desc, con barra proporcional.
   var byArea={}, areas=[];
@@ -1119,11 +1167,15 @@ function detalleAreaHTML(list){
   months.forEach(function(ym){
     var items=byMonth[ym].slice().sort(function(x,y){ return (x.n||0)-(y.n||0); });
     dh+='<div class="hist-month"><div class="hm-head"><h3>'+esc(nombreMes(ym))+'</h3><span class="hm-count">'+items.length+(items.length===1?' inspección':' inspecciones')+'</span></div>';
-    dh+='<div class="tbl-wrap"><table class="data hist-tbl"><thead><tr><th>N° histórico</th><th>Fecha</th><th>Cuadrilla</th><th>Responsable del llenado</th><th>Documento SEG-F-010</th></tr></thead><tbody>';
+    dh+='<div class="tbl-wrap"><table class="data hist-tbl"><thead><tr><th>N° inspección</th><th>Fecha</th><th>Cuadrilla</th><th>Responsable del llenado</th><th>Observaciones</th><th>Documento SEG-F-010</th></tr></thead><tbody>';
     items.forEach(function(r){
       var pdf=safeUrl(r.pdf_url);
       var docCell=pdf?'<a href="'+esc(pdf)+'" target="_blank" rel="noopener" class="pdf-link">📄 Ver PDF</a>':'<span class="muted-sm">— no disponible</span>';
-      dh+='<tr><td><b>N°'+pad4(r.n)+'</b></td><td>'+esc(fechaLarga(r.fecha))+'</td><td>'+esc(String(r.cuadrilla==null?"—":r.cuadrilla))+'</td><td>'+esc(r.responsable||"—")+'</td><td>'+docCell+'</td></tr>';
+      var obsTxt=(r.observaciones||r.hallazgos||"").trim();
+      var obsCell=obsTxt
+        ? '<span class="hist-obs" title="'+esc(obsTxt)+'">'+esc(obsTxt)+'</span>'
+        : '<span class="muted-sm">—</span>';
+      dh+='<tr><td><b>N°'+pad4(r.n)+'</b></td><td>'+esc(fechaLarga(r.fecha))+'</td><td>'+esc(String(r.cuadrilla==null?"—":r.cuadrilla))+'</td><td>'+esc(r.responsable||"—")+'</td><td>'+obsCell+'</td><td>'+docCell+'</td></tr>';
     });
     dh+='</tbody></table></div></div>';
   });
