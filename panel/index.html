@@ -484,6 +484,14 @@
           #view-historico .hist-week{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;box-shadow:var(--shadow);margin-bottom:6px}
           #view-historico .hist-subt{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
           #view-historico .hist-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
+          /* Barras de semana clicables + panel de detalle de la semana */
+          #view-historico .hist-week .bar-click{cursor:pointer}
+          #view-historico .hist-week .bar-click rect:not(.bar-hit){transition:opacity .15s ease}
+          #view-historico .hist-week .bar-click:hover rect:not(.bar-hit){opacity:.82}
+          #view-historico .hist-week .bar-click.sel rect:not(.bar-hit){stroke:var(--brand);stroke-width:2.5}
+          #view-historico .week-detail{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);margin:10px 0 6px}
+          #view-historico .wd-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--brand);padding-bottom:6px;margin-bottom:12px}
+          #view-historico .wd-head h3{margin:0;font-size:16px;color:var(--brand)}
           /* Desglose ranqueado por área (un solo panel, filas con barra proporcional + acordeón) */
           #view-historico .hist-breakdown{display:flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow)}
           #view-historico .hb-item{border-radius:11px}
@@ -1088,13 +1096,14 @@ function rangoSemana(lun){
   return pad(lun.getDate())+" "+MES3[lun.getMonth()]+" – "+pad(dom.getDate())+" "+MES3[dom.getMonth()];
 }
 function histPorSemana(arr){
-  var map={}, min=null, max=null;
+  var map={}, items={}, min=null, max=null;
   arr.forEach(function(r){ var m=lunesDe(r.fecha); if(!m) return; var k=fechaISO(m);
-    map[k]=(map[k]||0)+1; if(!min||m<min) min=m; if(!max||m>max) max=m; });
+    map[k]=(map[k]||0)+1; (items[k]=items[k]||[]).push(r); if(!min||m<min) min=m; if(!max||m>max) max=m; });
   if(!max) return [];
   var semanas=[], cur=new Date(max), guard=0;
   while(cur>=min && guard++<60){
-    semanas.unshift({ lun:new Date(cur), value:map[fechaISO(cur)]||0 });
+    var k=fechaISO(cur);
+    semanas.unshift({ lun:new Date(cur), value:map[k]||0, items:items[k]||[] });
     cur.setDate(cur.getDate()-7);
   }
   return semanas.slice(-12);               // ventana: últimas 12 semanas con datos
@@ -1115,10 +1124,11 @@ function renderHistorico(){
 
   // Inspecciones por semana (barras) — respeta el filtro de Área/División activo.
   if(semanas.length){
-    h+='<div class="hist-subt">Inspecciones por semana <span>últimas '+semanas.length+' semana(s) · lunes a domingo</span></div>';
+    h+='<div class="hist-subt">Inspecciones por semana <span>últimas '+semanas.length+' semana(s) · toca una barra para ver el detalle</span></div>';
     h+='<div class="hist-week">'+barChart(semanas.map(function(s){
       return { label:"Semana "+rangoSemana(s.lun), short:pad(s.lun.getDate())+"/"+pad(s.lun.getMonth()+1), value:s.value };
-    }))+'</div>';
+    }),{clickable:true})+'</div>';
+    h+='<div id="weekDetail" class="week-detail" hidden></div>';
   }
 
   // Desglose por área (compuesto), ordenado por cantidad desc, con barra proporcional.
@@ -1143,6 +1153,23 @@ function renderHistorico(){
   });
   h+='</div>';
   cont.innerHTML=h;
+
+  // Detalle por semana: al tocar una barra se despliega la lista de inspecciones de esa semana.
+  (function(){
+    var wd=document.getElementById("weekDetail"); if(!wd) return;
+    var bars=cont.querySelectorAll(".hist-week .bar-click");
+    bars.forEach(function(g){
+      g.onclick=function(){
+        var i=+g.getAttribute("data-i"), sel=g.classList.contains("sel");
+        bars.forEach(function(b){ b.classList.remove("sel"); });
+        if(sel){ wd.hidden=true; wd.innerHTML=""; return; }   // segundo click sobre la misma barra: cerrar
+        g.classList.add("sel");
+        wd.innerHTML=detalleSemanaHTML(semanas[i]);
+        wd.hidden=false;
+        wd.scrollIntoView({behavior:"smooth",block:"nearest"});
+      };
+    });
+  })();
 
   // Acordeón de una sola fila abierta.
   cont.querySelectorAll(".hb-row").forEach(function(row){
@@ -1182,6 +1209,24 @@ function detalleAreaHTML(list){
   return dh;
 }
 
+// Detalle de una semana: cantidad + tabla con todas las inspecciones de esa semana (lun–dom).
+function detalleSemanaHTML(s){
+  var items=(s.items||[]).slice().sort(function(x,y){ return (x.n||0)-(y.n||0); });
+  var h='<div class="wd-head"><h3>Semana '+esc(rangoSemana(s.lun))+'</h3>'+
+        '<span class="hm-count">'+items.length+(items.length===1?' inspección':' inspecciones')+'</span></div>';
+  if(!items.length) return h+'<div class="load-note" style="justify-content:flex-start">Sin inspecciones registradas en esta semana.</div>';
+  h+='<div class="tbl-wrap"><table class="data hist-tbl"><thead><tr><th>N° inspección</th><th>Fecha</th><th>Área</th><th>Cuadrilla</th><th>Responsable del llenado</th><th>Observaciones</th><th>Documento SEG-F-010</th></tr></thead><tbody>';
+  items.forEach(function(r){
+    var pdf=safeUrl(r.pdf_url);
+    var docCell=pdf?'<a href="'+esc(pdf)+'" target="_blank" rel="noopener" class="pdf-link">📄 Ver PDF</a>':'<span class="muted-sm">— no disponible</span>';
+    var obsTxt=(r.observaciones||r.hallazgos||"").trim();
+    var obsCell=obsTxt?'<span class="hist-obs" title="'+esc(obsTxt)+'">'+esc(obsTxt)+'</span>':'<span class="muted-sm">—</span>';
+    h+='<tr><td><b>N°'+pad4(r.n)+'</b></td><td>'+esc(fechaLarga(r.fecha))+'</td><td>'+esc(r.area||"—")+'</td><td>'+esc(String(r.cuadrilla==null?"—":r.cuadrilla))+'</td><td>'+esc(r.responsable||"—")+'</td><td>'+obsCell+'</td><td>'+docCell+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
 /* ============================================================
    HELPERS DE GRÁFICOS (SVG puro, sin dependencias)
    ============================================================ */
@@ -1209,12 +1254,16 @@ function donut(segs,centerLabel,centerSub){
 }
 
 function barChart(data,opts){
-  opts=opts||{}; var max=Math.max.apply(null,data.map(function(d){return d.value;}).concat([1]));
+  opts=opts||{}; var clk=!!opts.clickable;
+  var max=Math.max.apply(null,data.map(function(d){return d.value;}).concat([1]));
   var bw=Math.max(30,Math.min(70,Math.floor(560/data.length))), gap=14, h=180, w=data.length*(bw+gap)+10;
   var bars=data.map(function(d,i){
     var bh=Math.round(d.value/max*(h-44)), x=i*(bw+gap)+5, y=h-bh-22;
     var col=d.color||"#0284c7";
-    return '<g><rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+bh+'" rx="6" fill="'+col+'"><title>'+esc(d.label)+': '+d.value+'</title></rect>'+
+    // Zona de click de altura completa: permite tocar la columna aunque la barra sea pequeña o cero.
+    var hit=clk?'<rect class="bar-hit" x="'+x+'" y="0" width="'+bw+'" height="'+(h-16)+'" fill="transparent"/>':'';
+    return '<g'+(clk?' class="bar-click" data-i="'+i+'"':'')+'>'+hit+
+      '<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+bh+'" rx="6" fill="'+col+'"><title>'+esc(d.label)+': '+d.value+'</title></rect>'+
       '<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">'+d.value+'</text>'+
       '<text x="'+(x+bw/2)+'" y="'+(h-6)+'" text-anchor="middle" font-size="10.5" fill="#64748b">'+esc(d.short||d.label)+'</text></g>';
   }).join("");
