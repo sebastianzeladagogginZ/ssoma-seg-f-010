@@ -543,7 +543,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V23";
+var PANEL_VERSION = "V24";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1071,10 +1071,14 @@ function cargarHistorico(){
 }
 
 // Aplica el selector de Área (L1) / División (L2) sobre el histórico ya acotado por sesión.
+// Descarta además inspecciones con fecha FUTURA (imposibles: registros de prueba/erróneos)
+// para que ni el resumen por área ni el gráfico semanal se descuadren.
 function histFiltrado(){
   var arr=(APP.historico||[]).slice();
   var fa=norm(APP.fArea), fd=norm(APP.fDiv);
+  var hoyLun=lunesDe(fechaISO(new Date()));
   return arr.filter(function(r){
+    var m=lunesDe(r.fecha); if(m && hoyLun && m>hoyLun) return false;  // fecha futura → fuera
     if(fd) return norm(r.area)===fd;
     if(fa) return norm(parentArea(r.area))===fa;
     return true;
@@ -1096,27 +1100,33 @@ function rangoSemana(lun){
   return pad(lun.getDate())+" "+MES3[lun.getMonth()]+" – "+pad(dom.getDate())+" "+MES3[dom.getMonth()];
 }
 function histPorSemana(arr){
-  var map={}, items={}, min=null, max=null;
-  arr.forEach(function(r){ var m=lunesDe(r.fecha); if(!m) return; var k=fechaISO(m);
-    map[k]=(map[k]||0)+1; (items[k]=items[k]||[]).push(r); if(!min||m<min) min=m; if(!max||m>max) max=m; });
-  if(!max) return [];
-  var semanas=[], cur=new Date(max), guard=0;
+  var hoyLun=lunesDe(fechaISO(new Date()));   // lunes de la semana actual (reloj real del equipo)
+  var map={}, items={}, min=null;
+  arr.forEach(function(r){ var m=lunesDe(r.fecha); if(!m) return;
+    if(hoyLun && m>hoyLun) return;             // ignora fechas futuras (registros de prueba/erróneos)
+    var k=fechaISO(m);
+    map[k]=(map[k]||0)+1; (items[k]=items[k]||[]).push(r); if(!min||m<min) min=m; });
+  if(!min) return [];
+  // Ventana anclada a HOY: termina en la semana actual y retrocede hasta el 1er dato (máx. 12 semanas).
+  var semanas=[], cur=new Date(hoyLun), guard=0;
   while(cur>=min && guard++<60){
     var k=fechaISO(cur);
     semanas.unshift({ lun:new Date(cur), value:map[k]||0, items:items[k]||[] });
     cur.setDate(cur.getDate()-7);
   }
-  return semanas.slice(-12);               // ventana: últimas 12 semanas con datos
+  return semanas.slice(-12);               // ventana: últimas 12 semanas hasta hoy
 }
 
 function renderHistorico(){
   var cont=document.getElementById("histContent"); if(!cont) return;
   var arr=histFiltrado();
   var semanas=histPorSemana(arr);
-  var promSem=semanas.length?Math.round(arr.length/semanas.length*10)/10:0;
+  var totVentana=semanas.reduce(function(a,s){ return a+s.value; },0);
+  var promSem=semanas.length?Math.round(totVentana/semanas.length*10)/10:0;
+  var ultReg=0; for(var wi=semanas.length-1;wi>=0;wi--){ if(semanas[wi].value>0){ ultReg=semanas[wi].value; break; } }
   var h='<div class="hist-kpis">'+
     '<div class="hist-kpi"><span class="hk-num">'+arr.length+'</span><span class="hk-lbl">Inspecciones en esta vista</span></div>'+
-    '<div class="hist-kpi"><span class="hk-num">'+(semanas.length?semanas[semanas.length-1].value:0)+'</span><span class="hk-lbl">Última semana con registros</span></div>'+
+    '<div class="hist-kpi"><span class="hk-num">'+ultReg+'</span><span class="hk-lbl">Última semana con registros</span></div>'+
     '<div class="hist-kpi"><span class="hk-num">'+promSem+'</span><span class="hk-lbl">Promedio por semana</span></div>'+
     '<div class="hist-kpi"><span class="hk-num">'+(APP.historicoTotalGlobal||0)+'</span><span class="hk-lbl">Histórico global (toda la empresa)</span></div>'+
   '</div>';
