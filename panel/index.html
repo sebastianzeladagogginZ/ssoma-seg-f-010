@@ -543,7 +543,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V25";
+var PANEL_VERSION = "V26";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1284,8 +1284,11 @@ function hBars(data){
   var max=Math.max.apply(null,data.map(function(d){return d.value;}).concat([1]));
   return '<div style="display:flex;flex-direction:column;gap:11px">'+data.map(function(d){
     var pct=Math.round(d.value/max*100);
-    return '<div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">'+
-      '<span style="font-weight:600;color:#334155">'+esc(d.label)+'</span><b class="tnum">'+d.value+'</b></div>'+
+    // Etiqueta con subtítulo opcional (ej. área/división) debajo del nombre.
+    var lab='<span style="min-width:0;font-weight:600;color:#334155">'+esc(d.label)+
+      (d.sub?'<span style="display:block;font-weight:500;color:#94a3b8;font-size:11px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(d.sub)+'">'+esc(d.sub)+'</span>':'')+'</span>';
+    return '<div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;margin-bottom:4px">'+
+      lab+'<b class="tnum">'+d.value+'</b></div>'+
       '<div style="height:9px;background:#eef2f6;border-radius:999px;overflow:hidden"><i style="display:block;height:100%;width:'+pct+'%;border-radius:999px;background:'+(d.color||"linear-gradient(90deg,#0284c7,#0ea5e9)")+'"></i></div></div>';
   }).join("")+'</div>';
 }
@@ -1783,10 +1786,20 @@ function renderAnalisis(){
 
   // por cuadrilla — barras HORIZONTALES apiladas en vertical (mismo formato que "Ítems más
   // observados"): llena la tarjeta a proporción y evita columnas achatadas/scroll horizontal.
+  // Se agrupa por (ÁREA ▸ División, cuadrilla): un mismo N° puede repetirse entre divisiones,
+  // así que cada cuadrilla se cuenta DENTRO de su división y esta se muestra como subtítulo.
   var porCuad={};
-  d.forEach(function(o){ porCuad["N° "+o.cuadrilla]=(porCuad["N° "+o.cuadrilla]||0)+1; });
-  var cuadData=Object.keys(porCuad).map(function(k){return {label:k,value:porCuad[k],color:"linear-gradient(90deg,#7c3aed,#a78bfa)"};})
-    .sort(function(a,b){return b.value-a.value;}).slice(0,12);
+  d.forEach(function(o){
+    var c=(o.cuadrilla==null?"":String(o.cuadrilla)).trim();
+    if(!c) return;                               // omite registros sin cuadrilla (áreas individuales)
+    var k=(o.area||"")+"~~"+c;               // separador seguro area/cuadrilla
+    if(!porCuad[k]) porCuad[k]={area:o.area||"", cuad:c, n:0};
+    porCuad[k].n++;
+  });
+  var cuadData=Object.keys(porCuad).map(function(k){
+    var r=porCuad[k];
+    return {label:"N° "+r.cuad, sub:(r.area||"—"), value:r.n, color:"linear-gradient(90deg,#7c3aed,#a78bfa)"};
+  }).sort(function(a,b){return b.value-a.value;}).slice(0,12);
   document.getElementById("cuadChart").innerHTML=cuadData.length?hBars(cuadData):emptyChart("Sin datos");
 
   // heatmap sección x estado(levantamiento)
