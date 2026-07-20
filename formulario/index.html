@@ -362,10 +362,14 @@ function render(){
   }
   H+=card(1,"Datos generales de la inspección",g,null);
 
-  /* Secciones 2–8 (EPP, herramientas y recursos de la cuadrilla) SOLO en modo cuadrilla. */
-  if(!indiv){
-  /* 2. EPP por técnico */
-  if(presentRoles.length){
+  /* Secciones 2–8: RECURSOS Y MEDIOS A INSPECCIONAR (en AMBOS modos).
+     En modo individual, EPP y Herramientas van como checklist GENERAL (no por
+     técnico) — coherente con "solo nombres"; las demás secciones son iguales. */
+
+  /* 2. EPP */
+  if(indiv){
+    H+=card(2,"EPP",checklist("epp",null,EPP,S_PERSON),"epp");
+  } else if(presentRoles.length){
     var e="";
     presentRoles.forEach(function(r){ e+='<div class="subblock"><h3>EPP · '+r.label+(nombreDe(r.id)?' — '+nombreDe(r.id):'')+'</h3>'+checklist("epp",r.id,EPP,S_PERSON)+'</div>'; });
     H+=card(2,"EPP por técnico",e,"epp");
@@ -376,19 +380,23 @@ function render(){
   /* 3. Señalización */
   H+=card(3,"Elementos de señalización",checklist("senal",null,SIGNAL,S_EQUIP),"senal");
 
-  /* 4. Herramientas individuales (T1/T2) */
-  var toolRoles=presentRoles.filter(function(r){return r.tools;});
-  if(toolRoles.length){
-    var t="";
-    toolRoles.forEach(function(r){ t+='<div class="subblock"><h3>Herramientas · '+r.label+'</h3>'+checklist("tools",r.id,TOOLS,S_PERSON)+'</div>'; });
-    H+=card(4,"Herramientas individuales",t,"tools");
+  /* 4. Herramientas */
+  if(indiv){
+    H+=card(4,"Herramientas",checklist("tools",null,TOOLS,S_PERSON),"tools");
+  } else {
+    var toolRoles=presentRoles.filter(function(r){return r.tools;});
+    if(toolRoles.length){
+      var t="";
+      toolRoles.forEach(function(r){ t+='<div class="subblock"><h3>Herramientas · '+r.label+'</h3>'+checklist("tools",r.id,TOOLS,S_PERSON)+'</div>'; });
+      H+=card(4,"Herramientas individuales",t,"tools");
+    }
   }
 
   /* 5. Herramientas generales */
-  H+=card(5,"Herramientas generales de la cuadrilla",checklist("gen",null,GEN,S_EQUIP),"gen");
+  H+=card(5,indiv?"Herramientas generales":"Herramientas generales de la cuadrilla",checklist("gen",null,GEN,S_EQUIP),"gen");
 
   /* 5.2 Escalera (branch) */
-  var esc='<div class="field"><label>¿La cuadrilla cuenta con escalera telescópica de 28 pasos?</label><div class="toggle">'+
+  var esc='<div class="field"><label>'+(indiv?'¿Cuenta con escalera telescópica de 28 pasos?':'¿La cuadrilla cuenta con escalera telescópica de 28 pasos?')+'</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.escalera===true?' on':'')+'" data-act="branch" data-b="escalera" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.escalera===false?' on':'')+'" data-act="branch" data-b="escalera" data-v="0">No</button></div></div>';
   if(ST.branch.escalera===true) esc+=checklist("escalera",null,LADDER,S_EQUIP);
@@ -413,7 +421,6 @@ function render(){
   if(ST.branch.botiquin===true) bo+=checklist("botiquin",null,BOT,S_SEG);
   else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (registrar en observaciones).</p>';
   H+=card(8,"Estado del botiquín",bo,"botiquin");
-  } /* fin secciones 2–8 (solo cuadrilla) */
 
   /* 9. Evidencias y observaciones */
   var ev='<div class="field"><label>9.1 Evidencias fotográficas <span class="req">*</span></label>'+
@@ -431,10 +438,10 @@ function render(){
     '<div class="field"><label>10.2 Tipo de inspección (RM 050-2013-TR) <span class="req">*</span></label><select id="f_tipo">'+
       ["Planeada","No planeada"].map(function(o){return '<option'+(ST.tipo===o?" selected":"")+'>'+o+'</option>';}).join("")+
     '</select></div>'+
-    /* 10.3 Conformidad: solo en modo cuadrilla (el modo individual no tiene checklist de recursos). */
-    (indiv?'':'<div class="field"><label>10.3 Estado de conformidad</label><br>'+
+    /* 10.3 Conformidad (ambos modos: ya hay checklist de recursos en las dos). */
+    '<div class="field"><label>10.3 Estado de conformidad</label><br>'+
       '<span class="badge" id="semBadge" style="color:var('+sem.col+');background:var('+sem.bg+');border-color:var('+sem.col+')">'+sem.estado+' · '+(metrics().pct===null?"—":metrics().pct+"%")+'</span>'+
-      '<div class="hint">Cálculo automático: ≥90% Conforme · 70–89% Observado · &lt;70% No conforme.</div></div>')+
+      '<div class="hint">Cálculo automático: ≥90% Conforme · 70–89% Observado · &lt;70% No conforme.</div></div>'+
     '<div class="field"><label>10.4 Conclusiones y recomendaciones <span class="req">*</span></label>'+
       '<textarea id="f_concl" placeholder="Resumen de hallazgos, acciones correctivas, responsables y plazos.">'+eh(ST.conclusiones)+'</textarea></div>';
   if(ST.modalidad==="Inspección inopinada"){
@@ -558,7 +565,13 @@ function metrics(){
   return {rev:rev,ok:ok,warn:warn,no:no,na:na,base:base,pct:pct};
 }
 function visibleQuestionCount(){
-  if(esIndividual()) return (ST.personas||[]).length;   // modo individual: solo identificación
+  if(esIndividual()){                                    // individual: recursos generales (sin desglose por técnico)
+    var ni=(ST.personas||[]).length + EPP.length + SIGNAL.length + TOOLS.length + GEN.length + FO.length;
+    ni+=(ST.branch.escalera===true?LADDER.length:1);
+    ni+=(ST.branch.extintor===true?EXT.length:1);
+    ni+=(ST.branch.botiquin===true?BOT.length:1);
+    return ni;
+  }
   var pr=ROLES.filter(function(r){return ST.presence[r.id];});
   var n=4+pr.length*4;
   n+=pr.length*EPP.length;
@@ -580,7 +593,7 @@ function updateMetrics(){
   document.getElementById("fRev").textContent=m.rev;
   document.getElementById("fHall").textContent=m.warn+m.no;
   document.getElementById("counter").innerHTML= esIndividual()
-    ? ' <b>Registro individual</b> — solo identificación del personal (sin cuadrilla).'
+    ? ' <b>Registro individual</b> (sin cuadrilla) · <b>'+visibleQuestionCount()+' ítems</b> a inspeccionar.'
     : ' <b>Hoy ves '+visibleQuestionCount()+' ítems</b> (el formato original tenía 172).';
   var sem=semaforo(m.pct), sb=document.getElementById("semBadge");
   if(sb){ sb.textContent=sem.estado+" · "+(m.pct===null?"—":m.pct+"%");
