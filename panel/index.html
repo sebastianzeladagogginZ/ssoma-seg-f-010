@@ -543,7 +543,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V24";
+var PANEL_VERSION = "V25";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1781,12 +1781,13 @@ function renderAnalisis(){
     .sort(function(a,b){return b.value-a.value;}).slice(0,10);
   document.getElementById("topItems").innerHTML=top.length?hBars(top):emptyChart("Sin datos");
 
-  // por cuadrilla
+  // por cuadrilla — barras HORIZONTALES apiladas en vertical (mismo formato que "Ítems más
+  // observados"): llena la tarjeta a proporción y evita columnas achatadas/scroll horizontal.
   var porCuad={};
   d.forEach(function(o){ porCuad["N° "+o.cuadrilla]=(porCuad["N° "+o.cuadrilla]||0)+1; });
-  var cuadData=Object.keys(porCuad).map(function(k){return {label:k,short:k,value:porCuad[k],color:"#7c3aed"};})
+  var cuadData=Object.keys(porCuad).map(function(k){return {label:k,value:porCuad[k],color:"linear-gradient(90deg,#7c3aed,#a78bfa)"};})
     .sort(function(a,b){return b.value-a.value;}).slice(0,12);
-  document.getElementById("cuadChart").innerHTML=barChart(cuadData);
+  document.getElementById("cuadChart").innerHTML=cuadData.length?hBars(cuadData):emptyChart("Sin datos");
 
   // heatmap sección x estado(levantamiento)
   var estados=["pendiente","en_proceso","levantado","rechazado"];
