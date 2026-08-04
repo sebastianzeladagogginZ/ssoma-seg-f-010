@@ -583,7 +583,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V30";
+var PANEL_VERSION = "V31";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -721,15 +721,20 @@ var rosterReady = null;
 function cargarAreas(){
   if(!tieneEndpoint()){ rosterDemo=true; ROSTER=USUARIOS.slice(); renderDemoHint(); return Promise.resolve(); }
   rosterDemo=false;
+  // 1) INMEDIATO (sin esperar la red): el <select> queda usable al instante con el
+  //    catálogo estático. Las áreas NO son secretas y son idénticas a las que valida
+  //    el servidor (el DNI se sigue verificando server-side). Esto elimina el "hago
+  //    clic y no aparece nada / tengo que clicar varias veces" mientras el Apps Script
+  //    despierta del arranque en frío.
+  ROSTER = Object.keys(AREAS_DIV).concat(["*"]).map(function(a){return {area:a};});
+  renderDemoHint();
+  // 2) EN SEGUNDO PLANO: refresca del servidor por si el catálogo del Sheet cambió.
+  //    Si tarda o falla, no importa: la lista estática ya está mostrada.
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=areas";
   return fetch(url).then(function(r){return r.json();}).then(function(data){
     var lista=(data.areas||[]).filter(Boolean);
-    ROSTER = (lista.length?lista:Object.keys(AREAS_DIV).concat(["*"])).map(function(a){return {area:a};});
-    renderDemoHint();
-  }).catch(function(){
-    ROSTER = Object.keys(AREAS_DIV).concat(["*"]).map(function(a){return {area:a};});   // respaldo: solo áreas, nunca DNIs
-    renderDemoHint();
-  });
+    if(lista.length){ ROSTER = lista.map(function(a){return {area:a};}); renderDemoHint(); }
+  }).catch(function(){ /* nos quedamos con la lista estática ya mostrada */ });
 }
 
 // Solo se muestra en modo demo. En producción (roster del Sheet) se oculta para no exponer DNIs.
@@ -785,17 +790,30 @@ document.getElementById("loginForm").addEventListener("submit",function(e){
   }
 
   // PRODUCCIÓN: el DNI se verifica en el SERVIDOR; el cliente solo recibe el token de sesión.
-  fetch(CONFIG.ENDPOINT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({action:"login",area:area,dni:p})})
-    .then(function(r){return r.json();})
-    .then(function(res){
-      fin();
-      if(res && res.ok && res.token){ APP.token=res.token; iniciarSesion(res.user); }
-      else if(res && res.error==="credenciales"){ err.textContent="DNI incorrecto para el área seleccionada."; }
-      else if(res && res.error==="muchos_intentos"){ err.textContent="Demasiados intentos fallidos para esta área. Espera unos minutos e inténtalo de nuevo."; }
-      else { err.textContent="No se pudo verificar el acceso. Reintenta."; }
-    })
-    .catch(function(){ fin(); err.textContent="Sin conexión con el servidor. Reintenta."; });
+  // El /exec de Apps Script a veces responde con una redirección transitoria (HTML/404)
+  // en el primer hit; por eso reintentamos automáticamente hasta 3 veces antes de rendirnos.
+  // Así "1 clic" basta aunque el primer intento falle, sin que el jefe reintente a mano.
+  // NO se reintenta una respuesta REAL (credenciales / muchos intentos): esas se muestran.
+  var loginIntentos=0, LOGIN_MAX=3;
+  (function enviarLogin(){
+    loginIntentos++;
+    fetch(CONFIG.ENDPOINT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"login",area:area,dni:p})})
+      .then(function(r){return r.text();})
+      .then(function(txt){
+        if(!txt || txt.charAt(0)!=="{") throw new Error("respuesta transitoria no-JSON");   // → reintento
+        var res=JSON.parse(txt);
+        fin();
+        if(res && res.ok && res.token){ APP.token=res.token; iniciarSesion(res.user); }
+        else if(res && res.error==="credenciales"){ err.textContent="DNI incorrecto para el área seleccionada."; }
+        else if(res && res.error==="muchos_intentos"){ err.textContent="Demasiados intentos fallidos para esta área. Espera unos minutos e inténtalo de nuevo."; }
+        else { err.textContent="No se pudo verificar el acceso. Reintenta."; }
+      })
+      .catch(function(){
+        if(loginIntentos<LOGIN_MAX){ setTimeout(enviarLogin, 900); return; }   // reintento automático
+        fin(); err.textContent="Sin conexión con el servidor. Reintenta.";
+      });
+  })();
 });
 
 function iniciarSesion(user){
