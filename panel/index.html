@@ -531,15 +531,9 @@
           <span class="count-tag" id="atsCount"></span>
         </div>
         <div class="kpis" id="kpisAts"></div>
-        <div class="row2" style="margin:16px 0">
-          <div class="card">
-            <div class="ch"><h3>Tendencia de llenado</h3><span class="sub" id="atsTrendSub"></span></div>
-            <div class="cb" id="atsTrend"></div>
-          </div>
-          <div class="card">
-            <div class="ch"><h3>ATS vs Charla de 5 min</h3></div>
-            <div class="cb" id="atsTipo"></div>
-          </div>
+        <div class="card" style="margin:16px 0">
+          <div class="ch"><h3>Tendencia de llenado</h3><span class="sub" id="atsTrendSub"></span></div>
+          <div class="cb" id="atsTrend"></div>
         </div>
         <div class="card" style="margin-bottom:16px">
           <div class="ch"><h3>Llenado por cuadrilla</h3><span class="sub">Documentos subidos</span></div>
@@ -585,7 +579,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V27";
+var PANEL_VERSION = "V28";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1538,7 +1532,7 @@ function renderAts(){
       ? emptyChart("Sin registros para el filtro o área seleccionados.")
       : emptyChart("Aún no hay ATS ni charlas subidas.<br><span style=\"font-size:12px;color:#94a3b8\">Aparecerán aquí en cuanto las cuadrillas suban documentos desde la app de campo.</span>");
     var t1=document.getElementById("atsTrend"); if(t1) t1.innerHTML=msg;
-    ["atsTipo","atsCuad"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML=emptyChart("Sin datos");});
+    var _ac=document.getElementById("atsCuad"); if(_ac) _ac.innerHTML=emptyChart("Sin datos");
     document.getElementById("atsAreaCard").style.display="none";
     document.getElementById("atsBody").innerHTML='<tr><td colspan="8"><div class="empty-state" style="padding:22px"><div class="em">📭</div>Aún no hay registros.</div></td></tr>';
     document.getElementById("atsTrendSub").textContent="";
@@ -1550,10 +1544,6 @@ function renderAts(){
   var fk=Object.keys(porFecha).sort();
   document.getElementById("atsTrend").innerHTML=lineChart(fk.map(function(x){return {x:fechaCorta(x),y:porFecha[x]};}));
   document.getElementById("atsTrendSub").textContent=fk.length+(fk.length===1?" día con carga":" días con carga");
-
-  // ATS vs Charla
-  document.getElementById("atsTipo").innerHTML=donut(
-    [{label:"ATS",value:ats,color:COL_ATS.ATS},{label:"Charla 5 min",value:charlas,color:COL_ATS.Charla}], d.length, "docs");
 
   // Por cuadrilla
   var porCuad={}; d.forEach(function(r){ var c=r.cuadrilla||"—"; porCuad[c]=(porCuad[c]||0)+1; });
