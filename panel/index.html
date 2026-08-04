@@ -528,6 +528,7 @@
           <input type="search" id="atsSearch" placeholder="Buscar cliente, circuito, cuadrilla…">
           <select id="fTipoAts"><option value="">ATS y Charlas</option><option value="ATS">Solo ATS</option><option value="Charla">Solo Charlas 5 min</option></select>
           <select id="fPeriodoAts"><option value="">Todo el periodo</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="90">Últimos 90 días</option></select>
+          <select id="fEstadoAts"><option value="">Todos los estados</option><option value="Pendiente">Por revisar</option><option value="Aprobado">Aprobados</option><option value="Anulado">Anulados</option></select>
           <span class="count-tag" id="atsCount"></span>
         </div>
         <div class="kpis" id="kpisAts"></div>
@@ -545,7 +546,7 @@
         </div>
         <div class="tbl-wrap">
           <table class="data">
-            <thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Circuito</th><th>Cuadrilla</th><th>Área ▸ División</th><th>Arch.</th><th>Carpeta</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Circuito</th><th>Cuadrilla</th><th>Área ▸ División</th><th>Arch.</th><th>Estado</th><th>Carpeta</th><th>Revisión</th></tr></thead>
             <tbody id="atsBody"></tbody>
           </table>
         </div>
@@ -574,12 +575,15 @@ var CONFIG = {
   DRIVE_EVIDENCIAS_URL: "",
   // Endpoint de la app de campo "ATS y Charla de 5 min" (doGet?action=registros) que alimenta
   // la pestaña ATS · Charla 5 min. Déjalo vacío para ocultar la pestaña de datos reales.
-  ATS_ENDPOINT_URL: "https://script.google.com/macros/s/AKfycbzpT_x5ITn5RZBFfKOALsbMF3wEHAJbr2eS4opmNBUtnpV1zToPYiSh097cF8sr45sb/exec"
+  ATS_ENDPOINT_URL: "https://script.google.com/macros/s/AKfycbzpT_x5ITn5RZBFfKOALsbMF3wEHAJbr2eS4opmNBUtnpV1zToPYiSh097cF8sr45sb/exec",
+  // Token para las acciones de revisión (aprobar/anular). Debe COINCIDIR con REVIEW_TOKEN
+  // del backend de la app de campo (Codigo.gs). Barrera básica para uso interno.
+  ATS_REVIEW_TOKEN: "oni-ssoma-2026-review"
 };
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V28";
+var PANEL_VERSION = "V29";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1445,7 +1449,11 @@ function normalizarAts(r){
     cuadrilla:String(r.cuadrilla==null?"":r.cuadrilla).trim(),
     fecha:String(r.fecha||r.Fecha||"").slice(0,10),
     archivos:parseInt(r.archivos||r["N° archivos"]||0,10)||0,
-    carpeta:safeUrl(r.carpeta||r.Carpeta||"")
+    carpeta:safeUrl(r.carpeta||r.Carpeta||""),
+    estado:String(r.estado||r.Estado||"Pendiente").trim()||"Pendiente",
+    revisadoPor:String(r.revisadoPor||r.RevisadoPor||"").trim(),
+    revisadoEn:String(r.revisadoEn||r.RevisadoEn||"").slice(0,10),
+    mensaje:String(r.mensaje||r.MensajeTecnico||"").trim()
   };
 }
 function cargarAts(){
@@ -1457,7 +1465,10 @@ function cargarAts(){
   var url=CONFIG.ATS_ENDPOINT_URL+(CONFIG.ATS_ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=registros";
   fetch(url).then(function(r){return r.json();}).then(function(data){
     var raw=Array.isArray(data)?data:((data&&data.registros)||[]);
-    APP.ats=raw.map(normalizarAts).filter(function(x){return x.fecha;});
+    var lista=raw.map(normalizarAts).filter(function(x){return x.fecha;});
+    // Dedup por carpeta: si un documento se anuló y se volvió a subir, conservamos el
+    // registro MÁS reciente (el endpoint los devuelve de más nuevo a más viejo).
+    var seen={}; APP.ats=lista.filter(function(x){ if(!x.carpeta) return true; if(seen[x.carpeta]) return false; seen[x.carpeta]=1; return true; });
     APP.atsCargado=true; APP.atsError=false; renderAts();
   }).catch(function(){
     APP.ats=[]; APP.atsCargado=true; APP.atsError=true; renderAts();
@@ -1479,10 +1490,18 @@ function datosAtsScope(){
 }
 function wireAtsFiltros(){
   if(APP._atsWired) return; APP._atsWired=true;
-  var s=document.getElementById("atsSearch"), t=document.getElementById("fTipoAts"), p=document.getElementById("fPeriodoAts");
+  var s=document.getElementById("atsSearch"), t=document.getElementById("fTipoAts"), p=document.getElementById("fPeriodoAts"), es=document.getElementById("fEstadoAts");
   if(s) s.oninput=function(){ APP.filtrosAts.q=s.value; renderAts(); };
   if(t) t.onchange=function(){ APP.filtrosAts.tipo=t.value; renderAts(); };
   if(p) p.onchange=function(){ APP.filtrosAts.periodo=p.value; renderAts(); };
+  if(es) es.onchange=function(){ APP.filtrosAts.estado=es.value; renderAts(); };
+}
+// Normaliza el estado de revisión a una de las 3 categorías + estilo del badge.
+function estadoInfo(e){
+  var n=norm(e);
+  if(n.indexOf("aprob")>=0) return {key:"Aprobado",label:"Aprobado",bg:"#dcfce7",fg:"#15803d"};
+  if(n.indexOf("anul")>=0||n.indexOf("rechaz")>=0) return {key:"Anulado",label:"Anulado",bg:"#fee2e2",fg:"#b91c1c"};
+  return {key:"Pendiente",label:"Por revisar",bg:"#fef3c7",fg:"#b45309"};
 }
 function renderAts(){
   wireAtsFiltros();
@@ -1492,67 +1511,68 @@ function renderAts(){
       '<h3>No se pudo conectar con la app de campo</h3>'+
       '<p>Para no inducir a error, no se muestran datos de ejemplo. Verifica la conexión e inténtalo otra vez.</p>'+
       '<button id="atsRetry">Reintentar</button></div>';
-    ["atsTrend","atsTipo","atsCuad","atsArea"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML="";});
-    var tb0=document.getElementById("atsBody"); if(tb0) tb0.innerHTML='<tr><td colspan="8"><div class="load-note" style="color:#991b1b">Sin conexión con la app de campo.</div></td></tr>';
+    ["atsTrend","atsCuad","atsArea"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML="";});
+    var tb0=document.getElementById("atsBody"); if(tb0) tb0.innerHTML='<tr><td colspan="10"><div class="load-note" style="color:#991b1b">Sin conexión con la app de campo.</div></td></tr>';
     var rb=document.getElementById("atsRetry"); if(rb) rb.onclick=function(){ APP.atsCargado=false; cargarAts(); };
     var ct0=document.getElementById("atsCount"); if(ct0) ct0.textContent="";
     return;
   }
-  var base=datosAtsScope(), f=APP.filtrosAts;
+  var scope=datosAtsScope(), f=APP.filtrosAts;
   var cut=null;
   if(f.periodo){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); cut=fechaISO(dd); }
-  var d=base.filter(function(r){
+  // "base" = alcance + tipo/período/búsqueda (SIN el filtro de estado, para que los
+  // KPIs de revisión muestren siempre el desglose completo). La tabla sí filtra por estado.
+  var base=scope.filter(function(r){
     if(f.tipo && r.tipo!==f.tipo) return false;
     if(cut && r.fecha < cut) return false;
     if(f.q){ var q=norm(f.q); if(norm([r.cliente,r.circuito,r.cuadrilla,r.area,r.tipo].join(" ")).indexOf(q)<0) return false; }
     return true;
   });
 
-  var ats=d.filter(function(r){return r.tipo==="ATS";}).length;
-  var charlas=d.filter(function(r){return r.tipo==="Charla";}).length;
-  var cuads={}; d.forEach(function(r){ if(r.cuadrilla) cuads[r.cuadrilla]=1; });
-  var nCuad=Object.keys(cuads).length;
-  var archivos=d.reduce(function(a,r){return a+(r.archivos||0);},0);
-  var fechasAll=d.map(function(r){return r.fecha;}).filter(Boolean).sort();
-  var ultima=fechasAll.length?fechaCorta(fechasAll[fechasAll.length-1]):"—";
+  var pend=base.filter(function(r){return estadoInfo(r.estado).key==="Pendiente";}).length;
+  var aprob=base.filter(function(r){return estadoInfo(r.estado).key==="Aprobado";}).length;
+  var anul=base.filter(function(r){return estadoInfo(r.estado).key==="Anulado";}).length;
+  var ats=base.filter(function(r){return r.tipo==="ATS";}).length;
+  var charlas=base.filter(function(r){return r.tipo==="Charla";}).length;
 
   if(kp) kp.innerHTML=[
-    kpi("#e0f2fe","#0369a1",iconLayers(),d.length,"Documentos subidos",null,null),
+    kpi("#e0f2fe","#0369a1",iconLayers(),base.length,"Documentos subidos",null,null),
+    kpi("#fef3c7","#b45309",iconClock(),pend,"Por revisar",null,null),
+    kpi("#dcfce7","#15803d",iconCheck(),aprob,"Aprobados",null,null),
+    kpi("#fee2e2","#b91c1c",iconBan(),anul,"Anulados",null,null),
     kpi("#e0f2fe","#0369a1",iconAtsDoc(),ats,"ATS",null,null),
-    kpi("#ede9fe","#6d28d9",iconChat(),charlas,"Charlas de 5 min",null,null),
-    kpi("#dcfce7","#15803d",iconTeam(),nCuad,"Cuadrillas activas",null,null),
-    kpi("#fef3c7","#b45309",iconClip(),archivos,"Archivos",null,null),
-    kpi("#f1f5f9","#334155",iconClock(),ultima,"Último llenado",null,null)
+    kpi("#ede9fe","#6d28d9",iconChat(),charlas,"Charlas de 5 min",null,null)
   ].join("");
 
+  var d = f.estado ? base.filter(function(r){return estadoInfo(r.estado).key===f.estado;}) : base;
   var ct=document.getElementById("atsCount"); if(ct) ct.textContent=d.length+(d.length===1?" registro":" registros");
 
-  if(!d.length){
+  if(!base.length){
     var msg = APP.ats.length
       ? emptyChart("Sin registros para el filtro o área seleccionados.")
       : emptyChart("Aún no hay ATS ni charlas subidas.<br><span style=\"font-size:12px;color:#94a3b8\">Aparecerán aquí en cuanto las cuadrillas suban documentos desde la app de campo.</span>");
     var t1=document.getElementById("atsTrend"); if(t1) t1.innerHTML=msg;
     var _ac=document.getElementById("atsCuad"); if(_ac) _ac.innerHTML=emptyChart("Sin datos");
     document.getElementById("atsAreaCard").style.display="none";
-    document.getElementById("atsBody").innerHTML='<tr><td colspan="8"><div class="empty-state" style="padding:22px"><div class="em">📭</div>Aún no hay registros.</div></td></tr>';
+    document.getElementById("atsBody").innerHTML='<tr><td colspan="10"><div class="empty-state" style="padding:22px"><div class="em">📭</div>Aún no hay registros.</div></td></tr>';
     document.getElementById("atsTrendSub").textContent="";
     return;
   }
 
-  // Tendencia por fecha
-  var porFecha={}; d.forEach(function(r){ porFecha[r.fecha]=(porFecha[r.fecha]||0)+1; });
+  // Tendencia por fecha (sobre base)
+  var porFecha={}; base.forEach(function(r){ porFecha[r.fecha]=(porFecha[r.fecha]||0)+1; });
   var fk=Object.keys(porFecha).sort();
   document.getElementById("atsTrend").innerHTML=lineChart(fk.map(function(x){return {x:fechaCorta(x),y:porFecha[x]};}));
   document.getElementById("atsTrendSub").textContent=fk.length+(fk.length===1?" día con carga":" días con carga");
 
   // Por cuadrilla
-  var porCuad={}; d.forEach(function(r){ var c=r.cuadrilla||"—"; porCuad[c]=(porCuad[c]||0)+1; });
+  var porCuad={}; base.forEach(function(r){ var c=r.cuadrilla||"—"; porCuad[c]=(porCuad[c]||0)+1; });
   var cuadData=Object.keys(porCuad).map(function(c){return {label:"Cuadrilla "+c,short:c,value:porCuad[c],color:"#0284c7"};})
     .sort(function(a,b){return b.value-a.value;}).slice(0,12);
   document.getElementById("atsCuad").innerHTML=barChart(cuadData);
 
   // Por área ▸ división (útil sobre todo para SSOMA; se oculta si solo hay una)
-  var porArea={}; d.forEach(function(r){ var a=r.area||"—"; porArea[a]=(porArea[a]||0)+1; });
+  var porArea={}; base.forEach(function(r){ var a=r.area||"—"; porArea[a]=(porArea[a]||0)+1; });
   var areaKeys=Object.keys(porArea), areaCard=document.getElementById("atsAreaCard");
   if(areaKeys.length>1){
     areaCard.style.display="";
@@ -1563,16 +1583,69 @@ function renderAts(){
   renderAtsTabla(d);
 }
 function renderAtsTabla(d){
+  var body=document.getElementById("atsBody");
+  if(!d.length){ body.innerHTML='<tr><td colspan="10"><div class="empty-state" style="padding:20px">Sin registros con ese estado.</div></td></tr>'; return; }
   var rows=d.slice().sort(function(a,b){ return (b.fecha||"").localeCompare(a.fecha||""); }).slice(0,300);
-  document.getElementById("atsBody").innerHTML=rows.map(function(r){
+  var bAp='padding:5px 10px;border:0;border-radius:8px;background:#16a34a;color:#fff;font:inherit;font-weight:600;font-size:12px;cursor:pointer';
+  var bAn='padding:5px 10px;border:1px solid #fecaca;border-radius:8px;background:#fff;color:#b91c1c;font:inherit;font-weight:600;font-size:12px;cursor:pointer;margin-left:4px';
+  body.innerHTML=rows.map(function(r){
     var col=COL_ATS[r.tipo]||"#64748b";
     var pill='<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:'+col+'">'+esc(r.tipo)+'</span>';
     var carp=r.carpeta?'<a href="'+esc(r.carpeta)+'" target="_blank" rel="noopener" style="color:#0284c7;font-weight:600">Abrir ▸</a>':'—';
+    var st=estadoInfo(r.estado);
+    var badge='<span'+(r.revisadoPor?' title="Revisado por '+esc(r.revisadoPor)+(r.revisadoEn?" · "+esc(r.revisadoEn):"")+'"':'')+' style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;background:'+st.bg+';color:'+st.fg+'">'+st.label+'</span>';
+    if(st.key==="Anulado" && r.mensaje){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">✗ '+esc(r.mensaje)+'</span>'; }
+    else if(st.key==="Aprobado" && r.revisadoPor){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">'+esc(r.revisadoPor)+'</span>'; }
+    var acc;
+    if(st.key==="Anulado"){ acc='<span style="font-size:11px;color:#94a3b8">Se pidió resubir</span>'; }
+    else if(st.key==="Aprobado"){ acc='<button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+';margin-left:0">Anular</button>'; }
+    else { acc='<button class="ats-aprobar" data-c="'+esc(r.carpeta)+'" style="'+bAp+'">Aprobar</button><button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+'">Anular</button>'; }
     return '<tr><td class="tnum">'+esc(fechaLarga(r.fecha))+'</td><td>'+pill+'</td><td>'+esc(r.cliente||"—")+'</td>'+
       '<td>'+esc(r.circuito||"—")+'</td><td class="tnum">'+esc(r.cuadrilla||"—")+'</td>'+
       '<td><b>'+esc(divName(r.area))+'</b><span style="display:block;font-size:11px;color:#94a3b8">'+esc(parentArea(r.area))+'</span></td>'+
-      '<td class="tnum">'+r.archivos+'</td><td>'+carp+'</td></tr>';
+      '<td class="tnum">'+r.archivos+'</td><td>'+badge+'</td><td>'+carp+'</td><td style="white-space:nowrap">'+acc+'</td></tr>';
   }).join("");
+  body.querySelectorAll(".ats-aprobar").forEach(function(b){ b.onclick=function(){ atsAprobar(b.getAttribute("data-c")); }; });
+  body.querySelectorAll(".ats-anular").forEach(function(b){ b.onclick=function(){ atsAnular(b.getAttribute("data-c")); }; });
+}
+
+/* ===== Acciones de revisión — autonomía del área (aprobar / anular) ===== */
+function _atsRevisorNombre(){
+  if(!APP.user) return "Panel";
+  var n=APP.user.nombre||"Jefe";
+  if(APP.userAreas.indexOf("*")>=0) return n+" (SSOMA)";
+  return n+(APP.userAreas[0]?(" ("+divName(APP.userAreas[0])+")"):"");
+}
+function atsAprobar(carpeta){ if(carpeta) atsEnviarRevision("ats_aprobar", carpeta, ""); }
+function atsAnular(carpeta){ if(carpeta) atsModalAnular(carpeta); }
+function atsEnviarRevision(action, carpeta, mensaje){
+  if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)){ toast("Sin conexión con la app de campo.","bad"); return; }
+  var body={ action:action, token:CONFIG.ATS_REVIEW_TOKEN, carpeta:carpeta, revisadoPor:_atsRevisorNombre(), mensaje:mensaje||"" };
+  fetch(CONFIG.ATS_ENDPOINT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)}).catch(function(){});
+  // Actualización optimista (el POST es no-cors) + re-sincroniza con el servidor.
+  var anular=(action==="ats_anular");
+  APP.ats.forEach(function(x){ if(x.carpeta===carpeta){ x.estado=anular?"Anulado":"Aprobado"; x.revisadoPor=body.revisadoPor; x.revisadoEn=fechaISO(new Date()); if(anular){ x.mensaje=mensaje; x.archivos=0; } } });
+  toast(anular?"Anulado — enviado a papelera; se pedirá resubir 📤":"Documento aprobado ✓","ok");
+  renderAts();
+  setTimeout(function(){ var a=document.querySelector(".nav-item.active"); if(a && a.dataset.view==="ats"){ APP.atsCargado=false; cargarAts(); } }, 3000);
+}
+function atsModalAnular(carpeta){
+  var wrap=document.createElement("div");
+  wrap.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.5);display:grid;place-items:center;z-index:9999;padding:16px";
+  wrap.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:430px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3)">'+
+    '<h3 style="margin:0 0 6px;font-size:16px;color:#0f172a">Anular documento</h3>'+
+    '<p style="margin:0 0 12px;font-size:13px;color:#64748b">Se enviará a la <b>papelera de Drive</b> y se le pedirá al técnico subirlo de nuevo. Escribe el motivo:</p>'+
+    '<textarea id="atsAnularMsg" rows="3" style="width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font:inherit;box-sizing:border-box;resize:vertical" placeholder="Ej: la foto del ATS está borrosa; falta la firma del supervisor…"></textarea>'+
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">'+
+    '<button id="atsAnularCancel" style="padding:9px 16px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;cursor:pointer;font:inherit">Cancelar</button>'+
+    '<button id="atsAnularOk" style="padding:9px 16px;border:0;background:#dc2626;color:#fff;border-radius:10px;cursor:pointer;font:inherit;font-weight:600">Anular y pedir resubir</button>'+
+    '</div></div>';
+  document.body.appendChild(wrap);
+  var ta=wrap.querySelector("#atsAnularMsg"); ta.focus();
+  function cerrar(){ if(wrap.parentNode) document.body.removeChild(wrap); }
+  wrap.querySelector("#atsAnularCancel").onclick=cerrar;
+  wrap.onclick=function(e){ if(e.target===wrap) cerrar(); };
+  wrap.querySelector("#atsAnularOk").onclick=function(){ var m=ta.value.trim(); if(!m){ ta.style.borderColor="#dc2626"; ta.focus(); return; } cerrar(); atsEnviarRevision("ats_anular", carpeta, m); };
 }
 
 /* ============================================================
