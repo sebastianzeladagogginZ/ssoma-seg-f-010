@@ -583,7 +583,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V29";
+var PANEL_VERSION = "V30";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1463,16 +1463,25 @@ function cargarAts(){
   }
   if(kp) kp.innerHTML='<div class="load-note" style="grid-column:1/-1"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>';
   var url=CONFIG.ATS_ENDPOINT_URL+(CONFIG.ATS_ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=registros";
-  fetch(url).then(function(r){return r.json();}).then(function(data){
-    var raw=Array.isArray(data)?data:((data&&data.registros)||[]);
-    var lista=raw.map(normalizarAts).filter(function(x){return x.fecha;});
-    // Dedup por carpeta: si un documento se anuló y se volvió a subir, conservamos el
-    // registro MÁS reciente (el endpoint los devuelve de más nuevo a más viejo).
-    var seen={}; APP.ats=lista.filter(function(x){ if(!x.carpeta) return true; if(seen[x.carpeta]) return false; seen[x.carpeta]=1; return true; });
-    APP.atsCargado=true; APP.atsError=false; renderAts();
-  }).catch(function(){
-    APP.ats=[]; APP.atsCargado=true; APP.atsError=true; renderAts();
-  });
+  // El /exec de Apps Script a veces responde un 404 transitorio en el primer intento
+  // (por la redirección a googleusercontent). Reintentamos unas pocas veces antes de rendirnos.
+  var intentos=0, MAX=4;
+  (function pedir(){
+    intentos++;
+    fetch(url).then(function(r){return r.text();}).then(function(txt){
+      if(!txt || txt.charAt(0)!=="{") throw new Error("respuesta transitoria no-JSON");
+      var data=JSON.parse(txt);
+      var raw=Array.isArray(data)?data:((data&&data.registros)||[]);
+      var lista=raw.map(normalizarAts).filter(function(x){return x.fecha;});
+      // Dedup por carpeta: si un documento se anuló y se volvió a subir, conservamos el
+      // registro MÁS reciente (el endpoint los devuelve de más nuevo a más viejo).
+      var seen={}; APP.ats=lista.filter(function(x){ if(!x.carpeta) return true; if(seen[x.carpeta]) return false; seen[x.carpeta]=1; return true; });
+      APP.atsCargado=true; APP.atsError=false; renderAts();
+    }).catch(function(){
+      if(intentos<MAX){ setTimeout(pedir, 1200); return; }
+      APP.ats=[]; APP.atsCargado=true; APP.atsError=true; renderAts();
+    });
+  })();
 }
 // Filtra por el alcance del usuario (idéntico criterio que datosArea, sobre los registros ATS).
 function datosAtsScope(){
