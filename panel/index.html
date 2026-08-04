@@ -353,6 +353,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 3"/></svg>
       Histórico
     </button>
+    <button class="nav-item" data-view="ats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6a2 2 0 0 1 2 2h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1a2 2 0 0 1 2-2z"/><path d="M9 13l2 2 4-4"/></svg>
+      ATS · Charla 5 min
+    </button>
     <div class="nav-sep"></div>
     <button class="epp-btn" id="eppSide">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -517,6 +521,41 @@
         </style>
         <div id="histContent"></div>
       </section>
+
+      <!-- ===== ATS · CHARLA DE 5 MIN ===== -->
+      <section class="view" id="view-ats">
+        <div class="filters">
+          <input type="search" id="atsSearch" placeholder="Buscar cliente, circuito, cuadrilla…">
+          <select id="fTipoAts"><option value="">ATS y Charlas</option><option value="ATS">Solo ATS</option><option value="Charla">Solo Charlas 5 min</option></select>
+          <select id="fPeriodoAts"><option value="">Todo el periodo</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="90">Últimos 90 días</option></select>
+          <span class="count-tag" id="atsCount"></span>
+        </div>
+        <div class="kpis" id="kpisAts"></div>
+        <div class="row2" style="margin:16px 0">
+          <div class="card">
+            <div class="ch"><h3>Tendencia de llenado</h3><span class="sub" id="atsTrendSub"></span></div>
+            <div class="cb" id="atsTrend"></div>
+          </div>
+          <div class="card">
+            <div class="ch"><h3>ATS vs Charla de 5 min</h3></div>
+            <div class="cb" id="atsTipo"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="ch"><h3>Llenado por cuadrilla</h3><span class="sub">Documentos subidos</span></div>
+          <div class="cb" id="atsCuad"></div>
+        </div>
+        <div class="card" id="atsAreaCard" style="margin-bottom:16px;display:none">
+          <div class="ch"><h3>Llenado por área ▸ división</h3></div>
+          <div class="cb" id="atsArea"></div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="data">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Circuito</th><th>Cuadrilla</th><th>Área ▸ División</th><th>Arch.</th><th>Carpeta</th></tr></thead>
+            <tbody id="atsBody"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </main>
 </div>
@@ -538,12 +577,15 @@ var CONFIG = {
   // Archivo / enlace del formato oficial de entrega de EPP (va junto al index.html en el deploy).
   FORMATO_EPP_URL: "./Formato_Entrega_EPP.pdf",
   // Carpeta raíz de evidencias en la nube (para el botón "abrir en Drive"). Opcional.
-  DRIVE_EVIDENCIAS_URL: ""
+  DRIVE_EVIDENCIAS_URL: "",
+  // Endpoint de la app de campo "ATS y Charla de 5 min" (doGet?action=registros) que alimenta
+  // la pestaña ATS · Charla 5 min. Déjalo vacío para ocultar la pestaña de datos reales.
+  ATS_ENDPOINT_URL: "https://script.google.com/macros/s/AKfycbzpT_x5ITn5RZBFfKOALsbMF3wEHAJbr2eS4opmNBUtnpV1zToPYiSh097cF8sr45sb/exec"
 };
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V26";
+var PANEL_VERSION = "V27";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -644,7 +686,8 @@ function generarDemo(){
    ============================================================ */
 var APP = { user:null, token:null, userAreas:[], fArea:"", fDiv:"", datos:[], filtros:{q:"",estado:"",seccion:"",lev:""},
   demo:true, cargando:false, error:false, pollTimer:null,
-  historico:null, historicoTotalGlobal:0, pintadoDeCache:false };
+  historico:null, historicoTotalGlobal:0, pintadoDeCache:false,
+  ats:[], atsCargado:false, atsError:false, filtrosAts:{q:"",tipo:"",periodo:""}, _atsWired:false };
 // Muestra la versión del panel al pie del menú.
 (function(){ var vb=document.getElementById("verBadge"); if(vb) vb.textContent="Panel "+PANEL_VERSION; })();
 // ¿hay endpoint real configurado? (si no, el panel corre en modo demostración)
@@ -949,7 +992,8 @@ var TITLES={resumen:["Resumen","Estado general del levantamiento de observacione
   observaciones:["Observaciones","Hallazgos que requieren cambio o no tiene"],
   evidencias:["Evidencias","Carpetas fechadas en la nube"],
   analisis:["Análisis","Inteligencia de datos sobre los hallazgos"],
-  historico:["Histórico de inspecciones","Todas las inspecciones realizadas · por mes y área"]};
+  historico:["Histórico de inspecciones","Todas las inspecciones realizadas · por mes y área"],
+  ats:["ATS · Charla de 5 min","Llenado diario de ATS y charlas de 5 minutos en campo"]};
 function navTo(v){
   document.querySelectorAll(".nav-item").forEach(function(x){x.classList.toggle("active", x.dataset.view===v);});
   document.querySelectorAll(".view").forEach(function(s){s.classList.remove("active");});
@@ -962,6 +1006,7 @@ function navTo(v){
   else if(v==="evidencias") renderEvidencias();
   else if(v==="analisis") renderAnalisis();
   else if(v==="historico") cargarHistorico();
+  else if(v==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
 }
 // Menú lateral en móvil: se abre/cierra con scrim y refleja el estado en aria-expanded.
 function abrirMenu(){
@@ -1025,6 +1070,7 @@ function refrescar(){
   else if(active==="evidencias") renderEvidencias();
   else if(active==="analisis") renderAnalisis();
   else if(active==="historico"){ if(APP.historico) renderHistorico(); else cargarHistorico(); }
+  else if(active==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
 }
 
 /* ============================================================
@@ -1368,6 +1414,175 @@ function kpi(bg,fg,icon,val,label,trend,goto){
   return '<div class="kpi'+clk+'"'+dg+'><div class="ic" style="background:'+bg+';color:'+fg+'">'+icon+'</div>'+
     '<div class="v tnum">'+val+'</div><div class="l">'+label+'</div>'+
     (trend?'<div class="trend" style="background:'+bg+';color:'+fg+'">'+trend+'</div>':'')+'</div>';
+}
+
+/* ============================================================
+   VISTA: ATS · CHARLA DE 5 MIN  (llenado de campo desde la app ATS)
+   Datos REALES del endpoint de la app de campo (CONFIG.ATS_ENDPOINT_URL).
+   Sin datos demo: si no hay registros, se muestra un estado vacío honesto.
+   Se filtra por el MISMO alcance que el resto del panel: cada jefe ve solo su(s)
+   división(es) (APP.userAreas); SSOMA ve todo y puede acotar con los selectores
+   de área del encabezado (APP.fArea / APP.fDiv), igual que en Observaciones.
+   ============================================================ */
+var COL_ATS={ATS:"#0284c7",Charla:"#7c3aed"};
+function iconAtsDoc(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6a2 2 0 0 1 2 2h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1a2 2 0 0 1 2-2z"/><path d="M9 13l2 2 4-4"/></svg>';}
+function iconChat(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';}
+function iconTeam(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>';}
+function iconLayers(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>';}
+
+// Combina (área, división) de la app de campo en el compuesto "ÁREA ▸ División" del panel,
+// que es exactamente el formato de APP.userAreas / del catálogo AREAS_DIV. Así cada jefe calza.
+function atsComposite(area,division){
+  area=String(area||"").trim(); division=String(division||"").trim();
+  if(!division) return area;
+  if(area.indexOf(SEP)>=0) return area;   // ya viene compuesto
+  return area+SEP+division;
+}
+// Normaliza una fila de la hoja "Registros" (o un objeto meta) al formato interno.
+function normalizarAts(r){
+  r=r||{};
+  var tipoRaw=String(r.tipo||r.Tipo||"");
+  var tipo=/charla|5\s*min/i.test(tipoRaw)?"Charla":"ATS";
+  var comp=atsComposite(r.area||r["Área"]||r.Area, r.division||r["División"]||r.Division);
+  return {
+    tipo:tipo, area:comp,
+    cliente:String(r.cliente||r.Cliente||"").trim(),
+    circuito:String(r.circuito||r.Circuito||"").trim(),
+    cuadrilla:String(r.cuadrilla==null?"":r.cuadrilla).trim(),
+    fecha:String(r.fecha||r.Fecha||"").slice(0,10),
+    archivos:parseInt(r.archivos||r["N° archivos"]||0,10)||0,
+    carpeta:safeUrl(r.carpeta||r.Carpeta||"")
+  };
+}
+function cargarAts(){
+  var kp=document.getElementById("kpisAts");
+  if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)){
+    APP.ats=[]; APP.atsCargado=true; APP.atsError=false; renderAts(); return;
+  }
+  if(kp) kp.innerHTML='<div class="load-note" style="grid-column:1/-1"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>';
+  var url=CONFIG.ATS_ENDPOINT_URL+(CONFIG.ATS_ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=registros";
+  fetch(url).then(function(r){return r.json();}).then(function(data){
+    var raw=Array.isArray(data)?data:((data&&data.registros)||[]);
+    APP.ats=raw.map(normalizarAts).filter(function(x){return x.fecha;});
+    APP.atsCargado=true; APP.atsError=false; renderAts();
+  }).catch(function(){
+    APP.ats=[]; APP.atsCargado=true; APP.atsError=true; renderAts();
+  });
+}
+// Filtra por el alcance del usuario (idéntico criterio que datosArea, sobre los registros ATS).
+function datosAtsScope(){
+  if(!APP.user) return [];
+  var all=APP.userAreas.indexOf("*")>=0;
+  var permit={}; if(!all) APP.userAreas.forEach(function(a){ permit[norm(a)]=1; });
+  var fa=norm(APP.fArea), fd=norm(APP.fDiv);
+  return APP.ats.filter(function(r){
+    var a=r.area||"";
+    if(!all && !permit[norm(a)]) return false;
+    if(APP.fArea && norm(parentArea(a))!==fa) return false;
+    if(APP.fDiv && norm(a)!==fd) return false;
+    return true;
+  });
+}
+function wireAtsFiltros(){
+  if(APP._atsWired) return; APP._atsWired=true;
+  var s=document.getElementById("atsSearch"), t=document.getElementById("fTipoAts"), p=document.getElementById("fPeriodoAts");
+  if(s) s.oninput=function(){ APP.filtrosAts.q=s.value; renderAts(); };
+  if(t) t.onchange=function(){ APP.filtrosAts.tipo=t.value; renderAts(); };
+  if(p) p.onchange=function(){ APP.filtrosAts.periodo=p.value; renderAts(); };
+}
+function renderAts(){
+  wireAtsFiltros();
+  var kp=document.getElementById("kpisAts");
+  if(APP.atsError){
+    if(kp) kp.innerHTML='<div class="conn-error" style="grid-column:1/-1"><div class="em">🔌</div>'+
+      '<h3>No se pudo conectar con la app de campo</h3>'+
+      '<p>Para no inducir a error, no se muestran datos de ejemplo. Verifica la conexión e inténtalo otra vez.</p>'+
+      '<button id="atsRetry">Reintentar</button></div>';
+    ["atsTrend","atsTipo","atsCuad","atsArea"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML="";});
+    var tb0=document.getElementById("atsBody"); if(tb0) tb0.innerHTML='<tr><td colspan="8"><div class="load-note" style="color:#991b1b">Sin conexión con la app de campo.</div></td></tr>';
+    var rb=document.getElementById("atsRetry"); if(rb) rb.onclick=function(){ APP.atsCargado=false; cargarAts(); };
+    var ct0=document.getElementById("atsCount"); if(ct0) ct0.textContent="";
+    return;
+  }
+  var base=datosAtsScope(), f=APP.filtrosAts;
+  var cut=null;
+  if(f.periodo){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); cut=fechaISO(dd); }
+  var d=base.filter(function(r){
+    if(f.tipo && r.tipo!==f.tipo) return false;
+    if(cut && r.fecha < cut) return false;
+    if(f.q){ var q=norm(f.q); if(norm([r.cliente,r.circuito,r.cuadrilla,r.area,r.tipo].join(" ")).indexOf(q)<0) return false; }
+    return true;
+  });
+
+  var ats=d.filter(function(r){return r.tipo==="ATS";}).length;
+  var charlas=d.filter(function(r){return r.tipo==="Charla";}).length;
+  var cuads={}; d.forEach(function(r){ if(r.cuadrilla) cuads[r.cuadrilla]=1; });
+  var nCuad=Object.keys(cuads).length;
+  var archivos=d.reduce(function(a,r){return a+(r.archivos||0);},0);
+  var fechasAll=d.map(function(r){return r.fecha;}).filter(Boolean).sort();
+  var ultima=fechasAll.length?fechaCorta(fechasAll[fechasAll.length-1]):"—";
+
+  if(kp) kp.innerHTML=[
+    kpi("#e0f2fe","#0369a1",iconLayers(),d.length,"Documentos subidos",null,null),
+    kpi("#e0f2fe","#0369a1",iconAtsDoc(),ats,"ATS",null,null),
+    kpi("#ede9fe","#6d28d9",iconChat(),charlas,"Charlas de 5 min",null,null),
+    kpi("#dcfce7","#15803d",iconTeam(),nCuad,"Cuadrillas activas",null,null),
+    kpi("#fef3c7","#b45309",iconClip(),archivos,"Archivos",null,null),
+    kpi("#f1f5f9","#334155",iconClock(),ultima,"Último llenado",null,null)
+  ].join("");
+
+  var ct=document.getElementById("atsCount"); if(ct) ct.textContent=d.length+(d.length===1?" registro":" registros");
+
+  if(!d.length){
+    var msg = APP.ats.length
+      ? emptyChart("Sin registros para el filtro o área seleccionados.")
+      : emptyChart("Aún no hay ATS ni charlas subidas.<br><span style=\"font-size:12px;color:#94a3b8\">Aparecerán aquí en cuanto las cuadrillas suban documentos desde la app de campo.</span>");
+    var t1=document.getElementById("atsTrend"); if(t1) t1.innerHTML=msg;
+    ["atsTipo","atsCuad"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML=emptyChart("Sin datos");});
+    document.getElementById("atsAreaCard").style.display="none";
+    document.getElementById("atsBody").innerHTML='<tr><td colspan="8"><div class="empty-state" style="padding:22px"><div class="em">📭</div>Aún no hay registros.</div></td></tr>';
+    document.getElementById("atsTrendSub").textContent="";
+    return;
+  }
+
+  // Tendencia por fecha
+  var porFecha={}; d.forEach(function(r){ porFecha[r.fecha]=(porFecha[r.fecha]||0)+1; });
+  var fk=Object.keys(porFecha).sort();
+  document.getElementById("atsTrend").innerHTML=lineChart(fk.map(function(x){return {x:fechaCorta(x),y:porFecha[x]};}));
+  document.getElementById("atsTrendSub").textContent=fk.length+(fk.length===1?" día con carga":" días con carga");
+
+  // ATS vs Charla
+  document.getElementById("atsTipo").innerHTML=donut(
+    [{label:"ATS",value:ats,color:COL_ATS.ATS},{label:"Charla 5 min",value:charlas,color:COL_ATS.Charla}], d.length, "docs");
+
+  // Por cuadrilla
+  var porCuad={}; d.forEach(function(r){ var c=r.cuadrilla||"—"; porCuad[c]=(porCuad[c]||0)+1; });
+  var cuadData=Object.keys(porCuad).map(function(c){return {label:"Cuadrilla "+c,short:c,value:porCuad[c],color:"#0284c7"};})
+    .sort(function(a,b){return b.value-a.value;}).slice(0,12);
+  document.getElementById("atsCuad").innerHTML=barChart(cuadData);
+
+  // Por área ▸ división (útil sobre todo para SSOMA; se oculta si solo hay una)
+  var porArea={}; d.forEach(function(r){ var a=r.area||"—"; porArea[a]=(porArea[a]||0)+1; });
+  var areaKeys=Object.keys(porArea), areaCard=document.getElementById("atsAreaCard");
+  if(areaKeys.length>1){
+    areaCard.style.display="";
+    document.getElementById("atsArea").innerHTML=hBars(areaKeys.map(function(a){return {label:divName(a),sub:parentArea(a),value:porArea[a]};})
+      .sort(function(x,y){return y.value-x.value;}));
+  } else { areaCard.style.display="none"; }
+
+  renderAtsTabla(d);
+}
+function renderAtsTabla(d){
+  var rows=d.slice().sort(function(a,b){ return (b.fecha||"").localeCompare(a.fecha||""); }).slice(0,300);
+  document.getElementById("atsBody").innerHTML=rows.map(function(r){
+    var col=COL_ATS[r.tipo]||"#64748b";
+    var pill='<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:'+col+'">'+esc(r.tipo)+'</span>';
+    var carp=r.carpeta?'<a href="'+esc(r.carpeta)+'" target="_blank" rel="noopener" style="color:#0284c7;font-weight:600">Abrir ▸</a>':'—';
+    return '<tr><td class="tnum">'+esc(fechaLarga(r.fecha))+'</td><td>'+pill+'</td><td>'+esc(r.cliente||"—")+'</td>'+
+      '<td>'+esc(r.circuito||"—")+'</td><td class="tnum">'+esc(r.cuadrilla||"—")+'</td>'+
+      '<td><b>'+esc(divName(r.area))+'</b><span style="display:block;font-size:11px;color:#94a3b8">'+esc(parentArea(r.area))+'</span></td>'+
+      '<td class="tnum">'+r.archivos+'</td><td>'+carp+'</td></tr>';
+  }).join("");
 }
 
 /* ============================================================
