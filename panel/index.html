@@ -134,6 +134,9 @@
   .kpi.clk:active{transform:translateY(-1px)}
   .kpi.clk::after{content:"→ ver";position:absolute;bottom:12px;right:14px;font-size:10px;font-weight:700;color:var(--brand2);opacity:0;transition:opacity .12s}
   .kpi.clk:hover::after{opacity:1}
+  .kpi.clk.kf::after{content:"filtrar ▾"}
+  .kpi.active{border-color:#0284c7;box-shadow:0 0 0 2px #bae6fd inset,var(--shadow)}
+  .kpi.active.clk::after{opacity:1;color:#0284c7;content:"activo ✓"}
 
   .grid{display:grid;gap:16px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
@@ -589,7 +592,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V32";
+var PANEL_VERSION = "V33";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -691,7 +694,9 @@ function generarDemo(){
 var APP = { user:null, token:null, userAreas:[], fArea:"", fDiv:"", datos:[], filtros:{q:"",estado:"",seccion:"",lev:""},
   demo:true, cargando:false, error:false, pollTimer:null,
   historico:null, historicoTotalGlobal:0, pintadoDeCache:false,
-  ats:[], atsCargado:false, atsError:false, filtrosAts:{q:"",tipo:"",periodo:""}, _atsWired:false };
+  ats:[], atsCargado:false, atsError:false, filtrosAts:{q:"",tipo:"",periodo:"",estado:""},
+  atsArchivadosLocal:{},   // claves de documentos archivados en esta sesión (se ocultan aunque el backend aún no persista)
+  _atsWired:false };
 // Muestra la versión del panel al pie del menú.
 (function(){ var vb=document.getElementById("verBadge"); if(vb) vb.textContent="Panel "+PANEL_VERSION; })();
 // ¿hay endpoint real configurado? (si no, el panel corre en modo demostración)
@@ -1480,6 +1485,15 @@ function normalizarAts(r){
     mensaje:String(r.mensaje||r.MensajeTecnico||"").trim()
   };
 }
+// Identidad de un documento = su carpeta de Drive. El backend la construye a partir de
+// tipo+cliente+circuito+cuadrilla+(ÁREA▸División)+fecha, por eso ese compuesto identifica
+// la carpeta con MÁS robustez que su URL (que puede diferir en formato o venir vacía en filas
+// antiguas). Se usa para el dedup "última subida gana" del ciclo de revisión.
+function atsDocKey(x){
+  var logico=[x.tipo,x.cliente,x.circuito,x.cuadrilla,x.area,x.fecha].map(function(s){return norm(s);}).join("|");
+  if(logico.replace(/\|/g,"")) return "k:"+logico;                                  // identidad lógica (habitual)
+  return "u:"+String(x.carpeta||"").replace(/[?#].*$/,"").replace(/\/+$/,"").toLowerCase();  // respaldo por URL
+}
 function cargarAts(){
   var kp=document.getElementById("kpisAts");
   if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)){
@@ -1497,9 +1511,12 @@ function cargarAts(){
       var data=JSON.parse(txt);
       var raw=Array.isArray(data)?data:((data&&data.registros)||[]);
       var lista=raw.map(normalizarAts).filter(function(x){return x.fecha;});
-      // Dedup por carpeta: si un documento se anuló y se volvió a subir, conservamos el
-      // registro MÁS reciente (el endpoint los devuelve de más nuevo a más viejo).
-      var seen={}; APP.ats=lista.filter(function(x){ if(!x.carpeta) return true; if(seen[x.carpeta]) return false; seen[x.carpeta]=1; return true; });
+      // Dedup por DOCUMENTO (ciclo de revisión). Una carpeta de Drive = un documento lógico;
+      // el endpoint devuelve las filas de más nueva a más vieja, así que conservamos SOLO la
+      // MÁS RECIENTE por documento. Consecuencia clave: si un ATS se anuló ("observado") y la
+      // cuadrilla lo volvió a subir, la subida nueva SUPERA a la anulada → deja de aparecer/
+      // contar en Anulados y pasa a "Por revisar" (y luego a "Aprobado" cuando el jefe aprueba).
+      var seen={}; APP.ats=lista.filter(function(x){ var k=atsDocKey(x); if(seen[k]) return false; seen[k]=1; return true; });
       APP.atsCargado=true; APP.atsError=false; renderAts();
     }).catch(function(){
       if(intentos<MAX){ setTimeout(pedir, 1200); return; }
@@ -1514,6 +1531,8 @@ function datosAtsScope(){
   var permit={}; if(!all) APP.userAreas.forEach(function(a){ permit[norm(a)]=1; });
   var fa=norm(APP.fArea), fd=norm(APP.fDiv);
   return APP.ats.filter(function(r){
+    if(estadoInfo(r.estado).key==="Archivado") return false;                          // "cerrado": fuera de la vista
+    if(APP.atsArchivadosLocal && APP.atsArchivadosLocal[atsDocKey(r)]) return false;   // archivado en esta sesión
     var a=r.area||"";
     if(!all && !permit[norm(a)]) return false;
     if(APP.fArea && norm(parentArea(a))!==fa) return false;
@@ -1533,8 +1552,40 @@ function wireAtsFiltros(){
 function estadoInfo(e){
   var n=norm(e);
   if(n.indexOf("aprob")>=0) return {key:"Aprobado",label:"Aprobado",bg:"#dcfce7",fg:"#15803d"};
+  if(n.indexOf("archiv")>=0) return {key:"Archivado",label:"Archivado",bg:"#f1f5f9",fg:"#64748b"};
   if(n.indexOf("anul")>=0||n.indexOf("rechaz")>=0) return {key:"Anulado",label:"Anulado",bg:"#fee2e2",fg:"#b91c1c"};
   return {key:"Pendiente",label:"Por revisar",bg:"#fef3c7",fg:"#b45309"};
+}
+// Tile-ATAJO de la pestaña ATS (no un adorno): un clic filtra la tabla. af = campo de filtro
+// ("estado" | "tipo" | "" para limpiar); av = valor a aplicar. Se resalta (.active) cuando ese
+// filtro está vigente, y funciona como toggle (volver a hacer clic lo quita).
+function atsKpi(bg,fg,icon,val,label,af,av){
+  var f=APP.filtrosAts, active;
+  if(af==="") active=(!f.estado && !f.tipo);
+  else if(af==="estado") active=(f.estado===av);
+  else active=(f.tipo===av);
+  return '<div class="kpi clk kf'+(active?" active":"")+'" role="button" tabindex="0" aria-pressed="'+(active?"true":"false")+'" data-af="'+esc(af)+'" data-av="'+esc(av||"")+'">'+
+    '<div class="ic" style="background:'+bg+';color:'+fg+'">'+icon+'</div>'+
+    '<div class="v tnum">'+val+'</div><div class="l">'+esc(label)+'</div></div>';
+}
+// Cablea los tiles-atajo tras cada render: clic/Enter aplica el filtro (toggle), sincroniza los
+// <select> del encabezado y re-renderiza; luego desplaza a la tabla para ver el resultado ya.
+function wireAtsKpis(){
+  var kp=document.getElementById("kpisAts"); if(!kp) return;
+  kp.querySelectorAll(".kpi.kf").forEach(function(el){
+    var go=function(){
+      var af=el.getAttribute("data-af"), av=el.getAttribute("data-av");
+      if(af===""){ APP.filtrosAts.estado=""; APP.filtrosAts.tipo=""; }
+      else if(af==="estado"){ APP.filtrosAts.estado=(APP.filtrosAts.estado===av?"":av); }
+      else { APP.filtrosAts.tipo=(APP.filtrosAts.tipo===av?"":av); }
+      var es=document.getElementById("fEstadoAts"); if(es) es.value=APP.filtrosAts.estado||"";
+      var t=document.getElementById("fTipoAts"); if(t) t.value=APP.filtrosAts.tipo||"";
+      renderAts();
+      var b=document.getElementById("atsBody"); if(b){ var c=b.closest(".card")||b; if(c.scrollIntoView) c.scrollIntoView({behavior:"smooth",block:"start"}); }
+    };
+    el.onclick=go;
+    el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
+  });
 }
 function renderAts(){
   wireAtsFiltros();
@@ -1553,29 +1604,33 @@ function renderAts(){
   var scope=datosAtsScope(), f=APP.filtrosAts;
   var cut=null;
   if(f.periodo){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); cut=fechaISO(dd); }
-  // "base" = alcance + tipo/período/búsqueda (SIN el filtro de estado, para que los
-  // KPIs de revisión muestren siempre el desglose completo). La tabla sí filtra por estado.
-  var base=scope.filter(function(r){
-    if(f.tipo && r.tipo!==f.tipo) return false;
+  // baseT = alcance + período + búsqueda (SIN tipo ni estado): los tiles "ATS" y "Charlas"
+  // muestran SIEMPRE el total real (son atajos-toggle de tipo), aunque haya un tipo activo.
+  var baseT=scope.filter(function(r){
     if(cut && r.fecha < cut) return false;
     if(f.q){ var q=norm(f.q); if(norm([r.cliente,r.circuito,r.cuadrilla,r.area,r.tipo].join(" ")).indexOf(q)<0) return false; }
     return true;
   });
+  // base = baseT + filtro de tipo (SIN estado): lo usan los KPIs de revisión, los gráficos y
+  // (además con el filtro de estado) la tabla. Así los tiles de estado reflejan el contexto.
+  var base = f.tipo ? baseT.filter(function(r){return r.tipo===f.tipo;}) : baseT;
 
   var pend=base.filter(function(r){return estadoInfo(r.estado).key==="Pendiente";}).length;
   var aprob=base.filter(function(r){return estadoInfo(r.estado).key==="Aprobado";}).length;
   var anul=base.filter(function(r){return estadoInfo(r.estado).key==="Anulado";}).length;
-  var ats=base.filter(function(r){return r.tipo==="ATS";}).length;
-  var charlas=base.filter(function(r){return r.tipo==="Charla";}).length;
+  var ats=baseT.filter(function(r){return r.tipo==="ATS";}).length;
+  var charlas=baseT.filter(function(r){return r.tipo==="Charla";}).length;
 
-  if(kp) kp.innerHTML=[
-    kpi("#e0f2fe","#0369a1",iconLayers(),base.length,"Documentos subidos",null,null),
-    kpi("#fef3c7","#b45309",iconClock(),pend,"Por revisar",null,null),
-    kpi("#dcfce7","#15803d",iconCheck(),aprob,"Aprobados",null,null),
-    kpi("#fee2e2","#b91c1c",iconBan(),anul,"Anulados",null,null),
-    kpi("#e0f2fe","#0369a1",iconAtsDoc(),ats,"ATS",null,null),
-    kpi("#ede9fe","#6d28d9",iconChat(),charlas,"Charlas de 5 min",null,null)
-  ].join("");
+  // Tiles = ATAJOS funcionales (un clic filtra la tabla, con toggle y resaltado del activo).
+  // "Aprobados" es el atajo que pidieron los jefes; "Documentos subidos" limpia los filtros.
+  if(kp){ kp.innerHTML=[
+    atsKpi("#e0f2fe","#0369a1",iconLayers(),baseT.length,"Documentos subidos","",""),
+    atsKpi("#fef3c7","#b45309",iconClock(),pend,"Por revisar","estado","Pendiente"),
+    atsKpi("#dcfce7","#15803d",iconCheck(),aprob,"Aprobados","estado","Aprobado"),
+    atsKpi("#fee2e2","#b91c1c",iconBan(),anul,"Anulados","estado","Anulado"),
+    atsKpi("#e0f2fe","#0369a1",iconAtsDoc(),ats,"ATS","tipo","ATS"),
+    atsKpi("#ede9fe","#6d28d9",iconChat(),charlas,"Charlas de 5 min","tipo","Charla")
+  ].join(""); wireAtsKpis(); }
 
   var d = f.estado ? base.filter(function(r){return estadoInfo(r.estado).key===f.estado;}) : base;
   var ct=document.getElementById("atsCount"); if(ct) ct.textContent=d.length+(d.length===1?" registro":" registros");
@@ -1621,6 +1676,7 @@ function renderAtsTabla(d){
   var rows=d.slice().sort(function(a,b){ return (b.fecha||"").localeCompare(a.fecha||""); }).slice(0,300);
   var bAp='padding:5px 10px;border:0;border-radius:8px;background:#16a34a;color:#fff;font:inherit;font-weight:600;font-size:12px;cursor:pointer';
   var bAn='padding:5px 10px;border:1px solid #fecaca;border-radius:8px;background:#fff;color:#b91c1c;font:inherit;font-weight:600;font-size:12px;cursor:pointer;margin-left:4px';
+  var bArch='padding:5px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;font:inherit;font-weight:600;font-size:12px;cursor:pointer;margin-left:8px';
   body.innerHTML=rows.map(function(r){
     var col=COL_ATS[r.tipo]||"#64748b";
     var pill='<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:'+col+'">'+esc(r.tipo)+'</span>';
@@ -1630,7 +1686,8 @@ function renderAtsTabla(d){
     if(st.key==="Anulado" && r.mensaje){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">✗ '+esc(r.mensaje)+'</span>'; }
     else if(st.key==="Aprobado" && r.revisadoPor){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">'+esc(r.revisadoPor)+'</span>'; }
     var acc;
-    if(st.key==="Anulado"){ acc='<span style="font-size:11px;color:#94a3b8">Se pidió resubir</span>'; }
+    if(st.key==="Anulado"){ acc='<span style="font-size:11px;color:#94a3b8">Se pidió resubir</span>'+
+      '<button class="ats-archivar" data-c="'+esc(r.carpeta)+'" title="Quitar de Anulados (queda guardado en el registro). Úsalo si ya se corrigió y volvió a subir con otros datos." style="'+bArch+'">Archivar</button>'; }
     else if(st.key==="Aprobado"){ acc='<button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+';margin-left:0">Anular</button>'; }
     else { acc='<button class="ats-aprobar" data-c="'+esc(r.carpeta)+'" style="'+bAp+'">Aprobar</button><button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+'">Anular</button>'; }
     return '<tr><td class="tnum">'+esc(fechaLarga(r.fecha))+'</td><td>'+pill+'</td><td>'+esc(r.cliente||"—")+'</td>'+
@@ -1640,6 +1697,7 @@ function renderAtsTabla(d){
   }).join("");
   body.querySelectorAll(".ats-aprobar").forEach(function(b){ b.onclick=function(){ atsAprobar(b.getAttribute("data-c")); }; });
   body.querySelectorAll(".ats-anular").forEach(function(b){ b.onclick=function(){ atsAnular(b.getAttribute("data-c")); }; });
+  body.querySelectorAll(".ats-archivar").forEach(function(b){ b.onclick=function(){ atsArchivar(b.getAttribute("data-c")); }; });
 }
 
 /* ===== Acciones de revisión — autonomía del área (aprobar / anular) ===== */
@@ -1651,14 +1709,19 @@ function _atsRevisorNombre(){
 }
 function atsAprobar(carpeta){ if(carpeta) atsEnviarRevision("ats_aprobar", carpeta, ""); }
 function atsAnular(carpeta){ if(carpeta) atsModalAnular(carpeta); }
+function atsArchivar(carpeta){ if(carpeta) atsModalArchivar(carpeta); }
 function atsEnviarRevision(action, carpeta, mensaje){
   if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)){ toast("Sin conexión con la app de campo.","bad"); return; }
   var body={ action:action, token:CONFIG.ATS_REVIEW_TOKEN, carpeta:carpeta, revisadoPor:_atsRevisorNombre(), mensaje:mensaje||"" };
   fetch(CONFIG.ATS_ENDPOINT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)}).catch(function(){});
   // Actualización optimista (el POST es no-cors) + re-sincroniza con el servidor.
-  var anular=(action==="ats_anular");
-  APP.ats.forEach(function(x){ if(x.carpeta===carpeta){ x.estado=anular?"Anulado":"Aprobado"; x.revisadoPor=body.revisadoPor; x.revisadoEn=fechaISO(new Date()); if(anular){ x.mensaje=mensaje; x.archivos=0; } } });
-  toast(anular?"Anulado — enviado a papelera; se pedirá resubir 📤":"Documento aprobado ✓","ok");
+  var anular=(action==="ats_anular"), archivar=(action==="ats_archivar");
+  var nuevo=anular?"Anulado":archivar?"Archivado":"Aprobado";
+  APP.ats.forEach(function(x){ if(x.carpeta===carpeta){ x.estado=nuevo; x.revisadoPor=body.revisadoPor; x.revisadoEn=fechaISO(new Date());
+    if(anular){ x.mensaje=mensaje; x.archivos=0; }
+    if(archivar){ APP.atsArchivadosLocal[atsDocKey(x)]=1; }   // se oculta ya, aunque el backend aún no persista
+  } });
+  toast(anular?"Anulado — enviado a papelera; se pedirá resubir 📤":archivar?"Anulado archivado — se quitó de la lista 🗂️":"Documento aprobado ✓","ok");
   renderAts();
   setTimeout(function(){ var a=document.querySelector(".nav-item.active"); if(a && a.dataset.view==="ats"){ APP.atsCargado=false; cargarAts(); } }, 3000);
 }
@@ -1679,6 +1742,25 @@ function atsModalAnular(carpeta){
   wrap.querySelector("#atsAnularCancel").onclick=cerrar;
   wrap.onclick=function(e){ if(e.target===wrap) cerrar(); };
   wrap.querySelector("#atsAnularOk").onclick=function(){ var m=ta.value.trim(); if(!m){ ta.style.borderColor="#dc2626"; ta.focus(); return; } cerrar(); atsEnviarRevision("ats_anular", carpeta, m); };
+}
+// Confirmación para ARCHIVAR un anulado (quitarlo de la lista sin borrar el registro). Pensado
+// para el caso en que la corrección se resubió con OTROS datos → cae en otra carpeta y el anulado
+// viejo quedaría colgado. No manda a papelera nada (los archivos ya se enviaron al anular).
+function atsModalArchivar(carpeta){
+  var wrap=document.createElement("div");
+  wrap.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.5);display:grid;place-items:center;z-index:9999;padding:16px";
+  wrap.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3)">'+
+    '<h3 style="margin:0 0 6px;font-size:16px;color:#0f172a">Archivar anulado</h3>'+
+    '<p style="margin:0 0 14px;font-size:13px;color:#64748b">Se quitará de la lista de <b>Anulados</b> y de los conteos. Queda guardado en el registro para auditoría. Úsalo cuando ese documento ya se corrigió y volvió a subir con otros datos.</p>'+
+    '<div style="display:flex;gap:10px;justify-content:flex-end">'+
+    '<button id="atsArchCancel" style="padding:9px 16px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;cursor:pointer;font:inherit">Cancelar</button>'+
+    '<button id="atsArchOk" style="padding:9px 16px;border:0;background:#475569;color:#fff;border-radius:10px;cursor:pointer;font:inherit;font-weight:600">Archivar</button>'+
+    '</div></div>';
+  document.body.appendChild(wrap);
+  function cerrar(){ if(wrap.parentNode) document.body.removeChild(wrap); }
+  wrap.querySelector("#atsArchCancel").onclick=cerrar;
+  wrap.onclick=function(e){ if(e.target===wrap) cerrar(); };
+  wrap.querySelector("#atsArchOk").onclick=function(){ cerrar(); atsEnviarRevision("ats_archivar", carpeta, ""); };
 }
 
 /* ============================================================
