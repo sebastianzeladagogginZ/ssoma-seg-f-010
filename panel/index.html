@@ -362,6 +362,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 3"/></svg>
       Histórico
     </button>
+    <button class="nav-item" data-view="cobertura">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 20v-6"/><path d="M12 20V4"/><path d="M18 20v-9"/></svg>
+      Cobertura semanal
+    </button>
     <button class="nav-item" data-view="ats">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6a2 2 0 0 1 2 2h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1a2 2 0 0 1 2-2z"/><path d="M9 13l2 2 4-4"/></svg>
       ATS · Charla 5 min
@@ -531,6 +535,57 @@
         <div id="histContent"></div>
       </section>
 
+      <!-- ===== COBERTURA POR CUADRILLA ===== -->
+      <section class="view" id="view-cobertura">
+        <style>
+          #view-cobertura .cob-kpis{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+          #view-cobertura .cob-kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;min-width:150px;box-shadow:var(--shadow)}
+          #view-cobertura .ck-num{display:block;font-size:26px;font-weight:800;color:var(--brand);line-height:1}
+          #view-cobertura .ck-lbl{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
+          #view-cobertura .cob-subt{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
+          #view-cobertura .cob-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
+          #view-cobertura .cob-week{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;box-shadow:var(--shadow);margin-bottom:6px}
+          #view-cobertura .cob-week .bar-click{cursor:pointer}
+          #view-cobertura .cob-week .bar-click rect:not(.bar-hit){transition:opacity .15s ease}
+          #view-cobertura .cob-week .bar-click:hover rect:not(.bar-hit){opacity:.82}
+          #view-cobertura .cob-week .bar-click.sel rect:not(.bar-hit){stroke:var(--brand);stroke-width:2.5}
+          #view-cobertura .cob-list{display:flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow)}
+          #view-cobertura .cb-item{border-radius:11px}
+          #view-cobertura .cb-item.open{background:var(--bg2)}
+          #view-cobertura .cb-row{width:100%;display:grid;grid-template-columns:minmax(130px,1.4fr) minmax(80px,2fr) 52px 54px 18px;align-items:center;gap:14px;background:none;border:0;cursor:pointer;padding:12px 14px;text-align:left;border-radius:11px;transition:background .15s ease}
+          #view-cobertura .cb-row:hover{background:var(--infobg)}
+          #view-cobertura .cb-item.open .cb-row:hover{background:transparent}
+          #view-cobertura .cb-name{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+          #view-cobertura .cb-name b{font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-cobertura .cb-name span{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-cobertura .cb-bar{height:9px;background:var(--bg);border-radius:99px;overflow:hidden}
+          #view-cobertura .cb-bar i{display:block;height:100%;border-radius:99px;min-width:6px}
+          #view-cobertura .cb-pct{font-size:16px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+          #view-cobertura .cb-frac{font-size:13px;font-weight:700;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+          #view-cobertura .cb-chev{display:inline-flex;width:18px;height:18px;color:var(--soft);transition:transform .2s ease}
+          #view-cobertura .cb-chev svg{width:18px;height:18px;display:block}
+          #view-cobertura .cb-item.open .cb-chev{transform:rotate(180deg);color:var(--brand2)}
+          #view-cobertura .cb-detail{padding:6px 14px 14px}
+          #view-cobertura .cb-det-grid{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+          #view-cobertura .cb-stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:88px}
+          #view-cobertura .cb-stat b{display:block;font-size:20px;font-weight:800;color:var(--ink);line-height:1}
+          #view-cobertura .cb-stat span{display:block;font-size:10.5px;color:var(--muted);margin-top:3px}
+          #view-cobertura .cb-stat.cb-ok b{color:#16a34a}
+          #view-cobertura .cb-stat.cb-bad b{color:#dc2626}
+          #view-cobertura .cb-miss{font-size:12.5px;color:var(--muted);line-height:2}
+          #view-cobertura .cb-miss.cb-all{color:#16a34a}
+          #view-cobertura .cb-miss-lbl{font-weight:700;color:var(--ink);margin-right:4px}
+          #view-cobertura .cb-chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}
+          #view-cobertura .cb-chip-bad{background:#fee2e2;color:#991b1b}
+          #view-cobertura .cb-chip-warn{background:#fef3c7;color:#92400e}
+          @media(max-width:640px){
+            #view-cobertura .cb-row{grid-template-columns:1fr 48px 50px 18px}
+            #view-cobertura .cb-bar{display:none}
+          }
+        </style>
+        <div id="cobContent"></div>
+      </section>
+
       <!-- ===== ATS · CHARLA DE 5 MIN ===== -->
       <section class="view" id="view-ats">
         <div class="filters">
@@ -592,7 +647,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V33";
+var PANEL_VERSION = "V34";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1020,6 +1075,7 @@ var TITLES={resumen:["Resumen","Estado general del levantamiento de observacione
   evidencias:["Evidencias","Carpetas fechadas en la nube"],
   analisis:["Análisis","Inteligencia de datos sobre los hallazgos"],
   historico:["Histórico de inspecciones","Todas las inspecciones realizadas · por mes y área"],
+  cobertura:["Cobertura por cuadrilla","Cuadrillas con inspección esta semana (sáb→vie) vs. total por división"],
   ats:["ATS · Charla de 5 min","Llenado diario de ATS y charlas de 5 minutos en campo"]};
 function navTo(v){
   document.querySelectorAll(".nav-item").forEach(function(x){x.classList.toggle("active", x.dataset.view===v);});
@@ -1033,6 +1089,7 @@ function navTo(v){
   else if(v==="evidencias") renderEvidencias();
   else if(v==="analisis") renderAnalisis();
   else if(v==="historico") cargarHistorico();
+  else if(v==="cobertura") cargarCobertura();
   else if(v==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
 }
 // Menú lateral en móvil: se abre/cierra con scrim y refleja el estado en aria-expanded.
@@ -1097,6 +1154,7 @@ function refrescar(){
   else if(active==="evidencias") renderEvidencias();
   else if(active==="analisis") renderAnalisis();
   else if(active==="historico"){ if(APP.historico) renderHistorico(); else cargarHistorico(); }
+  else if(active==="cobertura"){ if(APP.historico) renderCobertura(); else cargarCobertura(); }
   else if(active==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
 }
 
@@ -1311,6 +1369,194 @@ function detalleSemanaHTML(s){
 }
 
 /* ============================================================
+   VISTA: COBERTURA POR CUADRILLA  (SEG-F-010)
+   KPI: por semana sábado→viernes y por división (ÁREA ▸ División),
+   cuadrillas con >=1 inspección  ÷  total de cuadrillas.
+   Repetir la inspección en la semana NO suma (dedup por N° de cuadrilla).
+   El numerador sale del MISMO histórico (ya acotado por sesión); el
+   denominador de CUADRILLAS_META (fallback) o de APP.cuadrillasMeta
+   (si el backend lo entrega en el futuro).
+   ============================================================ */
+var CUADRILLAS_META = {
+  "PLANTA EXTERNA ▸ Planta Externa - Corporativo": 18,
+  "PLANTA EXTERNA ▸ ON Negocios": 4,
+  "PLANTA EXTERNA ▸ Normalización - Preventivo": 1,
+  "MANTENIMIENTO ▸ Mantenimiento - Corporativo": 7,
+  "MANTENIMIENTO ▸ Mantenimiento - Ultra": 1,
+  "MANTENIMIENTO ▸ Mangas Críticas": 2,
+  "MANTENIMIENTO ▸ ON Negocios": 6,
+  "MANTENIMIENTO ▸ Normalización de Red": 6
+};
+function metaCuadrillas(){
+  return (APP && APP.cuadrillasMeta && Object.keys(APP.cuadrillasMeta).length) ? APP.cuadrillasMeta : CUADRILLAS_META;
+}
+// Sábado que INICIA la semana (sáb→vie) que contiene 'fecha'.
+function sabadoDe(fecha){
+  var p=String(fecha||"").split("-"); if(p.length<3) return null;
+  var d=new Date(+p[0],+p[1]-1,+p[2]); if(isNaN(d.getTime())) return null;
+  var back=(d.getDay()+1)%7;               // Sáb(6)→0 … Vie(5)→6
+  d.setDate(d.getDate()-back); d.setHours(0,0,0,0); return d;
+}
+function rangoSemanaSab(sab){
+  var vie=new Date(sab); vie.setDate(sab.getDate()+6);
+  return pad(sab.getDate())+" "+MES3[sab.getMonth()]+" – "+pad(vie.getDate())+" "+MES3[vie.getMonth()];
+}
+function colorPct(p){ return p>=100?"#16a34a":(p>=50?"#d97706":"#dc2626"); }
+
+// ¿la división (compuesto "ÁREA ▸ División") está dentro del alcance/filtro actual?
+function divEnAlcanceCob(comp){
+  var fa=norm(APP.fArea), fd=norm(APP.fDiv);
+  if(fd) return norm(comp)===fd;
+  if(fa) return norm(parentArea(comp))===fa;
+  if(APP.userAreas && APP.userAreas.indexOf("*")>=0) return true;   // SSOMA ve todo
+  var vis=false; (APP.userAreas||[]).forEach(function(a){ if(norm(a)===norm(comp)) vis=true; });
+  return vis;
+}
+
+// Inspecciones (ya acotadas por sesión + filtro) agrupadas por semana sáb→vie.
+// Ancla a la semana actual y retrocede hasta el 1er dato (máx. 12 semanas).
+function cobPorSemana(arr){
+  var hoySab=sabadoDe(fechaISO(new Date()));
+  var items={}, min=null;
+  arr.forEach(function(r){ var s=sabadoDe(r.fecha); if(!s) return;
+    if(hoySab && s>hoySab) return;                    // fecha futura → fuera
+    var k=fechaISO(s); (items[k]=items[k]||[]).push(r); if(!min||s<min) min=s; });
+  if(!min) min=new Date(hoySab);
+  var semanas=[], cur=new Date(hoySab), guard=0;
+  while(cur>=min && guard++<60){
+    var k=fechaISO(cur);
+    semanas.unshift({ sab:new Date(cur), items:items[k]||[] });
+    cur.setDate(cur.getDate()-7);
+  }
+  return semanas.slice(-12);
+}
+
+// Cobertura de UNA semana → una fila por división en alcance.
+function coberturaDeSemana(weekItems){
+  var meta=metaCuadrillas(), porDiv={};
+  Object.keys(meta).forEach(function(comp){
+    if(!divEnAlcanceCob(comp)) return;
+    porDiv[norm(comp)]={ comp:comp, total:(+meta[comp]||0), nums:{} };
+  });
+  (weekItems||[]).forEach(function(r){
+    var d=porDiv[norm(r.area||"")]; if(!d) return;     // sin meta / fuera de alcance
+    var num=String(r.cuadrilla==null?"":r.cuadrilla).trim();
+    if(num==="") return;
+    d.nums[num]=1;                                      // dedup: misma cuadrilla no suma 2 veces
+  });
+  return Object.keys(porDiv).map(function(k){
+    var d=porDiv[k];
+    var coveredNums=Object.keys(d.nums).map(function(n){return parseInt(n,10);}).filter(function(n){return !isNaN(n);});
+    var setC={}; coveredNums.forEach(function(n){setC[n]=1;});
+    var faltan=[]; for(var i=1;i<=d.total;i++){ if(!setC[i]) faltan.push(i); }
+    var extra=coveredNums.filter(function(n){return n<1||n>d.total;}).sort(function(a,b){return a-b;});
+    var dentro=d.total-faltan.length;                  // cuadrillas 1..total que sí inspeccionaron
+    var pct=d.total?Math.round(dentro/d.total*100):0;
+    return { comp:d.comp, total:d.total, dentro:dentro, faltan:faltan, extra:extra, pct:pct };
+  });
+}
+function cobGlobal(filas){
+  var tm=0,tc=0; filas.forEach(function(f){ tm+=f.total; tc+=f.dentro; });
+  return { total:tm, dentro:tc, pct:tm?Math.round(tc/tm*100):0 };
+}
+
+function cargarCobertura(){
+  if(!tieneEndpoint()){ APP.historico=APP.historico||historicoDemo(); APP.historicoTotalGlobal=APP.historico.length; renderCobertura(); return; }
+  if(APP.historico){ renderCobertura(); return; }
+  var cont=document.getElementById("cobContent");
+  if(cont) cont.innerHTML='<div class="load-note"><span class="spinner"></span> Cargando inspecciones…</div>';
+  var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=historico"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
+  fetch(url).then(function(r){return r.json();}).then(function(data){
+    if(data && data.ok===false) throw new Error(data.error||"backend");
+    APP.historico=(data.inspecciones||[]);
+    APP.historicoTotalGlobal=(data.total_global!=null?data.total_global:APP.historico.length);
+    renderCobertura();
+  }).catch(function(){
+    var c=document.getElementById("cobContent");
+    if(c) c.innerHTML='<div class="load-note" style="color:#991b1b">No se pudo cargar la cobertura. <button id="cobRetry" class="mini-btn" style="margin-left:8px">Reintentar</button></div>';
+    var rb=document.getElementById("cobRetry"); if(rb) rb.onclick=cargarCobertura;
+  });
+}
+
+function renderCobertura(){
+  var cont=document.getElementById("cobContent"); if(!cont) return;
+  if(!Object.keys(metaCuadrillas()).some(divEnAlcanceCob)){
+    cont.innerHTML='<div class="load-note" style="justify-content:flex-start">Esta vista aplica a las áreas que trabajan por cuadrilla (Planta Externa y Mantenimiento). El alcance seleccionado no tiene divisiones con meta de cuadrillas.</div>';
+    return;
+  }
+  var arr=histFiltrado();
+  var semanas=cobPorSemana(arr);
+  if(APP.cobSemanaIdx==null || APP.cobSemanaIdx>=semanas.length) APP.cobSemanaIdx=semanas.length-1;
+  var idx=APP.cobSemanaIdx;
+  var sem=semanas[idx]||{sab:sabadoDe(fechaISO(new Date())),items:[]};
+  var filas=coberturaDeSemana(sem.items).sort(function(a,b){ return a.pct-b.pct || b.total-a.total || a.comp.localeCompare(b.comp); });
+  var g=cobGlobal(filas);
+
+  var h='<div class="cob-kpis">'+
+    '<div class="cob-kpi"><span class="ck-num" style="color:'+colorPct(g.pct)+'">'+g.pct+'%</span><span class="ck-lbl">Cobertura de la semana</span></div>'+
+    '<div class="cob-kpi"><span class="ck-num">'+g.dentro+' / '+g.total+'</span><span class="ck-lbl">Cuadrillas con inspección</span></div>'+
+    '<div class="cob-kpi"><span class="ck-num">'+(g.total-g.dentro)+'</span><span class="ck-lbl">Cuadrillas sin inspección</span></div>'+
+    '<div class="cob-kpi"><span class="ck-num">'+semanas.length+'</span><span class="ck-lbl">Semanas con historial</span></div>'+
+  '</div>';
+
+  h+='<div class="cob-subt">Cobertura por semana <span>sábado→viernes · toca una barra para ver esa semana</span></div>';
+  h+='<div class="cob-week">'+barChart(semanas.map(function(s){
+       var gg=cobGlobal(coberturaDeSemana(s.items));
+       return { label:"Semana "+rangoSemanaSab(s.sab)+" · "+gg.pct+"%", short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:gg.pct, color:colorPct(gg.pct) };
+     }),{clickable:true,max:100})+'</div>';
+
+  h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>cuadrillas con ≥1 inspección ÷ total · toca una fila para ver cuáles faltan</span></div>';
+  h+='<div class="cob-list">';
+  filas.forEach(function(f){
+    var pa=parentArea(f.comp), dv=divName(f.comp), col=colorPct(f.pct);
+    h+='<div class="cb-item">'+
+       '<button class="cb-row" type="button" aria-expanded="false">'+
+         '<div class="cb-name"><b>'+esc(dv)+'</b><span>'+esc(pa)+'</span></div>'+
+         '<div class="cb-bar" aria-hidden="true"><i style="width:'+f.pct+'%;background:'+col+'"></i></div>'+
+         '<div class="cb-pct" style="color:'+col+'">'+f.pct+'%</div>'+
+         '<div class="cb-frac">'+f.dentro+'/'+f.total+'</div>'+
+         '<span class="cb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
+       '</button>'+
+       '<div class="cb-detail" hidden>'+coberturaDetalleHTML(f)+'</div>'+
+     '</div>';
+  });
+  h+='</div>';
+  cont.innerHTML=h;
+
+  (function(){
+    var bars=cont.querySelectorAll(".cob-week .bar-click");
+    bars.forEach(function(b){ b.onclick=function(){ APP.cobSemanaIdx=+b.getAttribute("data-i"); renderCobertura(); }; });
+    if(bars[idx]) bars[idx].classList.add("sel");
+  })();
+  cont.querySelectorAll(".cb-row").forEach(function(row){
+    row.onclick=function(){
+      var item=row.parentNode, det=item.querySelector(".cb-detail"), abrir=det.hidden;
+      cont.querySelectorAll(".cb-item").forEach(function(it){ it.classList.remove("open"); it.querySelector(".cb-detail").hidden=true; it.querySelector(".cb-row").setAttribute("aria-expanded","false"); });
+      if(abrir){ det.hidden=false; item.classList.add("open"); row.setAttribute("aria-expanded","true"); }
+    };
+  });
+}
+
+function coberturaDetalleHTML(f){
+  var h='<div class="cb-det-grid">'+
+    '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>con inspección</span></div>'+
+    '<div class="cb-stat cb-bad"><b>'+f.faltan.length+'</b><span>sin inspección</span></div>'+
+    '<div class="cb-stat"><b>'+f.total+'</b><span>total cuadrillas</span></div>'+
+  '</div>';
+  if(f.faltan.length){
+    h+='<div class="cb-miss"><span class="cb-miss-lbl">Cuadrillas que faltan esta semana:</span> '+
+       f.faltan.map(function(n){return '<span class="cb-chip cb-chip-bad">Cuadrilla '+n+'</span>';}).join(" ")+'</div>';
+  } else {
+    h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Todas las cuadrillas hicieron su inspección esta semana.</span></div>';
+  }
+  if(f.extra && f.extra.length){
+    h+='<div class="cb-miss"><span class="cb-miss-lbl">N° fuera del rango 1–'+f.total+' (revisar):</span> '+
+       f.extra.map(function(n){return '<span class="cb-chip cb-chip-warn">'+n+'</span>';}).join(" ")+'</div>';
+  }
+  return h;
+}
+
+/* ============================================================
    HELPERS DE GRÁFICOS (SVG puro, sin dependencias)
    ============================================================ */
 var COL={"Requiere cambio":"#d97706","No tiene":"#dc2626","levantado":"#16a34a","en_proceso":"#0284c7","pendiente":"#94a3b8","rechazado":"#dc2626"};
@@ -1338,7 +1584,7 @@ function donut(segs,centerLabel,centerSub){
 
 function barChart(data,opts){
   opts=opts||{}; var clk=!!opts.clickable;
-  var max=Math.max.apply(null,data.map(function(d){return d.value;}).concat([1]));
+  var max=opts.max||Math.max.apply(null,data.map(function(d){return d.value;}).concat([1]));
   var bw=Math.max(30,Math.min(70,Math.floor(560/data.length))), gap=14, h=180, w=data.length*(bw+gap)+10;
   var bars=data.map(function(d,i){
     var bh=Math.round(d.value/max*(h-44)), x=i*(bw+gap)+5, y=h-bh-22;
