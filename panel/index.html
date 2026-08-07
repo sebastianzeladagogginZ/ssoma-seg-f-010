@@ -575,6 +575,7 @@
           #view-cobertura .cb-miss{font-size:12.5px;color:var(--muted);line-height:2}
           #view-cobertura .cb-miss.cb-all{color:#16a34a}
           #view-cobertura .cb-miss-lbl{font-weight:700;color:var(--ink);margin-right:4px}
+          #view-cobertura .cb-note{display:block;font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:2px}
           #view-cobertura .cb-chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}
           #view-cobertura .cb-chip-bad{background:#fee2e2;color:#991b1b}
           #view-cobertura .cb-chip-warn{background:#fef3c7;color:#92400e}
@@ -647,7 +648,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V34";
+var PANEL_VERSION = "V35";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1446,13 +1447,14 @@ function coberturaDeSemana(weekItems){
   });
   return Object.keys(porDiv).map(function(k){
     var d=porDiv[k];
-    var coveredNums=Object.keys(d.nums).map(function(n){return parseInt(n,10);}).filter(function(n){return !isNaN(n);});
-    var setC={}; coveredNums.forEach(function(n){setC[n]=1;});
-    var faltan=[]; for(var i=1;i<=d.total;i++){ if(!setC[i]) faltan.push(i); }
-    var extra=coveredNums.filter(function(n){return n<1||n>d.total;}).sort(function(a,b){return a-b;});
-    var dentro=d.total-faltan.length;                  // cuadrillas 1..total que sí inspeccionaron
+    // Solo se controla la CANTIDAD por división: contamos cuántas cuadrillas
+    // distintas registraron >=1 inspeccion, sin asumir numeracion 1..total (no
+    // existe esa base). Asi no se senala "que cuadrilla" falta, solo cuantas.
+    var distintas=Object.keys(d.nums).length;          // cuadrillas distintas que inspeccionaron
+    var dentro=Math.min(distintas,d.total);            // tope al total (maximo 100%)
+    var faltan=Math.max(d.total-dentro,0);             // cantidad que falta (numero, no lista)
     var pct=d.total?Math.round(dentro/d.total*100):0;
-    return { comp:d.comp, total:d.total, dentro:dentro, faltan:faltan, extra:extra, pct:pct };
+    return { comp:d.comp, total:d.total, dentro:dentro, distintas:distintas, faltan:faltan, pct:pct };
   });
 }
 function cobGlobal(filas){
@@ -1505,7 +1507,7 @@ function renderCobertura(){
        return { label:"Semana "+rangoSemanaSab(s.sab)+" · "+gg.pct+"%", short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:gg.pct, color:colorPct(gg.pct) };
      }),{clickable:true,max:100})+'</div>';
 
-  h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>cuadrillas con ≥1 inspección ÷ total · toca una fila para ver cuáles faltan</span></div>';
+  h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>cuadrillas con ≥1 inspección ÷ total · toca una fila para ver el detalle</span></div>';
   h+='<div class="cob-list">';
   filas.forEach(function(f){
     var pa=parentArea(f.comp), dv=divName(f.comp), col=colorPct(f.pct);
@@ -1540,18 +1542,14 @@ function renderCobertura(){
 function coberturaDetalleHTML(f){
   var h='<div class="cb-det-grid">'+
     '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>con inspección</span></div>'+
-    '<div class="cb-stat cb-bad"><b>'+f.faltan.length+'</b><span>sin inspección</span></div>'+
+    '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin inspección</span></div>'+
     '<div class="cb-stat"><b>'+f.total+'</b><span>total cuadrillas</span></div>'+
   '</div>';
-  if(f.faltan.length){
-    h+='<div class="cb-miss"><span class="cb-miss-lbl">Cuadrillas que faltan esta semana:</span> '+
-       f.faltan.map(function(n){return '<span class="cb-chip cb-chip-bad">Cuadrilla '+n+'</span>';}).join(" ")+'</div>';
+  if(f.faltan>0){
+    h+='<div class="cb-miss"><span class="cb-miss-lbl">Faltan '+f.faltan+' de '+f.total+' cuadrilla'+(f.total===1?'':'s')+' por registrar su inspección esta semana.</span>'+
+       '<span class="cb-note">Por ahora solo se controla la <b>cantidad</b> por división; aún no se identifica qué cuadrilla específica falta.</span></div>';
   } else {
-    h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Todas las cuadrillas hicieron su inspección esta semana.</span></div>';
-  }
-  if(f.extra && f.extra.length){
-    h+='<div class="cb-miss"><span class="cb-miss-lbl">N° fuera del rango 1–'+f.total+' (revisar):</span> '+
-       f.extra.map(function(n){return '<span class="cb-chip cb-chip-warn">'+n+'</span>';}).join(" ")+'</div>';
+    h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Se registró inspección de todas las cuadrillas de la división esta semana.</span></div>';
   }
   return h;
 }
