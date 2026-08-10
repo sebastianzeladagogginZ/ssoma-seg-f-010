@@ -99,6 +99,29 @@
   canvas.sig{width:100%;height:160px;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;display:block}
   .linkbtn{border:none;background:none;color:var(--bad);font-weight:700;font-size:12px;cursor:pointer;padding:6px 2px}
   input:disabled{background:#f1f5f9;color:#475569}
+  /* ── Botiquín · fecha de vencimiento y nivel de contenido ── */
+  .botmeta{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:2px;padding-top:9px;border-top:1px dashed var(--line)}
+  .botmeta .mini{font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}
+  .venc-wrap,.nivel-wrap{display:flex;align-items:center;gap:8px;flex:1 1 230px;min-width:210px}
+  .venc-wrap input[type=date]{flex:1;padding:8px 10px;font-size:13px}
+  .vbadge{flex:none;font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;border:1.5px solid var(--na);
+    background:var(--nabg);color:var(--na);line-height:1;white-space:nowrap}
+  .vbadge.ok{color:var(--ok);background:var(--okbg);border-color:var(--ok)}
+  .vbadge.warn{color:var(--warn);background:var(--warnbg);border-color:var(--warn)}
+  .vbadge.bad{color:var(--bad);background:var(--badbg);border-color:var(--bad)}
+  .vbadge.na{color:var(--na);background:var(--nabg);border-color:var(--na)}
+  .nivel{display:flex;gap:5px;flex:1}
+  .nivel button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:9px;min-height:42px;font-size:11.5px;
+    font-weight:700;color:#94a3b8;cursor:pointer;padding:5px 3px;line-height:1.12}
+  .nivel button.full.sel{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
+  .nivel button.half.sel{background:var(--warnbg);border-color:var(--warn);color:var(--warn)}
+  .nivel button.low.sel{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+  .beaker{position:relative;flex:none;width:22px;height:34px;border:2px solid var(--line);
+    border-radius:4px 4px 7px 7px;overflow:hidden;background:#fff}
+  .beaker .fill{position:absolute;left:0;right:0;bottom:0;height:0;background:transparent;
+    transition:height .18s ease,background .18s ease}
+  .botmeta.locked{opacity:.5}
+  .nivel button:disabled,.venc-wrap input:disabled{cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -134,6 +157,7 @@
     <h2>Resumen de la inspección</h2>
     <div id="sumMeta" class="hint"></div>
     <div class="kpis" id="kpis"></div>
+    <div id="botAlert"></div>
     <h3 style="margin:10px 0 4px;font-size:14px">Hallazgos a gestionar</h3>
     <div id="findings"></div>
     <div class="exp">
@@ -211,6 +235,25 @@ var EXT=["Ubicación de extintor","Acceso a extintor","Numeración de extintor",
 var BOT=["Guantes quirúrgicos (01)","Yodopovidona 120 ml (01)","Agua oxigenada 120 ml (01)","Alcohol 250 ml (01)",
   "Gasas esterilizadas 10x10 (03)","Apósitos (05)","Esparadrapo (01)","Venda elástica (01)","Algodón x100 g (01)",
   "Paletas baja lengua (10)","Cloruro de sodio 9/1000 x1 L (01)","Gasa tipo jelonet (02)","Colirio 10 ml (01)","Tijera punta roma (01)"];
+/* Metadatos del botiquín: qué ítems se controlan por FECHA DE VENCIMIENTO (caduca)
+   y cuáles por NIVEL DE CONTENIDO (nivel: lleno/mitad/¼). Editable con libertad:
+   basta cambiar true/false para sumar o quitar un control a un ítem. */
+var BOT_META={
+  "Guantes quirúrgicos (01)":          {caduca:true,  nivel:false},
+  "Yodopovidona 120 ml (01)":          {caduca:true,  nivel:true },
+  "Agua oxigenada 120 ml (01)":        {caduca:true,  nivel:true },
+  "Alcohol 250 ml (01)":               {caduca:true,  nivel:true },
+  "Gasas esterilizadas 10x10 (03)":    {caduca:true,  nivel:true },
+  "Apósitos (05)":                     {caduca:true,  nivel:true },
+  "Esparadrapo (01)":                  {caduca:true,  nivel:true },
+  "Venda elástica (01)":               {caduca:false, nivel:false},
+  "Algodón x100 g (01)":               {caduca:true,  nivel:true },
+  "Paletas baja lengua (10)":          {caduca:true,  nivel:true },
+  "Cloruro de sodio 9/1000 x1 L (01)": {caduca:true,  nivel:true },
+  "Gasa tipo jelonet (02)":            {caduca:true,  nivel:true },
+  "Colirio 10 ml (01)":                {caduca:true,  nivel:true },
+  "Tijera punta roma (01)":            {caduca:false, nivel:false}
+};
 
 /* ===== Escala única (etiquetas completas en los botones) ===== */
 var ESCALA=[{v:"Buen estado",c:"ok"},{v:"Requiere cambio",c:"warn"},{v:"No tiene",c:"bad"},{v:"No aplica",c:"na"}];
@@ -225,7 +268,7 @@ var EMPRESA={razon:"OPTICAL NETWORKS S.A.C.",ruc:"20602576702",
 /* ===== Estado ===== */
 var ST={area:"",division:"",fecha:"",hora:"",cuadrilla:"",presence:{T1:false,T2:false,T3:false,T4:false},docs:{},
   personas:[], enviado:false,
-  ans:{}, branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
+  ans:{}, venc:{}, nivel:{}, branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
   modalidad:"Autoinspección", tipo:"Planeada", conclusiones:"",
   resp:{nombre:"",cargo:"",documento:""}, firma:"", fotoResp:""};
 var LISTS={}, SCALES={};
@@ -261,7 +304,94 @@ function responsableAuto(){
 }
 function responsableActual(){ return ST.modalidad==="Inspección inopinada"?ST.resp:responsableAuto(); }
 
-function checklist(sec,sub,items,scale){
+/* ===== Botiquín · vencimiento (semáforo automático) y nivel de contenido ===== */
+/* Estado de vigencia a partir de la fecha: sin fecha → gris; vencido → rojo;
+   ≤30 días → naranja (por vencer); en regla → verde (vigente). */
+function vencEstado(fecha){
+  if(!fecha) return {txt:"Sin fecha",cls:"na"};
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  var f=new Date(fecha+"T00:00:00");
+  if(isNaN(f.getTime())) return {txt:"Sin fecha",cls:"na"};
+  var dias=Math.round((f-hoy)/86400000);
+  if(dias<0)  return {txt:"Vencido",cls:"bad"};
+  if(dias<=30) return {txt:"Por vencer",cls:"warn"};
+  return {txt:"Vigente",cls:"ok"};
+}
+function refreshVenc(input){
+  var e=vencEstado(input.value), wrap=input.closest(".venc-wrap"), b=wrap&&wrap.querySelector(".vbadge");
+  if(b){ b.className="vbadge "+e.cls; b.textContent=e.txt; }
+}
+/* Nivel de contenido: lleno (verde) · mitad (naranja) · ¼ listo para cambio (rojo). */
+var NIVELES=[{v:"lleno",lbl:"Lleno",cls:"full"},{v:"mitad",lbl:"Mitad",cls:"half"},{v:"cuarto",lbl:"¼ · Cambiar",cls:"low"}];
+function nivelTxt(v){ return v==="lleno"?"Lleno":v==="mitad"?"Mitad":v==="cuarto"?"¼ (cambiar)":""; }
+function nivelBtns(cur,bloq){
+  return NIVELES.map(function(n){
+    return '<button type="button" class="lvl '+n.cls+(cur===n.v?' sel':'')+'" data-act="nivel" data-lvl="'+n.v+'"'+(bloq?' disabled':'')+'>'+n.lbl+'</button>';
+  }).join("");
+}
+function beakerFill(cur){
+  var h=cur==="lleno"?100:cur==="mitad"?50:cur==="cuarto"?25:0;
+  var col=cur==="lleno"?"var(--ok)":cur==="mitad"?"var(--warn)":cur==="cuarto"?"var(--bad)":"transparent";
+  return {h:h,col:col};
+}
+function beakerHTML(cur){ var f=beakerFill(cur); return '<span class="beaker"><span class="fill" style="height:'+f.h+'%;background:'+f.col+'"></span></span>'; }
+/* Un ítem "No aplica" o "No tiene" no puede tener caducidad ni contenido:
+   se bloquean (y limpian) sus controles de vencimiento y nivel. */
+function botLocked(estado){ return estado==="No aplica"||estado==="No tiene"; }
+/* Controles extra por ítem (solo botiquín): fecha de vencimiento y/o nivel. */
+function botMetaHTML(sec,sub,it,m){
+  var kk=key(sec,sub,it), bloq=botLocked(getAns(sec,sub,it)), h='<div class="botmeta'+(bloq?' locked':'')+'">';
+  if(m.caduca){
+    var vv=bloq?"":(ST.venc[kk]||""), e=vencEstado(vv);
+    h+='<div class="venc-wrap"><span class="mini">📅 Vence</span>'+
+       '<input type="date" class="vencinput" data-vk="'+eh(kk)+'" value="'+vv+'"'+(bloq?' disabled':'')+'>'+
+       '<span class="vbadge '+e.cls+'">'+e.txt+'</span></div>';
+  }
+  if(m.nivel){
+    var nv=bloq?"":(ST.nivel[kk]||"");
+    h+='<div class="nivel-wrap"><span class="mini">🧴 Nivel</span>'+
+       '<div class="nivel" data-nk="'+eh(kk)+'">'+nivelBtns(nv,bloq)+'</div>'+beakerHTML(nv)+'</div>';
+  }
+  return h+'</div>';
+}
+/* Aplica el bloqueo/limpieza en el DOM sin re-render (coherente con onAns). */
+function applyBotState(itemEl,estado){
+  var meta=itemEl&&itemEl.querySelector(".botmeta"); if(!meta) return;
+  var bloq=botLocked(estado);
+  meta.classList.toggle("locked",bloq);
+  var di=meta.querySelector(".vencinput");
+  if(di){ di.disabled=bloq; if(bloq){ di.value=""; ST.venc[di.dataset.vk]=""; refreshVenc(di); } }
+  var box=meta.querySelector(".nivel");
+  if(box){
+    var bs=box.querySelectorAll(".lvl");
+    for(var i=0;i<bs.length;i++){ bs[i].disabled=bloq; if(bloq) bs[i].classList.remove("sel"); }
+    if(bloq){ delete ST.nivel[box.dataset.nk];
+      var fill=meta.querySelector(".beaker .fill"); if(fill){ fill.style.height="0%"; fill.style.background="transparent"; } }
+  }
+}
+function onNivel(btn){
+  var box=btn.closest(".nivel"); if(!box) return;
+  var nk=box.dataset.nk, lvl=btn.dataset.lvl;
+  if(ST.nivel[nk]===lvl){ delete ST.nivel[nk]; lvl=""; } else { ST.nivel[nk]=lvl; }   // 2º clic = deseleccionar
+  var bs=box.querySelectorAll(".lvl");
+  for(var i=0;i<bs.length;i++){ bs[i].classList.toggle("sel", lvl!=="" && bs[i].dataset.lvl===lvl); }
+  var f=beakerFill(lvl), wrap=box.closest(".nivel-wrap"), fill=wrap&&wrap.querySelector(".beaker .fill");
+  if(fill){ fill.style.height=f.h+"%"; fill.style.background=f.col; }
+  updateMetrics();
+}
+/* Alertas del botiquín (vencidos, por vencer, nivel ¼) para hallazgos y resumen. */
+function botAlertas(){
+  var venc=[],porV=[],bajo=[],k;
+  for(k in ST.venc){ if(k.indexOf("botiquin||")!==0||botLocked(ST.ans[k])) continue;
+    var e=vencEstado(ST.venc[k]), it=k.split("||")[2];
+    if(e.cls==="bad") venc.push({item:it,fecha:ST.venc[k]});
+    else if(e.cls==="warn") porV.push({item:it,fecha:ST.venc[k]}); }
+  for(k in ST.nivel){ if(k.indexOf("botiquin||")!==0||botLocked(ST.ans[k])) continue;
+    if(ST.nivel[k]==="cuarto") bajo.push({item:k.split("||")[2]}); }
+  return {venc:venc,porV:porV,bajo:bajo};
+}
+
+function checklist(sec,sub,items,scale,meta){
   var k=lk(sec,sub); LISTS[k]=items; SCALES[k]=scale;
   var h='<div class="quick"><button data-act="fill" data-k="'+k+'">✓ Todo '+scale[0].v.toLowerCase()+'</button></div>';
   items.forEach(function(it,i){
@@ -270,7 +400,9 @@ function checklist(sec,sub,items,scale){
     scale.forEach(function(o,j){
       h+='<button class="'+o.c+(cur===o.v?' sel':'')+'" data-act="ans" data-k="'+k+'" data-i="'+i+'" data-j="'+j+'">'+o.v+'</button>';
     });
-    h+='</div></div>';
+    h+='</div>';
+    if(meta && meta[it]) h+=botMetaHTML(sec,sub,it,meta[it]);
+    h+='</div>';
   });
   return h;
 }
@@ -280,12 +412,15 @@ function paintItem(k,i,j){
 }
 function fillAll(k){
   var items=LISTS[k],val=SCALES[k][0].v,p=k.split("||"),sec=p[0],sub=p[1]==="-"?null:p[1];
-  items.forEach(function(it,i){ ST.ans[key(sec,sub,it)]=val; paintItem(k,i,0); });
+  items.forEach(function(it,i){ ST.ans[key(sec,sub,it)]=val; paintItem(k,i,0);
+    if(sec==="botiquin"){ var b=document.querySelector('button[data-act="ans"][data-k="'+k+'"][data-i="'+i+'"]'); applyBotState(b&&b.closest(".item"),val); } });
   updateSectionPct(sec); updateMetrics();
 }
 function onAns(k,i,j){
-  var items=LISTS[k],scale=SCALES[k],p=k.split("||"),sec=p[0],sub=p[1]==="-"?null:p[1];
-  ST.ans[key(sec,sub,items[i])]=scale[j].v; paintItem(k,i,j); updateSectionPct(sec); updateMetrics();
+  var items=LISTS[k],scale=SCALES[k],p=k.split("||"),sec=p[0],sub=p[1]==="-"?null:p[1],val=scale[j].v;
+  ST.ans[key(sec,sub,items[i])]=val; paintItem(k,i,j);
+  if(sec==="botiquin"){ var b=document.querySelector('button[data-act="ans"][data-k="'+k+'"][data-i="'+i+'"]'); applyBotState(b&&b.closest(".item"),val); }
+  updateSectionPct(sec); updateMetrics();
 }
 function sectionPct(sec){
   var tot=0,ok=0;
@@ -418,7 +553,7 @@ function render(){
   var bo='<div class="field"><label>¿La unidad cuenta con botiquín?</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.botiquin===true?' on':'')+'" data-act="branch" data-b="botiquin" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.botiquin===false?' on':'')+'" data-act="branch" data-b="botiquin" data-v="0">No</button></div></div>';
-  if(ST.branch.botiquin===true) bo+=checklist("botiquin",null,BOT,S_SEG);
+  if(ST.branch.botiquin===true) bo+='<div class="hint" style="margin:2px 2px 8px">Además del estado, en los ítems que aplican registra la <b>fecha de vencimiento</b> (semáforo automático 🟢 vigente · 🟠 por vencer · 🔴 vencido) y el <b>nivel de contenido</b> 🟢 lleno · 🟠 mitad · 🔴 ¼ (listo para cambio).</div>'+checklist("botiquin",null,BOT,S_SEG,BOT_META);
   else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (registrar en observaciones).</p>';
   H+=card(8,"Estado del botiquín",bo,"botiquin");
 
@@ -481,7 +616,11 @@ function togglePresence(id){
 }
 function setBranch(b,val){
   ST.branch[b]=val;
-  if(!val){ for(var k in ST.ans){ if(k.indexOf(b+"||")===0) delete ST.ans[k]; } }
+  if(!val){
+    for(var k in ST.ans){ if(k.indexOf(b+"||")===0) delete ST.ans[k]; }
+    for(var kv in ST.venc){ if(kv.indexOf(b+"||")===0) delete ST.venc[kv]; }
+    for(var kn in ST.nivel){ if(kn.indexOf(b+"||")===0) delete ST.nivel[kn]; }
+  }
   render();
 }
 /* ── Personal individual (áreas sin cuadrilla) ── */
@@ -490,7 +629,7 @@ function delPersona(i){ ST.personas.splice(i,1); if(!ST.personas.length) ST.pers
 /* Al cambiar de área se limpia el estado dependiente del modo (cuadrilla ↔ individual)
    para que respuestas/roles/personas de un modo no contaminen al otro. */
 function resetPorArea(){
-  ST.division=""; ST.cuadrilla=""; ST.ans={};
+  ST.division=""; ST.cuadrilla=""; ST.ans={}; ST.venc={}; ST.nivel={};
   ST.branch={escalera:null,extintor:null,botiquin:null};
   ST.presence={T1:false,T2:false,T3:false,T4:false}; ST.docs={};
   ST.personas=[];
@@ -591,7 +730,8 @@ function updateMetrics(){
   g.textContent=m.pct===null?"—":m.pct+"%";
   g.style.color=m.pct===null?"#fff":(m.pct>=90?"#bbf7d0":m.pct>=70?"#fde68a":"#fecaca");
   document.getElementById("fRev").textContent=m.rev;
-  document.getElementById("fHall").textContent=m.warn+m.no;
+  var al=botAlertas();
+  document.getElementById("fHall").textContent=m.warn+m.no+al.venc.length+al.porV.length+al.bajo.length;
   document.getElementById("counter").innerHTML= esIndividual()
     ? ' <b>Registro individual</b> (sin cuadrilla) · <b>'+visibleQuestionCount()+' ítems</b> a inspeccionar.'
     : ' <b>Hoy ves '+visibleQuestionCount()+' ítems</b> (el formato original tenía 172).';
@@ -608,13 +748,37 @@ function findingsList(){
     if(a.sub&&a.sub!=="-"){ who=a.sub+(nombreDe(a.sub)?" · "+nombreDe(a.sub):""); }
     out.push({seccion:secNombre(a.sec),recurso:who,item:a.item,estado:a.v});
   });
+  var al=botAlertas();
+  al.venc.forEach(function(x){ out.push({seccion:"Botiquín",recurso:"—",item:x.item,estado:"Vencido ("+x.fecha+")"}); });
+  al.porV.forEach(function(x){ out.push({seccion:"Botiquín",recurso:"—",item:x.item,estado:"Por vencer ("+x.fecha+")"}); });
+  al.bajo.forEach(function(x){ out.push({seccion:"Botiquín",recurso:"—",item:x.item,estado:"Nivel ¼ · reponer"}); });
   return out;
 }
 function buildDetalle(){
-  return allAnswers().map(function(a){
+  var rows=allAnswers().map(function(a){
     var who=(a.sub&&a.sub!=="-")?(a.sub+(nombreDe(a.sub)?" · "+nombreDe(a.sub):"")):"";
-    return {seccion:secNombre(a.sec),recurso:who,item:a.item,estado:a.v};
+    var row={seccion:secNombre(a.sec),recurso:who,item:a.item,estado:a.v};
+    if(a.sec==="botiquin"){
+      var kk=key(a.sec,a.sub,a.item), locked=botLocked(a.v), vf=locked?"":(ST.venc[kk]||"");
+      row.vencimiento=vf;
+      row.estado_vencimiento=vf?vencEstado(vf).txt:"";
+      row.nivel=(locked?"":(ST.nivel[kk]?nivelTxt(ST.nivel[kk]):""));
+    }
+    return row;
   });
+  /* Botiquín: no perder vencimiento/nivel si el ítem tiene ese dato pero
+     aún no se marcó su estado (se agrega como fila con estado en blanco). */
+  var vistos={}; rows.forEach(function(r){ if(r.seccion==="Botiquín") vistos[r.item]=1; });
+  var claves={}, k;
+  for(k in ST.venc){ if(k.indexOf("botiquin||")===0) claves[k]=1; }
+  for(k in ST.nivel){ if(k.indexOf("botiquin||")===0) claves[k]=1; }
+  for(k in claves){
+    var it=k.split("||")[2]; if(vistos[it]) continue;
+    var vf2=ST.venc[k]||"";
+    rows.push({seccion:"Botiquín",recurso:"—",item:it,estado:"",
+      vencimiento:vf2, estado_vencimiento:vf2?vencEstado(vf2).txt:"", nivel:ST.nivel[k]?nivelTxt(ST.nivel[k]):""});
+  }
+  return rows;
 }
 function openSheet(){
   var m=metrics(),f=findingsList();
@@ -631,6 +795,16 @@ function openSheet(){
     '<div class="kpi"><b style="color:var(--warn)">'+m.warn+'</b><span>requiere cambio</span></div>'+
     '<div class="kpi"><b style="color:var(--bad)">'+m.no+'</b><span>no tiene</span></div>'+
     '<div class="kpi"><b style="color:var(--na)">'+m.na+'</b><span>no aplica</span></div>';
+  var al=botAlertas(), ba=document.getElementById("botAlert");
+  if(ba){
+    if(al.venc.length||al.porV.length||al.bajo.length){
+      var parts=[];
+      if(al.venc.length) parts.push('<b style="color:var(--bad)">'+al.venc.length+' vencido(s)</b>');
+      if(al.porV.length) parts.push('<b style="color:var(--warn)">'+al.porV.length+' por vencer</b>');
+      if(al.bajo.length) parts.push('<b style="color:var(--bad)">'+al.bajo.length+' con nivel ¼</b>');
+      ba.innerHTML='<div class="note" style="border-left-color:var(--warn);margin:8px 0">🧰 <b>Botiquín:</b> '+parts.join(" · ")+'. Detalle en la tabla de hallazgos.</div>';
+    } else ba.innerHTML="";
+  }
   var fc=document.getElementById("findings");
   if(!f.length){ fc.innerHTML='<div class="empty">✓ Sin hallazgos: todos los recursos revisados están en buen estado.</div>'; }
   else{ fc.innerHTML='<div class="find"><table><thead><tr><th>Sección</th><th>Recurso</th><th>Ítem</th><th>Estado</th></tr></thead><tbody>'+
@@ -695,9 +869,9 @@ function exportFindings(){
   dl("Hallazgos_"+stamp()+".csv",csv,"text/csv;charset=utf-8");
 }
 function exportSummary(){
-  var m=metrics();
-  var head=["Marca temporal","Área","Fecha","N° cuadrilla","Técnicos","Revisados","Buen estado","Requiere cambio","No tiene","No aplica","% Conformidad","Observaciones"];
-  var row=[new Date().toISOString(),areaComposite(),ST.fecha,ST.cuadrilla,ROLES.filter(function(r){return ST.presence[r.id];}).map(function(r){return r.id;}).join(" "),m.rev,m.ok,m.warn,m.no,m.na,(m.pct===null?"":m.pct),ST.obs];
+  var m=metrics(), al=botAlertas();
+  var head=["Marca temporal","Área","Fecha","N° cuadrilla","Técnicos","Revisados","Buen estado","Requiere cambio","No tiene","No aplica","% Conformidad","Botiquín vencidos","Botiquín por vencer","Botiquín nivel ¼","Observaciones"];
+  var row=[new Date().toISOString(),areaComposite(),ST.fecha,ST.cuadrilla,ROLES.filter(function(r){return ST.presence[r.id];}).map(function(r){return r.id;}).join(" "),m.rev,m.ok,m.warn,m.no,m.na,(m.pct===null?"":m.pct),al.venc.length,al.porV.length,al.bajo.length,ST.obs];
   var csv="﻿"+[head,row].map(function(r){return r.map(csvCell).join(";");}).join("\r\n");
   dl("Resumen_"+stamp()+".csv",csv,"text/csv;charset=utf-8");
 }
@@ -711,7 +885,7 @@ function nombresPayload(){
   return pr.map(function(r){var d=ST.docs[r.id]||{}; return r.label+": "+((d.ape||"")+" "+(d.nom||"")).trim()+" ("+(d.tipo||"")+" "+(d.num||"")+")";}).join(" | ");
 }
 function buildPayload(){
-  var m=metrics(), f=findingsList(), indiv=esIndividual();
+  var m=metrics(), f=findingsList(), indiv=esIndividual(), al=botAlertas();
   var hall=f.map(function(x){return x.seccion+(x.recurso&&x.recurso!=="—"?" ["+x.recurso+"]":"")+": "+x.item+" = "+x.estado;}).join(" | ");
   var pr=ROLES.filter(function(r){return ST.presence[r.id];});
   var ra=responsableActual(), sem=semaforo(m.pct);
@@ -726,6 +900,7 @@ function buildPayload(){
     conclusiones:ST.conclusiones,
     responsable_nombre:ra.nombre, responsable_cargo:ra.cargo, responsable_documento:ra.documento,
     hallazgos:hall, observaciones:ST.obs,
+    botiquin_vencidos:al.venc.length, botiquin_por_vencer:al.porV.length, botiquin_nivel_bajo:al.bajo.length,
     empresa:EMPRESA.razon, ruc:EMPRESA.ruc, domicilio:EMPRESA.domicilio, actividad:EMPRESA.actividad,
     firma:(String(ST.firma).split(",")[1]||""),
     foto_responsable:(String(ST.fotoResp).split(",")[1]||""),
@@ -788,10 +963,12 @@ document.getElementById("app").addEventListener("click",function(e){
   else if(act==="modal"){ ST.modalidad=b.dataset.v; render(); }
   else if(act==="addpersona") addPersona();
   else if(act==="delpersona") delPersona(+b.dataset.i);
+  else if(act==="nivel") onNivel(b);
   else if(act==="clearsig") clearSignature();
 });
 document.getElementById("app").addEventListener("input",function(e){
   var t=e.target;
+  if(t.classList&&t.classList.contains("vencinput")){ ST.venc[t.dataset.vk]=t.value; refreshVenc(t); updateMetrics(); return; }
   if(t.id==="f_fecha") ST.fecha=t.value;
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_cuad") ST.cuadrilla=t.value;
@@ -814,6 +991,7 @@ document.getElementById("app").addEventListener("input",function(e){
 });
 document.getElementById("app").addEventListener("change",function(e){
   var t=e.target;
+  if(t.classList&&t.classList.contains("vencinput")){ ST.venc[t.dataset.vk]=t.value; refreshVenc(t); updateMetrics(); return; }
   if(t.id==="f_photos") addPhotos(t.files);
   else if(t.id==="f_resp") addRespPhoto(t.files[0]);
   else if(t.id==="f_area"){ ST.area=t.value; resetPorArea(); actualizarRoles(); render(); }
