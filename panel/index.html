@@ -576,6 +576,19 @@
           #view-cobertura .cb-miss.cb-all{color:#16a34a}
           #view-cobertura .cb-miss-lbl{font-weight:700;color:var(--ink);margin-right:4px}
           #view-cobertura .cb-note{display:block;font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:2px}
+          /* Editor del total de cuadrillas (solo ON Negocios) */
+          #view-cobertura .cb-edit{background:var(--infobg,#f0f9ff);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:4px 0 12px}
+          #view-cobertura .cb-edit label{display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px}
+          #view-cobertura .cb-edit-row{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+          #view-cobertura .cb-edit-row input{width:96px;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;font-weight:700;color:var(--ink);background:#fff;font-variant-numeric:tabular-nums}
+          #view-cobertura .cb-edit-row input:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(2,132,199,.15)}
+          /* Lista de personas del padrón (cobertura individual) */
+          #view-cobertura .cb-people{display:flex;flex-wrap:wrap;gap:6px 10px;margin:2px 0 6px}
+          #view-cobertura .cb-person{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 9px}
+          #view-cobertura .cb-person.ok{color:#14532d;background:#dcfce7;border-color:#86efac}
+          #view-cobertura .cb-person .cb-dot{font-weight:800;font-size:12px;color:#94a3b8}
+          #view-cobertura .cb-person.ok .cb-dot{color:#16a34a}
+          #view-cobertura .cb-person .cb-pn{white-space:nowrap}
           #view-cobertura .cb-chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}
           #view-cobertura .cb-chip-bad{background:#fee2e2;color:#991b1b}
           #view-cobertura .cb-chip-warn{background:#fef3c7;color:#92400e}
@@ -648,7 +661,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V35";
+var PANEL_VERSION = "V36";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1462,7 +1475,121 @@ function cobGlobal(filas){
   return { total:tm, dentro:tc, pct:tm?Math.round(tc/tm*100):0 };
 }
 
+/* ============================================================
+   COBERTURA INDIVIDUAL (por persona) — NETWORKING e INSPECCIÓN Y DISEÑO.
+   Estas áreas NO trabajan por cuadrilla: el control es por persona. El
+   numerador sale de los DNIs que la app de ATS envía (r.dnis); el denominador
+   es el PADRÓN (lista fija de la gente del área). Una persona con ≥1 ATS/charla
+   en la semana cuenta como cubierta (sin importar cuántos subió).
+   ============================================================ */
+var PADRON_INDIVIDUAL={
+  "NETWORKING":[
+    {dni:"70910661",nombre:"TACO BARRETO LUIS FERNANDO"},
+    {dni:"41421543",nombre:"QUISPE MEDINA JUAN MANUEL"},
+    {dni:"74885450",nombre:"PETSA WISUM ELI"},
+    {dni:"72028088",nombre:"CARRIZALES RAMIREZ RUSSELL NOE"},
+    {dni:"75344537",nombre:"CABANILLAS ALAMO DANIEL ENRIQUE"},
+    {dni:"73050277",nombre:"CASTRO ARANGO JOSE ABEL"},
+    {dni:"71618777",nombre:"CORREA CORONADO CESAR IVAN"},
+    {dni:"73265633",nombre:"FERNANDEZ RODRIGUEZ ALEJANDRO JESUS"},
+    {dni:"47160041",nombre:"GAMARRA PALOMINO FREDY RICARDO"},
+    {dni:"47787404",nombre:"GARCIA ARMIJO MIGUEL ANGEL"},
+    {dni:"71402835",nombre:"HUAMAN QUISPE CHRISTIAN LEONARDO"},
+    {dni:"72126999",nombre:"HURTADO VALLE VICTOR GABRIEL"},
+    {dni:"45136221",nombre:"PUMARRUMI CORMAN EBER"},
+    {dni:"75131658",nombre:"RAMOS VILLANUEVA JOHN ANGEL"},
+    {dni:"74219379",nombre:"RIVERA RODRIGUEZ CARLOS MANUEL"},
+    {dni:"71765976",nombre:"SOSA ALVA FABIAN BRUNO"}
+  ],
+  "INSPECCIÓN Y DISEÑO":[
+    {dni:"46195003",nombre:"TORIBIO POMA ANTHONY NELSON"},
+    {dni:"75351929",nombre:"MALCA NALVARTE MIGUEL ANGEL"},
+    {dni:"70814374",nombre:"DE LA CRUZ COLLANTES KEVIN JOSEPH"},
+    {dni:"72213911",nombre:"LANDA LLAMOCCA LEOPOLDO RENE"},
+    {dni:"16140603",nombre:"RODRIGUEZ OSORIO ANTONIO EDUARDO"},
+    {dni:"73277588",nombre:"CALDERÓN DIONISIO ANDRÉ VISARIONOVICH"}
+  ]
+};
+function padronDe(areaBig){ return PADRON_INDIVIDUAL[areaBig]||null; }
+// ¿El área grande (NETWORKING / INSPECCIÓN Y DISEÑO) está dentro del alcance/filtro?
+function areaIndividualEnAlcance(areaBig){
+  var fa=norm(APP.fArea), fd=norm(APP.fDiv);
+  if(fd) return norm(parentArea(APP.fDiv))===norm(areaBig);
+  if(fa) return fa===norm(areaBig);
+  if(APP.userAreas && APP.userAreas.indexOf("*")>=0) return true;   // SSOMA ve todo
+  var vis=false; (APP.userAreas||[]).forEach(function(a){ if(norm(parentArea(a))===norm(areaBig)) vis=true; });
+  return vis;
+}
+function areasIndividualesEnAlcance(){ return Object.keys(PADRON_INDIVIDUAL).filter(areaIndividualEnAlcance); }
+// Registros ATS válidos (no anulados/archivados) de las áreas individuales en alcance.
+function atsIndividuales(indivAreas){
+  return (APP.ats||[]).filter(function(r){
+    var k=estadoInfo(r.estado).key; if(k==="Anulado"||k==="Archivado") return false;
+    return indivAreas.some(function(ab){ return norm(parentArea(r.area))===norm(ab); });
+  });
+}
+// Cobertura de UNA semana para UN área: personas del padrón con ≥1 registro.
+function coberturaIndividual(areaBig, weekItems){
+  var padron=padronDe(areaBig)||[], total=padron.length, set={};
+  (weekItems||[]).forEach(function(r){
+    if(norm(parentArea(r.area))!==norm(areaBig)) return;
+    var ds=(r.dnis && r.dnis.length)?r.dnis:(r.dni?[padDni(r.dni)]:[]);
+    ds.forEach(function(d){ d=padDni(d); if(/^\d{8}$/.test(d)) set[d]=1; });
+  });
+  var padSet={}; padron.forEach(function(p){ padSet[padDni(p.dni)]=1; });
+  var dentro=padron.filter(function(p){ return set[padDni(p.dni)]; }).length;
+  var extras=Object.keys(set).filter(function(d){ return !padSet[d]; });
+  var faltan=Math.max(total-dentro,0), pct=total?Math.round(dentro/total*100):0;
+  return { areaBig:areaBig, total:total, dentro:dentro, faltan:faltan, pct:pct, padron:padron, coveredSet:set, extras:extras };
+}
+
+/* ---- Edición del total de cuadrillas de ON Negocios (solo esa división) ---- */
+var DIV_ON_NEGOCIOS_EDIT="PLANTA EXTERNA ▸ ON Negocios";
+function puedeEditarCuadrillasON(){
+  if(!APP.user) return false;
+  if(APP.userAreas && APP.userAreas.indexOf("*")>=0) return true;                 // SSOMA
+  return (APP.userAreas||[]).some(function(a){ return norm(a)===norm(DIV_ON_NEGOCIOS_EDIT); });
+}
+function guardarCuadrillasON(){
+  var inp=document.getElementById("onNegInput"); if(!inp) return;
+  var n=parseInt(inp.value,10);
+  if(isNaN(n)||n<0||n>999){ toast("Ingresa un número válido (0–999).","bad"); return; }
+  var btn=document.getElementById("onNegSave"); if(btn){ btn.disabled=true; btn.textContent="Guardando…"; }
+  var aplicarLocal=function(){ APP.cuadrillasMeta=APP.cuadrillasMeta||objAssign({},metaCuadrillas()); APP.cuadrillasMeta[DIV_ON_NEGOCIOS_EDIT]=n; };
+  if(!tieneEndpoint()){ aplicarLocal(); toast("✓ Total de ON Negocios actualizado (demo).","ok"); renderCobertura(); return; }
+  apiPost({action:"set_cuadrillas", division:DIV_ON_NEGOCIOS_EDIT, total:n}).then(function(res){
+    if(res && res.ok){
+      if(res.metas && Object.keys(res.metas).length) APP.cuadrillasMeta=res.metas; else aplicarLocal();
+      toast("✓ Total de ON Negocios actualizado. La cobertura se recalculó.","ok");
+      renderCobertura();
+    } else {
+      if(btn){ btn.disabled=false; btn.textContent="Guardar"; }
+      toast(res&&res.error==="no_autorizado" ? "No tienes permiso para editar este total." : "No se pudo guardar. Reintenta.","bad");
+    }
+  });
+}
+function objAssign(t,s){ for(var k in s){ if(Object.prototype.hasOwnProperty.call(s,k)) t[k]=s[k]; } return t; }
+
+// Trae las metas de cuadrillas del backend (para reflejar el total editado de ON Negocios).
+function cargarMetasCuadrillas(){
+  if(APP.cuadrillasMeta || APP._metasPedidas || !tieneEndpoint()) return;
+  APP._metasPedidas=true;
+  var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=cuadrillas"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    if(d && d.metas && Object.keys(d.metas).length){ APP.cuadrillasMeta=d.metas; renderCobertura(); }
+  }).catch(function(){});
+}
+// Asegura los registros de ATS cargados (los usa la cobertura individual).
+function asegurarAtsParaCobertura(){
+  if(APP.atsCargado || APP._atsCargando || !tieneEndpoint()) return;
+  if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)) return;
+  APP._atsCargando=true;
+  cargarAts(function(){ APP._atsCargando=false; renderCobertura(); });
+}
+
 function cargarCobertura(){
+  cargarMetasCuadrillas();          // total de cuadrillas del backend (ON Negocios editable)
+  asegurarAtsParaCobertura();       // registros ATS → cobertura individual
   if(!tieneEndpoint()){ APP.historico=APP.historico||historicoDemo(); APP.historicoTotalGlobal=APP.historico.length; renderCobertura(); return; }
   if(APP.historico){ renderCobertura(); return; }
   var cont=document.getElementById("cobContent");
@@ -1482,61 +1609,156 @@ function cargarCobertura(){
 
 function renderCobertura(){
   var cont=document.getElementById("cobContent"); if(!cont) return;
-  if(!Object.keys(metaCuadrillas()).some(divEnAlcanceCob)){
-    cont.innerHTML='<div class="load-note" style="justify-content:flex-start">Esta vista aplica a las áreas que trabajan por cuadrilla (Planta Externa y Mantenimiento). El alcance seleccionado no tiene divisiones con meta de cuadrillas.</div>';
+  var hayCrew=Object.keys(metaCuadrillas()).some(divEnAlcanceCob);
+  var indivAreas=areasIndividualesEnAlcance();
+  if(!hayCrew && !indivAreas.length){
+    cont.innerHTML='<div class="load-note" style="justify-content:flex-start">Esta vista aplica a las áreas que trabajan por cuadrilla (Planta Externa y Mantenimiento) o por persona (Networking, Inspección y Diseño). El alcance seleccionado no incluye ninguna.</div>';
     return;
   }
-  var arr=histFiltrado();
-  var semanas=cobPorSemana(arr);
-  if(APP.cobSemanaIdx==null || APP.cobSemanaIdx>=semanas.length) APP.cobSemanaIdx=semanas.length-1;
-  var idx=APP.cobSemanaIdx;
+  var h="", crewIdx=-1, indIdx=-1;
+
+  // ---- Cobertura por CUADRILLA (Planta Externa / Mantenimiento) ----
+  if(hayCrew){
+    var arr=histFiltrado();
+    var semanas=cobPorSemana(arr);
+    if(APP.cobSemanaIdx==null || APP.cobSemanaIdx>=semanas.length) APP.cobSemanaIdx=semanas.length-1;
+    crewIdx=APP.cobSemanaIdx;
+    var sem=semanas[crewIdx]||{sab:sabadoDe(fechaISO(new Date())),items:[]};
+    var filas=coberturaDeSemana(sem.items).sort(function(a,b){ return a.pct-b.pct || b.total-a.total || a.comp.localeCompare(b.comp); });
+    var g=cobGlobal(filas);
+    if(indivAreas.length) h+='<div class="cob-subt" style="margin:4px 2px 12px">Cobertura por cuadrilla <span>Planta Externa · Mantenimiento</span></div>';
+    h+='<div class="cob-kpis">'+
+      '<div class="cob-kpi"><span class="ck-num" style="color:'+colorPct(g.pct)+'">'+g.pct+'%</span><span class="ck-lbl">Cobertura de la semana</span></div>'+
+      '<div class="cob-kpi"><span class="ck-num">'+g.dentro+' / '+g.total+'</span><span class="ck-lbl">Cuadrillas con inspección</span></div>'+
+      '<div class="cob-kpi"><span class="ck-num">'+(g.total-g.dentro)+'</span><span class="ck-lbl">Cuadrillas sin inspección</span></div>'+
+      '<div class="cob-kpi"><span class="ck-num">'+semanas.length+'</span><span class="ck-lbl">Semanas con historial</span></div>'+
+    '</div>';
+    h+='<div class="cob-subt">Cobertura por semana <span>sábado→viernes · toca una barra para ver esa semana</span></div>';
+    h+='<div class="cob-week" id="cobCrewWeek">'+barChart(semanas.map(function(s){
+         var gg=cobGlobal(coberturaDeSemana(s.items));
+         return { label:"Semana "+rangoSemanaSab(s.sab)+" · "+gg.pct+"%", short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:gg.pct, color:colorPct(gg.pct) };
+       }),{clickable:true,max:100})+'</div>';
+    h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>cuadrillas con ≥1 inspección ÷ total · toca una fila para ver el detalle</span></div>';
+    h+='<div class="cob-list">';
+    filas.forEach(function(f){
+      var pa=parentArea(f.comp), dv=divName(f.comp), col=colorPct(f.pct);
+      h+='<div class="cb-item">'+
+         '<button class="cb-row" type="button" aria-expanded="false">'+
+           '<div class="cb-name"><b>'+esc(dv)+'</b><span>'+esc(pa)+'</span></div>'+
+           '<div class="cb-bar" aria-hidden="true"><i style="width:'+f.pct+'%;background:'+col+'"></i></div>'+
+           '<div class="cb-pct" style="color:'+col+'">'+f.pct+'%</div>'+
+           '<div class="cb-frac">'+f.dentro+'/'+f.total+'</div>'+
+           '<span class="cb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
+         '</button>'+
+         '<div class="cb-detail" hidden>'+coberturaDetalleHTML(f)+'</div>'+
+       '</div>';
+    });
+    h+='</div>';
+  }
+
+  // ---- Cobertura INDIVIDUAL (Networking / Inspección y Diseño) ----
+  if(indivAreas.length){
+    var ind=buildCoberturaIndHTML(indivAreas);
+    h+=ind.html; indIdx=ind.idx;
+  }
+
+  cont.innerHTML=h;
+
+  // Barras de semana (cuadrilla) — su propio índice de semana.
+  (function(){
+    var cw=cont.querySelector("#cobCrewWeek"); if(!cw) return;
+    var bars=cw.querySelectorAll(".bar-click");
+    bars.forEach(function(b){ b.onclick=function(){ APP.cobSemanaIdx=+b.getAttribute("data-i"); renderCobertura(); }; });
+    if(bars[crewIdx]) bars[crewIdx].classList.add("sel");
+  })();
+  // Barras de semana (individual) — índice de semana independiente.
+  (function(){
+    var iw=cont.querySelector("#cobIndWeek"); if(!iw) return;
+    var bars=iw.querySelectorAll(".bar-click");
+    bars.forEach(function(b){ b.onclick=function(){ APP.cobIndSemanaIdx=+b.getAttribute("data-i"); renderCobertura(); }; });
+    if(bars[indIdx]) bars[indIdx].classList.add("sel");
+  })();
+  // Expandir/colapsar filas (colapsa solo dentro de su propia lista).
+  cont.querySelectorAll(".cb-row").forEach(function(row){
+    row.onclick=function(){
+      var item=row.parentNode, det=item.querySelector(".cb-detail"), abrir=det.hidden, lista=item.parentNode;
+      lista.querySelectorAll(".cb-item").forEach(function(it){ it.classList.remove("open"); it.querySelector(".cb-detail").hidden=true; it.querySelector(".cb-row").setAttribute("aria-expanded","false"); });
+      if(abrir){ det.hidden=false; item.classList.add("open"); row.setAttribute("aria-expanded","true"); }
+    };
+  });
+  // Editor del total de cuadrillas de ON Negocios (dentro del detalle de esa división).
+  var saveBtn=cont.querySelector("#onNegSave");
+  if(saveBtn) saveBtn.onclick=guardarCuadrillasON;
+}
+
+// Bloque de cobertura individual (por persona). Devuelve {html, idx de semana}.
+function buildCoberturaIndHTML(indivAreas){
+  var head='<div class="cob-subt" style="margin-top:26px;border-top:1px solid var(--line);padding-top:24px">Cobertura individual · por persona <span>Networking · Inspección y Diseño — sale por DNI del ATS</span></div>';
+  if(!APP.atsCargado){
+    return { html: head+'<div class="load-note"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>', idx:-1 };
+  }
+  if(APP.atsError){
+    return { html: head+'<div class="load-note" style="color:#991b1b">No se pudo conectar con la app de campo para la cobertura individual.</div>', idx:-1 };
+  }
+  var atsItems=atsIndividuales(indivAreas);
+  var semanas=cobPorSemana(atsItems);
+  if(APP.cobIndSemanaIdx==null || APP.cobIndSemanaIdx>=semanas.length) APP.cobIndSemanaIdx=semanas.length-1;
+  var idx=APP.cobIndSemanaIdx;
   var sem=semanas[idx]||{sab:sabadoDe(fechaISO(new Date())),items:[]};
-  var filas=coberturaDeSemana(sem.items).sort(function(a,b){ return a.pct-b.pct || b.total-a.total || a.comp.localeCompare(b.comp); });
-  var g=cobGlobal(filas);
+  var filas=indivAreas.map(function(ab){ return coberturaIndividual(ab,sem.items); })
+                      .sort(function(a,b){ return a.pct-b.pct || b.total-a.total; });
+  var totG=0,denG=0; filas.forEach(function(f){ totG+=f.dentro; denG+=f.total; });
+  var pctG=denG?Math.round(totG/denG*100):0;
 
-  var h='<div class="cob-kpis">'+
-    '<div class="cob-kpi"><span class="ck-num" style="color:'+colorPct(g.pct)+'">'+g.pct+'%</span><span class="ck-lbl">Cobertura de la semana</span></div>'+
-    '<div class="cob-kpi"><span class="ck-num">'+g.dentro+' / '+g.total+'</span><span class="ck-lbl">Cuadrillas con inspección</span></div>'+
-    '<div class="cob-kpi"><span class="ck-num">'+(g.total-g.dentro)+'</span><span class="ck-lbl">Cuadrillas sin inspección</span></div>'+
-    '<div class="cob-kpi"><span class="ck-num">'+semanas.length+'</span><span class="ck-lbl">Semanas con historial</span></div>'+
-  '</div>';
-
-  h+='<div class="cob-subt">Cobertura por semana <span>sábado→viernes · toca una barra para ver esa semana</span></div>';
-  h+='<div class="cob-week">'+barChart(semanas.map(function(s){
-       var gg=cobGlobal(coberturaDeSemana(s.items));
-       return { label:"Semana "+rangoSemanaSab(s.sab)+" · "+gg.pct+"%", short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:gg.pct, color:colorPct(gg.pct) };
+  var h=head;
+  h+='<div class="cob-kpis">'+
+     '<div class="cob-kpi"><span class="ck-num" style="color:'+colorPct(pctG)+'">'+pctG+'%</span><span class="ck-lbl">Participación de la semana</span></div>'+
+     '<div class="cob-kpi"><span class="ck-num">'+totG+' / '+denG+'</span><span class="ck-lbl">Personas que registraron</span></div>'+
+     '<div class="cob-kpi"><span class="ck-num">'+(denG-totG)+'</span><span class="ck-lbl">Personas sin registro</span></div>'+
+     '<div class="cob-kpi"><span class="ck-num">'+semanas.length+'</span><span class="ck-lbl">Semanas con historial</span></div>'+
+     '</div>';
+  h+='<div class="cob-subt">Participación por semana <span>sábado→viernes · toca una barra para ver esa semana</span></div>';
+  h+='<div class="cob-week" id="cobIndWeek">'+barChart(semanas.map(function(s){
+       var t=0,d=0; indivAreas.forEach(function(ab){ var x=coberturaIndividual(ab,s.items); t+=x.dentro; d+=x.total; });
+       var pc=d?Math.round(t/d*100):0;
+       return { label:"Semana "+rangoSemanaSab(s.sab)+" · "+pc+"%", short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:pc, color:colorPct(pc) };
      }),{clickable:true,max:100})+'</div>';
-
-  h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>cuadrillas con ≥1 inspección ÷ total · toca una fila para ver el detalle</span></div>';
+  h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>personas con ≥1 ATS/charla ÷ total del padrón · toca una fila</span></div>';
   h+='<div class="cob-list">';
   filas.forEach(function(f){
-    var pa=parentArea(f.comp), dv=divName(f.comp), col=colorPct(f.pct);
+    var col=colorPct(f.pct);
     h+='<div class="cb-item">'+
        '<button class="cb-row" type="button" aria-expanded="false">'+
-         '<div class="cb-name"><b>'+esc(dv)+'</b><span>'+esc(pa)+'</span></div>'+
+         '<div class="cb-name"><b>'+esc(f.areaBig)+'</b><span>'+f.dentro+' de '+f.total+' personas con registro</span></div>'+
          '<div class="cb-bar" aria-hidden="true"><i style="width:'+f.pct+'%;background:'+col+'"></i></div>'+
          '<div class="cb-pct" style="color:'+col+'">'+f.pct+'%</div>'+
          '<div class="cb-frac">'+f.dentro+'/'+f.total+'</div>'+
          '<span class="cb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
        '</button>'+
-       '<div class="cb-detail" hidden>'+coberturaDetalleHTML(f)+'</div>'+
+       '<div class="cb-detail" hidden>'+coberturaIndDetalleHTML(f)+'</div>'+
      '</div>';
   });
   h+='</div>';
-  cont.innerHTML=h;
-
-  (function(){
-    var bars=cont.querySelectorAll(".cob-week .bar-click");
-    bars.forEach(function(b){ b.onclick=function(){ APP.cobSemanaIdx=+b.getAttribute("data-i"); renderCobertura(); }; });
-    if(bars[idx]) bars[idx].classList.add("sel");
-  })();
-  cont.querySelectorAll(".cb-row").forEach(function(row){
-    row.onclick=function(){
-      var item=row.parentNode, det=item.querySelector(".cb-detail"), abrir=det.hidden;
-      cont.querySelectorAll(".cb-item").forEach(function(it){ it.classList.remove("open"); it.querySelector(".cb-detail").hidden=true; it.querySelector(".cb-row").setAttribute("aria-expanded","false"); });
-      if(abrir){ det.hidden=false; item.classList.add("open"); row.setAttribute("aria-expanded","true"); }
-    };
-  });
+  return { html:h, idx:idx };
+}
+function coberturaIndDetalleHTML(f){
+  var h='<div class="cb-det-grid">'+
+    '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>registraron</span></div>'+
+    '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin registro</span></div>'+
+    '<div class="cb-stat"><b>'+f.total+'</b><span>total del padrón</span></div>'+
+  '</div>';
+  var lista=f.padron.slice().sort(function(a,b){
+    var ca=f.coveredSet[padDni(a.dni)]?0:1, cb=f.coveredSet[padDni(b.dni)]?0:1;
+    return ca-cb || String(a.nombre||"").localeCompare(String(b.nombre||""));
+  }).map(function(p){
+    var ok=!!f.coveredSet[padDni(p.dni)];
+    return '<div class="cb-person'+(ok?' ok':'')+'"><span class="cb-dot">'+(ok?'✓':'○')+'</span><span class="cb-pn">'+esc(p.nombre||p.dni)+'</span></div>';
+  }).join("");
+  h+='<div class="cb-people">'+lista+'</div>';
+  if(f.extras && f.extras.length){
+    h+='<div class="cb-miss"><span class="cb-note">+ '+f.extras.length+' DNI'+(f.extras.length===1?'':'s')+' fuera del padrón registr'+(f.extras.length===1?'ó':'aron')+' esta semana (no suma al %).</span></div>';
+  }
+  return h;
 }
 
 function coberturaDetalleHTML(f){
@@ -1545,6 +1767,16 @@ function coberturaDetalleHTML(f){
     '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin inspección</span></div>'+
     '<div class="cb-stat"><b>'+f.total+'</b><span>total cuadrillas</span></div>'+
   '</div>';
+  // ON Negocios: su jefe/coordinador (o SSOMA) ajusta el total de cuadrillas
+  // habilitadas de la semana. Cambia el denominador de cobertura en todo el panel.
+  if(f.comp===DIV_ON_NEGOCIOS_EDIT && puedeEditarCuadrillasON()){
+    h+='<div class="cb-edit">'+
+       '<label for="onNegInput">Cuadrillas habilitadas esta semana</label>'+
+       '<div class="cb-edit-row"><input type="number" id="onNegInput" min="0" max="999" step="1" inputmode="numeric" value="'+f.total+'">'+
+       '<button type="button" id="onNegSave" class="mini-btn">Guardar</button></div>'+
+       '<span class="cb-note">Ajusta el total disponible de <b>ON Negocios</b>; su cobertura se recalcula en toda la plataforma.</span>'+
+     '</div>';
+  }
   if(f.faltan>0){
     h+='<div class="cb-miss"><span class="cb-miss-lbl">Faltan '+f.faltan+' de '+f.total+' cuadrilla'+(f.total===1?'':'s')+' por registrar su inspección esta semana.</span>'+
        '<span class="cb-note">Por ahora solo se controla la <b>cantidad</b> por división; aún no se identifica qué cuadrilla específica falta.</span></div>';
@@ -1709,12 +1941,20 @@ function atsComposite(area,division){
   if(area.indexOf(SEP)>=0) return area;   // ya viene compuesto
   return area+SEP+division;
 }
+// Convierte un csv de DNIs (col "DNIs" del ATS) en una lista de DNIs de 8 dígitos.
+// Si viene vacío pero hay un DNI primario, usa ése. Sin duplicados.
+function parseDnisCsv(csv, dniPrimario){
+  var arr=String(csv||"").split(/[,;\s]+/).map(function(x){return padDni(x);}).filter(function(x){return /^\d{8}$/.test(x);});
+  if(!arr.length && dniPrimario){ var d=padDni(dniPrimario); if(/^\d{8}$/.test(d)) arr=[d]; }
+  var seen={},out=[]; arr.forEach(function(d){ if(!seen[d]){ seen[d]=1; out.push(d); } }); return out;
+}
 // Normaliza una fila de la hoja "Registros" (o un objeto meta) al formato interno.
 function normalizarAts(r){
   r=r||{};
   var tipoRaw=String(r.tipo||r.Tipo||"");
   var tipo=/charla|5\s*min/i.test(tipoRaw)?"Charla":"ATS";
   var comp=atsComposite(r.area||r["Área"]||r.Area, r.division||r["División"]||r.Division);
+  var dniP=String(r.dni||r.DNI||"").trim();
   return {
     tipo:tipo, area:comp,
     cliente:String(r.cliente||r.Cliente||"").trim(),
@@ -1726,7 +1966,11 @@ function normalizarAts(r){
     estado:String(r.estado||r.Estado||"Pendiente").trim()||"Pendiente",
     revisadoPor:String(r.revisadoPor||r.RevisadoPor||"").trim(),
     revisadoEn:String(r.revisadoEn||r.RevisadoEn||"").slice(0,10),
-    mensaje:String(r.mensaje||r.MensajeTecnico||"").trim()
+    mensaje:String(r.mensaje||r.MensajeTecnico||"").trim(),
+    // Áreas por persona (Networking / I&D): DNI + participantes, para cobertura individual.
+    dni:dniP,
+    nombre:String(r.nombre||r.Nombre||"").trim(),
+    dnis:parseDnisCsv(r.dnis||r.DNIs||"", dniP)
   };
 }
 // Identidad de un documento = su carpeta de Drive. El backend la construye a partir de
@@ -1734,14 +1978,18 @@ function normalizarAts(r){
 // la carpeta con MÁS robustez que su URL (que puede diferir en formato o venir vacía en filas
 // antiguas). Se usa para el dedup "última subida gana" del ciclo de revisión.
 function atsDocKey(x){
-  var logico=[x.tipo,x.cliente,x.circuito,x.cuadrilla,x.area,x.fecha].map(function(s){return norm(s);}).join("|");
+  // Incluye el DNI (áreas por persona): dos personas distintas que suben el MISMO
+  // cliente/circuito/cuadrilla/fecha por separado NO deben colapsar en un solo doc
+  // (undercount de cobertura individual). En cuadrilla x.dni="" → no cambia su clave.
+  var logico=[x.tipo,x.cliente,x.circuito,x.cuadrilla,x.area,x.fecha,x.dni||""].map(function(s){return norm(s);}).join("|");
   if(logico.replace(/\|/g,"")) return "k:"+logico;                                  // identidad lógica (habitual)
   return "u:"+String(x.carpeta||"").replace(/[?#].*$/,"").replace(/\/+$/,"").toLowerCase();  // respaldo por URL
 }
-function cargarAts(){
+function cargarAts(onReady){
+  var done=function(){ if(typeof onReady==="function"){ try{ onReady(); }catch(e){} } };
   var kp=document.getElementById("kpisAts");
   if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)){
-    APP.ats=[]; APP.atsCargado=true; APP.atsError=false; renderAts(); return;
+    APP.ats=[]; APP.atsCargado=true; APP.atsError=false; renderAts(); done(); return;
   }
   if(kp) kp.innerHTML='<div class="load-note" style="grid-column:1/-1"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>';
   var url=CONFIG.ATS_ENDPOINT_URL+(CONFIG.ATS_ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=registros";
@@ -1761,10 +2009,10 @@ function cargarAts(){
       // cuadrilla lo volvió a subir, la subida nueva SUPERA a la anulada → deja de aparecer/
       // contar en Anulados y pasa a "Por revisar" (y luego a "Aprobado" cuando el jefe aprueba).
       var seen={}; APP.ats=lista.filter(function(x){ var k=atsDocKey(x); if(seen[k]) return false; seen[k]=1; return true; });
-      APP.atsCargado=true; APP.atsError=false; renderAts();
+      APP.atsCargado=true; APP.atsError=false; renderAts(); done();
     }).catch(function(){
       if(intentos<MAX){ setTimeout(pedir, 1200); return; }
-      APP.ats=[]; APP.atsCargado=true; APP.atsError=true; renderAts();
+      APP.ats=[]; APP.atsCargado=true; APP.atsError=true; renderAts(); done();
     });
   })();
 }
