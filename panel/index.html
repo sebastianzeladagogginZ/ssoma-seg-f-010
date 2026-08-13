@@ -439,7 +439,9 @@
         <div class="filters">
           <input type="search" id="search" placeholder="Buscar ítem, recurso, cuadrilla, responsable…">
           <select id="fEstado"><option value="">Todos los estados</option><option>Requiere cambio</option><option>No tiene</option></select>
+          <select id="fCuadrilla"><option value="">Todas las cuadrillas</option></select>
           <select id="fSeccion"><option value="">Todas las secciones</option></select>
+          <select id="fItem"><option value="">Todos los ítems</option></select>
           <select id="fLev"><option value="">Todo el levantamiento</option><option value="abiertas">Abiertas (pend. + proceso)</option><option value="pendiente">Pendiente</option><option value="en_proceso">En revisión</option><option value="levantado">Levantado</option><option value="rechazado">Rechazado SSOMA</option></select>
           <span class="count-tag" id="obsCount"></span>
         </div>
@@ -661,7 +663,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V36";
+var PANEL_VERSION = "V37";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -760,7 +762,7 @@ function generarDemo(){
 /* ============================================================
    ESTADO DE LA APP
    ============================================================ */
-var APP = { user:null, token:null, userAreas:[], fArea:"", fDiv:"", datos:[], filtros:{q:"",estado:"",seccion:"",lev:""},
+var APP = { user:null, token:null, userAreas:[], fArea:"", fDiv:"", datos:[], filtros:{q:"",estado:"",seccion:"",cuadrilla:"",item:"",lev:""},
   demo:true, cargando:false, error:false, pollTimer:null,
   historico:null, historicoTotalGlobal:0, pintadoDeCache:false,
   ats:[], atsCargado:false, atsError:false, filtrosAts:{q:"",tipo:"",periodo:"",estado:""},
@@ -1127,11 +1129,14 @@ var _bh=document.getElementById("brandHome"); if(_bh) _bh.onclick=function(){ na
 
 // Atajo desde las tarjetas KPI del Resumen → Observaciones ya filtradas
 function irAObservaciones(filtros){
-  APP.filtros={q:"",estado:"",seccion:"",lev:""};
+  APP.filtros={q:"",estado:"",seccion:"",cuadrilla:"",item:"",lev:""};
   for(var k in filtros){ APP.filtros[k]=filtros[k]; }
   var s=document.getElementById("search"); if(s) s.value="";
   var fe=document.getElementById("fEstado"); if(fe) fe.value=APP.filtros.estado||"";
+  poblarCuadrillas(); poblarSecciones(); poblarItems();
+  var fcu=document.getElementById("fCuadrilla"); if(fcu) fcu.value=APP.filtros.cuadrilla||"";
   var fsq=document.getElementById("fSeccion"); if(fsq) fsq.value=APP.filtros.seccion||"";
+  var fit=document.getElementById("fItem"); if(fit) fit.value=APP.filtros.item||"";
   var fl=document.getElementById("fLev"); if(fl) fl.value=APP.filtros.lev||"";
   navTo("observaciones");
 }
@@ -1151,10 +1156,42 @@ function poblarSecciones(){
     seccionesVigentes().map(function(s){return '<option value="'+esc(s)+'">'+esc(s)+'</option>';}).join("");
   fs.value=prev||"";
 }
+// Cuadrillas / ítems presentes en el alcance actual (datosArea = ya filtrado por
+// área/división, NO por los filtros de observación) → opciones útiles y sin circularidad.
+function cuadrillasVigentes(){
+  var seen={}, out=[];
+  datosArea().forEach(function(o){ var c=(o.cuadrilla==null?"":String(o.cuadrilla)).trim(); if(c && !seen[c]){ seen[c]=1; out.push(c); } });
+  out.sort(function(a,b){ var na=parseInt(a,10), nb=parseInt(b,10); if(!isNaN(na)&&!isNaN(nb)) return na-nb; return a<b?-1:1; });
+  return out;
+}
+function poblarCuadrillas(){
+  var fc=document.getElementById("fCuadrilla"); if(!fc) return;
+  var opts=cuadrillasVigentes(), prev=APP.filtros.cuadrilla||"";
+  if(prev && opts.indexOf(prev)<0){ prev=""; APP.filtros.cuadrilla=""; }   // el valor ya no existe en el alcance
+  fc.innerHTML='<option value="">Todas las cuadrillas</option>'+
+    opts.map(function(c){return '<option value="'+esc(c)+'">N° '+esc(c)+'</option>';}).join("");
+  fc.value=prev;
+}
+function itemsVigentes(){
+  var seen={}, out=[];
+  datosArea().forEach(function(o){ var it=(o.item==null?"":String(o.item)).trim(); if(it && !seen[it]){ seen[it]=1; out.push(it); } });
+  out.sort(function(a,b){ return a.toLowerCase()<b.toLowerCase()?-1:1; });
+  return out;
+}
+function poblarItems(){
+  var fi=document.getElementById("fItem"); if(!fi) return;
+  var opts=itemsVigentes(), prev=APP.filtros.item||"";
+  if(prev && opts.indexOf(prev)<0){ prev=""; APP.filtros.item=""; }
+  fi.innerHTML='<option value="">Todos los ítems</option>'+
+    opts.map(function(it){return '<option value="'+esc(it)+'">'+esc(it)+'</option>';}).join("");
+  fi.value=prev;
+}
 function refrescar(){
   if(!APP.user) return;
   poblarAreaSelect();
   poblarSecciones();
+  poblarCuadrillas();
+  poblarItems();
   var et = APP.fDiv ? divName(APP.fDiv)
          : APP.fArea ? APP.fArea
          : (APP.userAreas.indexOf("*")>=0 ? "Todas las áreas"
@@ -2262,7 +2299,9 @@ function renderObservaciones(){
   var d=datosArea(), f=APP.filtros;
   var rows=d.filter(function(o){
     if(f.estado && o.estado!==f.estado) return false;
+    if(f.cuadrilla && String(o.cuadrilla==null?"":o.cuadrilla).trim()!==f.cuadrilla) return false;
     if(f.seccion && o.seccion!==f.seccion) return false;
+    if(f.item && o.item!==f.item) return false;
     if(f.lev){
       if(f.lev==="abiertas"){ if(o.levantamiento!=="pendiente" && o.levantamiento!=="en_proceso") return false; }
       else if(o.levantamiento!==f.lev) return false;
@@ -2299,6 +2338,8 @@ function renderObservaciones(){
 document.getElementById("search").oninput=function(){ APP.filtros.q=this.value; renderObservaciones(); };
 document.getElementById("fEstado").onchange=function(){ APP.filtros.estado=this.value; renderObservaciones(); };
 document.getElementById("fSeccion").onchange=function(){ APP.filtros.seccion=this.value; renderObservaciones(); };
+document.getElementById("fCuadrilla").onchange=function(){ APP.filtros.cuadrilla=this.value; renderObservaciones(); };
+document.getElementById("fItem").onchange=function(){ APP.filtros.item=this.value; renderObservaciones(); };
 document.getElementById("fLev").onchange=function(){ APP.filtros.lev=this.value; renderObservaciones(); };
 
 /* ============================================================
