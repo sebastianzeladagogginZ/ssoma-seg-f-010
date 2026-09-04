@@ -206,6 +206,28 @@
   .act.green{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none}
   .act.blue{background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;border:none}
   .act.ghost-bad{border-color:#fecaca;color:#b91c1c;background:#fef2f2}
+  /* ===== Levantamiento masivo (selección múltiple en Observaciones) ===== */
+  table.data th.selcol,table.data td.selcol{width:40px;text-align:center;padding-left:14px;padding-right:4px}
+  table.data td.selcol input,table.data th.selcol input{width:17px;height:17px;cursor:pointer;accent-color:var(--brand2);margin:0;vertical-align:middle}
+  table.data tr.row-sel td{background:#eff6ff}
+  table.data tr.row-sel:hover td{background:#e0efff}
+  #bulkBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(180%);z-index:9500;
+    display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;max-width:calc(100% - 24px);
+    background:#0f172a;color:#fff;padding:11px 16px;border-radius:14px;box-shadow:0 14px 44px rgba(2,6,23,.45);
+    transition:transform .2s ease;font-size:13px}
+  #bulkBar.show{transform:translateX(-50%) translateY(0)}
+  #bulkBar .bb-count{font-weight:800;font-size:13.5px}
+  #bulkBar .bb-link{background:none;border:none;color:#93c5fd;font:inherit;cursor:pointer;text-decoration:underline;padding:2px 0}
+  #bulkBar .bb-btn{border:none;border-radius:10px;padding:9px 15px;font:inherit;font-weight:700;cursor:pointer;transition:transform .1s}
+  #bulkBar .bb-btn:hover{transform:translateY(-1px)}
+  #bulkBar .bb-btn:disabled{opacity:.5;cursor:default;transform:none}
+  #bulkBar .bb-ok{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff}
+  #bulkBar .bb-bad{background:#fee2e2;color:#b91c1c}
+  #bulkBar .bb-blue{background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff}
+  @media(max-width:700px){
+    #bulkBar{left:8px;right:8px;bottom:8px;max-width:none;transform:translateY(200%);justify-content:center}
+    #bulkBar.show{transform:translateY(0)}
+  }
   .timeline{margin-top:8px;border-left:2px solid var(--line);padding-left:16px}
   .timeline .ev{position:relative;padding:0 0 16px}
   .timeline .ev:before{content:"";position:absolute;left:-21px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--brand2);border:2px solid #fff;box-shadow:0 0 0 2px var(--line)}
@@ -447,7 +469,7 @@
         </div>
         <div class="tbl-wrap">
           <table class="data">
-            <thead><tr><th>Fecha</th><th>Área</th><th>Cuadrilla</th><th>Sección</th><th>Ítem observado</th><th>Recurso / Técnico</th><th>Estado</th><th>Levantamiento</th></tr></thead>
+            <thead><tr><th class="selcol"><input type="checkbox" id="obsSelAll" aria-label="Seleccionar todas las observaciones visibles" title="Seleccionar / deseleccionar todas las visibles"></th><th>Fecha</th><th>Área</th><th>Cuadrilla</th><th>Sección</th><th>Ítem observado</th><th>Recurso / Técnico</th><th>Estado</th><th>Levantamiento</th></tr></thead>
             <tbody id="obsBody"></tbody>
           </table>
         </div>
@@ -663,7 +685,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V37";
+var PANEL_VERSION = "V38";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -762,7 +784,7 @@ function generarDemo(){
 /* ============================================================
    ESTADO DE LA APP
    ============================================================ */
-var APP = { user:null, token:null, userAreas:[], fArea:"", fDiv:"", datos:[], filtros:{q:"",estado:"",seccion:"",cuadrilla:"",item:"",lev:""},
+var APP = { user:null, token:null, userAreas:[], fArea:"", fDiv:"", datos:[], sel:{}, _selIds:[], filtros:{q:"",estado:"",seccion:"",cuadrilla:"",item:"",lev:""},
   demo:true, cargando:false, error:false, pollTimer:null,
   historico:null, historicoTotalGlobal:0, pintadoDeCache:false,
   ats:[], atsCargado:false, atsError:false, filtrosAts:{q:"",tipo:"",periodo:"",estado:""},
@@ -1004,7 +1026,7 @@ function renderCargando(){
   document.getElementById("areaLabel").textContent="Cargando…";
   var sk=""; for(var i=0;i<6;i++) sk+='<div class="kpi kpi-skel skel"></div>';
   var kp=document.getElementById("kpis"); if(kp) kp.innerHTML=sk;
-  var body=document.getElementById("obsBody"); if(body) body.innerHTML='<tr><td colspan="8"><div class="load-note"><span class="spinner"></span> Cargando observaciones…</div></td></tr>';
+  var body=document.getElementById("obsBody"); if(body) body.innerHTML='<tr><td colspan="9"><div class="load-note"><span class="spinner"></span> Cargando observaciones…</div></td></tr>';
   ["trendChart","estadoChart","seccionChart","avanceChart"].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML='<div class="load-note"><span class="spinner"></span> Cargando…</div>'; });
 }
 // Estado de error de conexión (producción). No se muestran datos de ejemplo.
@@ -1016,7 +1038,7 @@ function renderErrorConexion(){
     '<p>Para no inducir a error, no se muestran datos de ejemplo. Verifica la conexión e inténtalo otra vez.</p>'+
     '<button id="retryBtn">Reintentar</button></div>';
   ["trendChart","estadoChart","seccionChart","avanceChart"].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=""; });
-  var body=document.getElementById("obsBody"); if(body) body.innerHTML='<tr><td colspan="8"><div class="load-note" style="color:#991b1b">Sin conexión con la base de datos.</div></td></tr>';
+  var body=document.getElementById("obsBody"); if(body) body.innerHTML='<tr><td colspan="9"><div class="load-note" style="color:#991b1b">Sin conexión con la base de datos.</div></td></tr>';
   var r1=document.getElementById("retryBtn"); if(r1) r1.onclick=function(){ cargarDatos(); };
 }
 
@@ -1100,6 +1122,7 @@ function navTo(v){
   document.getElementById("viewTitle").textContent=TITLES[v][0];
   document.getElementById("viewSub").textContent=TITLES[v][1];
   cerrarMenu();
+  if(v!=="observaciones"){ APP.sel={}; var _bb=document.getElementById("bulkBar"); if(_bb) _bb.classList.remove("show"); }
   if(v==="resumen") renderResumen();
   else if(v==="observaciones") renderObservaciones();
   else if(v==="evidencias") renderEvidencias();
@@ -2315,11 +2338,22 @@ function renderObservaciones(){
 
   document.getElementById("obsCount").textContent=rows.length+" observación(es)";
   var body=document.getElementById("obsBody");
-  if(!rows.length){ body.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="em">🎉</div>Sin observaciones con estos filtros.</div></td></tr>'; return; }
+  // Selección masiva: solo pueden quedar seleccionadas observaciones VISIBLES y accionables
+  // para el rol actual. Poda las que ya no cumplen (cambio de filtro, refresco, etc.).
+  var selectables=rows.filter(esSeleccionableMasivo);
+  var visSel={}; selectables.forEach(function(o){ visSel[o.id]=1; });
+  Object.keys(APP.sel).forEach(function(id){ if(!visSel[id]) delete APP.sel[id]; });
+  APP._selIds=selectables.map(function(o){ return o.id; });
+
+  if(!rows.length){ body.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="em">🎉</div>Sin observaciones con estos filtros.</div></td></tr>'; sincronizarSelAll(); actualizarBarraMasiva(); return; }
   body.innerHTML=rows.map(function(o){
     var l=EST_LEV[o.levantamiento]||EST_LEV.pendiente;
     var estCls=o.estado==="No tiene"?"bad":"warn";
-    return '<tr data-id="'+esc(o.id)+'" tabindex="0" role="button" aria-label="Ver detalle: '+esc(o.item)+'">'+
+    var chk=esSeleccionableMasivo(o)
+      ? '<td class="selcol" data-label="Sel"><input type="checkbox" class="rowSel" data-id="'+esc(o.id)+'"'+(APP.sel[o.id]?' checked':'')+' aria-label="Seleccionar esta observación"></td>'
+      : '<td class="selcol" data-label="Sel"></td>';
+    return '<tr data-id="'+esc(o.id)+'" tabindex="0" role="button" aria-label="Ver detalle: '+esc(o.item)+'"'+(APP.sel[o.id]?' class="row-sel"':'')+'>'+
+      chk+
       '<td class="tnum" data-label="Fecha">'+esc(fechaCorta(o.fecha))+'</td>'+
       '<td data-label="Área" style="font-size:12px;font-weight:600;color:#075985;white-space:normal;max-width:160px;line-height:1.25">'+esc(o.area)+'</td>'+
       '<td data-label="Cuadrilla"><b>N° '+esc(o.cuadrilla)+'</b></td>'+
@@ -2331,9 +2365,34 @@ function renderObservaciones(){
       '</tr>';
   }).join("");
   body.querySelectorAll("tr[data-id]").forEach(function(tr){
-    tr.onclick=function(){ abrirDrawer(tr.dataset.id); };
-    tr.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); abrirDrawer(tr.dataset.id); } };
+    tr.onclick=function(e){ if(e.target && e.target.closest && e.target.closest(".selcol")) return; abrirDrawer(tr.dataset.id); };
+    tr.onkeydown=function(e){ if(e.target && e.target.classList && e.target.classList.contains("rowSel")) return; if(e.key==="Enter"||e.key===" "){ e.preventDefault(); abrirDrawer(tr.dataset.id); } };
   });
+  body.querySelectorAll("input.rowSel").forEach(function(cb){
+    cb.onclick=function(e){ e.stopPropagation(); };
+    cb.onchange=function(){
+      if(cb.checked) APP.sel[cb.dataset.id]=1; else delete APP.sel[cb.dataset.id];
+      var tr=cb.closest("tr"); if(tr) tr.classList.toggle("row-sel",cb.checked);
+      sincronizarSelAll(); actualizarBarraMasiva();
+    };
+  });
+  sincronizarSelAll();
+  var selAll=document.getElementById("obsSelAll");
+  if(selAll) selAll.onchange=function(){
+    if(selAll.checked){ APP._selIds.forEach(function(id){ APP.sel[id]=1; }); }
+    else { APP._selIds.forEach(function(id){ delete APP.sel[id]; }); }
+    renderObservaciones();
+  };
+  actualizarBarraMasiva();
+}
+// Marca el checkbox de cabecera como todo/nada/parcial según lo seleccionado.
+function sincronizarSelAll(){
+  var selAll=document.getElementById("obsSelAll"); if(!selAll) return;
+  var total=(APP._selIds||[]).length;
+  var nSel=(APP._selIds||[]).filter(function(id){ return APP.sel[id]; }).length;
+  selAll.disabled = total===0;
+  selAll.checked = total>0 && nSel===total;
+  selAll.indeterminate = nSel>0 && nSel<total;
 }
 document.getElementById("search").oninput=function(){ APP.filtros.q=this.value; renderObservaciones(); };
 document.getElementById("fEstado").onchange=function(){ APP.filtros.estado=this.value; renderObservaciones(); };
@@ -2341,6 +2400,204 @@ document.getElementById("fSeccion").onchange=function(){ APP.filtros.seccion=thi
 document.getElementById("fCuadrilla").onchange=function(){ APP.filtros.cuadrilla=this.value; renderObservaciones(); };
 document.getElementById("fItem").onchange=function(){ APP.filtros.item=this.value; renderObservaciones(); };
 document.getElementById("fLev").onchange=function(){ APP.filtros.lev=this.value; renderObservaciones(); };
+
+/* ============================================================
+   LEVANTAMIENTO MASIVO (selección múltiple)
+   Reutiliza los MISMOS endpoints que la acción individual, en serie.
+   - SSOMA (área="*" con permiso): aprobar / rechazar en lote lo que está "En revisión".
+   - Jefe de área: adjuntar UNA evidencia + comentario a varias observaciones a la vez.
+   ============================================================ */
+// ¿Esta observación puede seleccionarse para una acción masiva del rol actual?
+function esSeleccionableMasivo(o){
+  var isSSOMA=APP.user && APP.user.area==="*";
+  var puedeAprobar=isSSOMA && !(APP.user && APP.user.puede_aprobar===false);
+  if(puedeAprobar) return !!o.evidencia_lev && o.levantamiento==="en_proceso";  // SSOMA: hay evidencia por revisar
+  if(!isSSOMA)     return o.levantamiento!=="levantado";                         // Jefe: cualquiera aún no cerrada
+  return false;                                                                   // SSOMA visualización: sin acciones
+}
+function idsMasivo(){ return Object.keys(APP.sel||{}).filter(function(id){ return APP.sel[id]; }); }
+function obsMasivo(){ return idsMasivo().map(function(id){ return APP.datos.find(function(x){ return x.id===id; }); }).filter(Boolean); }
+
+// Pinta/oculta la barra flotante de acciones según lo seleccionado y el rol.
+function actualizarBarraMasiva(){
+  var bar=document.getElementById("bulkBar"); if(!bar) return;
+  var vObs=document.getElementById("view-observaciones");
+  var onObs=vObs && vObs.classList.contains("active");
+  var n=idsMasivo().length;
+  if(!onObs || n===0){ bar.classList.remove("show"); bar.innerHTML=""; return; }
+  var isSSOMA=APP.user && APP.user.area==="*";
+  var puedeAprobar=isSSOMA && !(APP.user && APP.user.puede_aprobar===false);
+  var total=(APP._selIds||[]).length;
+  var acciones = puedeAprobar
+    ? '<button class="bb-btn bb-ok" id="bbApprove">✓ Aprobar ('+n+')</button>'+
+      '<button class="bb-btn bb-bad" id="bbReject">✗ Rechazar ('+n+')</button>'
+    : (!isSSOMA ? '<button class="bb-btn bb-blue" id="bbLift">📤 Levantar ('+n+')</button>' : '');
+  bar.innerHTML='<span class="bb-count">'+n+' seleccionada'+(n===1?'':'s')+'</span>'+
+    (total>n ? '<button class="bb-link" id="bbAll">Todas ('+total+')</button>' : '')+
+    '<button class="bb-link" id="bbClear">Limpiar</button>'+
+    acciones;
+  bar.classList.add("show");
+  var b;
+  if((b=document.getElementById("bbAll")))     b.onclick=function(){ (APP._selIds||[]).forEach(function(id){ APP.sel[id]=1; }); renderObservaciones(); };
+  if((b=document.getElementById("bbClear")))   b.onclick=function(){ APP.sel={}; renderObservaciones(); };
+  if((b=document.getElementById("bbApprove"))) b.onclick=aprobarMasivo;
+  if((b=document.getElementById("bbReject")))  b.onclick=rechazarMasivo;
+  if((b=document.getElementById("bbLift")))    b.onclick=abrirLevantarMasivo;
+}
+
+// Ejecuta worker(o)->Promise sobre cada observación EN SERIE, con progreso en el botón
+// y resumen final. En serie a propósito: Apps Script es lento y tiene cuotas.
+function bulkRun(items, worker, verbo, btnId, onDone){
+  var bar=document.getElementById("bulkBar");
+  var botones=bar?bar.querySelectorAll("button"):[];
+  Array.prototype.forEach.call(botones,function(b){ b.disabled=true; });
+  var btn=document.getElementById(btnId);
+  var total=items.length, i=0, ok=0, errs=[];
+  function progreso(){ if(btn) btn.textContent=verbo+" "+i+"/"+total+"…"; }
+  function next(){
+    if(i>=total){ Array.prototype.forEach.call(botones,function(b){ b.disabled=false; }); onDone(ok,total,errs); return; }
+    var o=items[i];
+    Promise.resolve().then(function(){ return worker(o); })
+      .then(function(){ ok++; }, function(e){ errs.push((o.item||o.id||"ítem")+": "+(e||"error")); })
+      .then(function(){ i++; progreso(); next(); });
+  }
+  progreso(); next();
+}
+
+/* ---- SSOMA: aprobar en lote ---- */
+function aprobarMasivo(){
+  var obs=obsMasivo().filter(function(o){ return o.levantamiento==="en_proceso"; });
+  if(!obs.length){ toast("No hay observaciones 'En revisión' seleccionadas.","bad"); return; }
+  if(!confirm("Vas a aprobar y validar "+obs.length+" levantamiento(s) como SSOMA.\n\n¿Continuar?")) return;
+  if(APP.demo || !tieneEndpoint()){ obs.forEach(function(o){ o.levantamiento="levantado"; o.soma_rechazo=false; }); finAprobMasivo(obs.length,obs.length,[]); return; }
+  bulkRun(obs, function(o){
+    return enviarAccion("aprobar_levantamiento",o).then(function(res){ if(res&&res.ok===false) throw errTxt(res); o.levantamiento="levantado"; o.soma_rechazo=false; });
+  }, "Aprobando", "bbApprove", finAprobMasivo);
+}
+function finAprobMasivo(ok,total,errs){
+  APP.sel={};
+  if(ok===total)   toast("✓ "+ok+" levantamiento(s) aprobado(s) por SSOMA","ok");
+  else if(ok>0)    toast("Se aprobaron "+ok+" de "+total+". Revisa: "+errs.slice(0,2).join(" · "),"bad");
+  else             toast("No se pudo aprobar. "+(errs[0]||""),"bad");
+  recargarTrasAccion();
+}
+
+/* ---- SSOMA: rechazar en lote (motivo compartido) ---- */
+function rechazarMasivo(){
+  var obs=obsMasivo().filter(function(o){ return o.levantamiento==="en_proceso"; });
+  if(!obs.length){ toast("No hay observaciones 'En revisión' seleccionadas.","bad"); return; }
+  modalMasivo({
+    titulo:"Rechazar "+obs.length+" levantamiento(s)",
+    aviso:"Se eliminará la evidencia de la nube de cada una y deberán gestionarse de nuevo. El mismo motivo se enviará a todos los jefes.",
+    conArchivo:false, requiereTexto:true,
+    placeholder:"Motivo del rechazo (obligatorio, se envía a los jefes)…",
+    okTxt:"Rechazar "+obs.length, okColor:"#dc2626",
+    onOk:function(texto){
+      if(APP.demo || !tieneEndpoint()){ obs.forEach(function(o){ o.levantamiento="rechazado"; o.soma_rechazo=true; o.evidencia_lev=false; o.evidencia_url=""; o.mensaje_ssoma=texto; }); finRechMasivo(obs.length,obs.length,[]); return; }
+      bulkRun(obs, function(o){
+        return enviarAccion("rechazar_levantamiento",o,{texto:texto}).then(function(res){ if(res&&res.ok===false) throw errTxt(res); o.levantamiento="rechazado"; o.soma_rechazo=true; o.evidencia_lev=false; o.evidencia_url=""; o.mensaje_ssoma=texto; });
+      }, "Rechazando", "bbReject", finRechMasivo);
+    }
+  });
+}
+function finRechMasivo(ok,total,errs){
+  APP.sel={};
+  if(ok===total)   toast("🚫 "+ok+" evidencia(s) rechazada(s) y eliminada(s) de la nube","bad");
+  else if(ok>0)    toast("Se rechazaron "+ok+" de "+total+". "+errs.slice(0,2).join(" · "),"bad");
+  else             toast("No se pudo rechazar. "+(errs[0]||""),"bad");
+  recargarTrasAccion();
+}
+
+/* ---- Jefe: subir UNA evidencia + comentario a varias observaciones ---- */
+function abrirLevantarMasivo(){
+  var obs=obsMasivo().filter(function(o){ return o.levantamiento!=="levantado"; });
+  if(!obs.length){ toast("No hay observaciones pendientes seleccionadas.","bad"); return; }
+  modalMasivo({
+    titulo:"Levantar "+obs.length+" observación(es)",
+    aviso:"Se adjuntará la MISMA evidencia y el mismo comentario a las "+obs.length+" observaciones seleccionadas. Todas pasarán a 'En revisión' para que SSOMA las valide.",
+    conArchivo:true, requiereArchivoOTexto:true,
+    placeholder:"Comentario para SSOMA (qué se hizo)… — opcional si adjuntas evidencia",
+    okTxt:"Enviar a SSOMA", okColor:"#0284c7",
+    onOk:function(texto, files){ subirEvidenciaMasiva(obs, files, texto); }
+  });
+}
+function subirEvidenciaMasiva(obs, files, comentario){
+  if(APP.demo || !tieneEndpoint()){
+    obs.forEach(function(o){ if(files&&files.length) o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; if(comentario) o.mensaje_jefe=comentario; });
+    finLevantaMasivo(obs.length,obs.length,[]); return;
+  }
+  // Lee los archivos UNA vez y reusa el base64 en cada observación (evita releer N veces).
+  leerTodos(files, function(err, payloads){
+    if(err){ toast("No se pudo leer la evidencia: "+err,"bad"); return; }
+    bulkRun(obs, function(o){
+      var chain=Promise.resolve();
+      payloads.forEach(function(p,idx){
+        chain=chain.then(function(){
+          var body={action:"subir_evidencia_levantamiento",id:o.id,area:o.area,fecha:o.fecha,nombre:p.nombre,mime:p.mime,contenido:p.contenido};
+          if(comentario && idx===0) body.mensaje_jefe=comentario;   // el comentario va una sola vez por observación
+          return apiPost(body).then(function(res){ if(res&&res.ok===false) throw errTxt(res); });
+        });
+      });
+      if(!payloads.length && comentario){
+        chain=chain.then(function(){ return enviarAccion("guardar_mensaje",o,{rol:"jefe",texto:comentario}).then(function(res){ if(res&&res.ok===false) throw errTxt(res); }); });
+      }
+      return chain.then(function(){ if(payloads.length){ o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; } if(comentario) o.mensaje_jefe=comentario; });
+    }, "Enviando", "bbLift", finLevantaMasivo);
+  });
+}
+function finLevantaMasivo(ok,total,errs){
+  APP.sel={};
+  if(ok===total)   toast("✓ "+ok+" observación(es) enviada(s) a SSOMA","ok");
+  else if(ok>0)    toast("Se enviaron "+ok+" de "+total+". Revisa: "+errs.slice(0,2).join(" · "),"bad");
+  else             toast("No se pudo enviar. "+(errs[0]||""),"bad");
+  recargarTrasAccion();
+}
+// Lee todos los archivos a base64 en serie. cb(err, [{nombre,mime,contenido}]).
+function leerTodos(files, cb){
+  var out=[]; if(!files || !files.length){ cb(null,out); return; }
+  var arr=Array.prototype.slice.call(files), i=0;
+  (function sig(){
+    if(i>=arr.length){ cb(null,out); return; }
+    leerArchivo(arr[i], function(err, base64, mime, nombre){
+      if(err){ cb((arr[i].name||"archivo")+": "+err); return; }
+      out.push({nombre:nombre,mime:mime,contenido:base64}); i++; sig();
+    });
+  })();
+}
+
+// Modal genérico para las acciones masivas (rechazo con motivo / levantamiento con evidencia).
+function modalMasivo(opt){
+  var wrap=document.createElement("div");
+  wrap.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.5);display:grid;place-items:center;z-index:9999;padding:16px";
+  var fileHtml=opt.conArchivo
+    ? '<label class="file-pick" style="margin:0 0 10px"><span style="font-size:16px">📎</span><span id="mmFileName">Adjuntar evidencia (foto o PDF) para todas…</span>'+
+      '<input type="file" id="mmFile" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png" multiple style="display:none"></label>'
+    : '';
+  wrap.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:460px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3)">'+
+    '<h3 style="margin:0 0 6px;font-size:16px;color:#0f172a">'+esc(opt.titulo)+'</h3>'+
+    (opt.aviso?'<p style="margin:0 0 14px;font-size:13px;color:#64748b">'+esc(opt.aviso)+'</p>':'')+
+    fileHtml+
+    '<textarea id="mmMsg" class="msg-input" placeholder="'+esc(opt.placeholder||"")+'"></textarea>'+
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">'+
+    '<button id="mmCancel" style="padding:9px 16px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;cursor:pointer;font:inherit">Cancelar</button>'+
+    '<button id="mmOk" style="padding:9px 18px;border:none;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;color:#fff;background:'+(opt.okColor||"#0284c7")+'">'+esc(opt.okTxt||"Confirmar")+'</button>'+
+    '</div></div>';
+  document.body.appendChild(wrap);
+  var ta=wrap.querySelector("#mmMsg"), fi=wrap.querySelector("#mmFile");
+  if(fi) fi.onchange=function(){ var n=wrap.querySelector("#mmFileName"); if(n) n.textContent=fi.files.length?(fi.files.length+" archivo(s) ✓"):"Adjuntar evidencia (foto o PDF) para todas…"; };
+  function cerrar(){ if(wrap.parentNode) document.body.removeChild(wrap); }
+  wrap.querySelector("#mmCancel").onclick=cerrar;
+  wrap.onclick=function(e){ if(e.target===wrap) cerrar(); };
+  wrap.querySelector("#mmOk").onclick=function(){
+    var texto=ta?ta.value.trim():"";
+    var files=fi?fi.files:null;
+    if(opt.requiereTexto && !texto){ toast("Escribe el motivo antes de continuar.","bad"); if(ta) ta.focus(); return; }
+    if(opt.requiereArchivoOTexto && (!files||!files.length) && !texto){ toast("Adjunta una evidencia o escribe un comentario.","bad"); return; }
+    cerrar();
+    opt.onOk(texto, files);
+  };
+  if(ta) ta.focus();
+}
 
 /* ============================================================
    DRAWER de detalle
@@ -2797,6 +3054,8 @@ function iconClock(){return '<svg viewBox="0 0 24 24" fill="none" stroke="curren
 function iconBan(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>';}
 
 /* ===== init ===== */
+// Barra flotante de acciones masivas (levantamiento en masivo) — se rellena en actualizarBarraMasiva().
+(function(){ if(!document.getElementById("bulkBar")){ var b=document.createElement("div"); b.id="bulkBar"; document.body.appendChild(b); } })();
 rosterReady = cargarAreas();
 </script>
 </body>
