@@ -626,6 +626,17 @@
 
       <!-- ===== ATS · CHARLA DE 5 MIN ===== -->
       <section class="view" id="view-ats">
+        <style>
+          /* Cola "Por revisar" + historial por mes plegable (tabla ATS) */
+          #view-ats .ats-queue-head td{background:#fffbeb;border-top:2px solid #f59e0b;font-weight:800;color:#92400e;font-size:13.5px;padding:11px 14px}
+          #view-ats .ats-queue-head .ats-qh{font-weight:600;color:#b45309;font-size:12px;margin-left:8px}
+          #view-ats .ats-sec-head td{background:#eef2f7;font-weight:800;color:#334155;font-size:13px;padding:9px 14px;border-top:2px solid #cbd5e1}
+          #view-ats .ats-mhead td{background:#f8fafc;font-weight:700;color:#0f172a;font-size:13px;padding:9px 14px;border-top:1px solid #e2e8f0;user-select:none}
+          #view-ats .ats-mhead:hover td{background:#eef2f7}
+          #view-ats .ats-mchev{display:inline-block;width:16px;color:#0284c7;font-weight:800}
+          #view-ats .ats-mname{text-transform:capitalize}
+          #view-ats .ats-mcount{margin-left:10px;font-weight:600;color:#94a3b8;font-size:12px}
+        </style>
         <div class="filters">
           <input type="search" id="atsSearch" placeholder="Buscar cliente, circuito, cuadrilla…">
           <select id="fTipoAts"><option value="">ATS y Charlas</option><option value="ATS">Solo ATS</option><option value="Charla">Solo Charlas 5 min</option></select>
@@ -2220,33 +2231,87 @@ function renderAts(){
       .sort(function(x,y){return y.value-x.value;}));
   } else { areaCard.style.display="none"; }
 
-  renderAtsTabla(d);
+  renderAtsTabla(base, f.estado);
 }
-function renderAtsTabla(d){
-  var body=document.getElementById("atsBody");
-  if(!d.length){ body.innerHTML='<tr><td colspan="10"><div class="empty-state" style="padding:20px">Sin registros con ese estado.</div></td></tr>'; return; }
-  var rows=d.slice().sort(function(a,b){ return (b.fecha||"").localeCompare(a.fecha||""); }).slice(0,300);
+/* Celdas de una fila ATS (sin el <tr>): se reutilizan en la cola y en los meses. */
+function atsRowCells(r){
   var bAp='padding:5px 10px;border:0;border-radius:8px;background:#16a34a;color:#fff;font:inherit;font-weight:600;font-size:12px;cursor:pointer';
   var bAn='padding:5px 10px;border:1px solid #fecaca;border-radius:8px;background:#fff;color:#b91c1c;font:inherit;font-weight:600;font-size:12px;cursor:pointer;margin-left:4px';
   var bArch='padding:5px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;font:inherit;font-weight:600;font-size:12px;cursor:pointer;margin-left:8px';
-  body.innerHTML=rows.map(function(r){
-    var col=COL_ATS[r.tipo]||"#64748b";
-    var pill='<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:'+col+'">'+esc(r.tipo)+'</span>';
-    var carp=r.carpeta?'<a href="'+esc(r.carpeta)+'" target="_blank" rel="noopener" style="color:#0284c7;font-weight:600">Abrir ▸</a>':'—';
-    var st=estadoInfo(r.estado);
-    var badge='<span'+(r.revisadoPor?' title="Revisado por '+esc(r.revisadoPor)+(r.revisadoEn?" · "+esc(r.revisadoEn):"")+'"':'')+' style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;background:'+st.bg+';color:'+st.fg+'">'+st.label+'</span>';
-    if(st.key==="Anulado" && r.mensaje){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">✗ '+esc(r.mensaje)+'</span>'; }
-    else if(st.key==="Aprobado" && r.revisadoPor){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">'+esc(r.revisadoPor)+'</span>'; }
-    var acc;
-    if(st.key==="Anulado"){ acc='<span style="font-size:11px;color:#94a3b8">Se pidió resubir</span>'+
-      '<button class="ats-archivar" data-c="'+esc(r.carpeta)+'" title="Quitar de Anulados (queda guardado en el registro). Úsalo si ya se corrigió y volvió a subir con otros datos." style="'+bArch+'">Archivar</button>'; }
-    else if(st.key==="Aprobado"){ acc='<button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+';margin-left:0">Anular</button>'; }
-    else { acc='<button class="ats-aprobar" data-c="'+esc(r.carpeta)+'" style="'+bAp+'">Aprobar</button><button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+'">Anular</button>'; }
-    return '<tr><td class="tnum">'+esc(fechaLarga(r.fecha))+'</td><td>'+pill+'</td><td>'+esc(r.cliente||"—")+'</td>'+
-      '<td>'+esc(r.circuito||"—")+'</td><td class="tnum">'+esc(r.cuadrilla||"—")+'</td>'+
-      '<td><b>'+esc(divName(r.area))+'</b><span style="display:block;font-size:11px;color:#94a3b8">'+esc(parentArea(r.area))+'</span></td>'+
-      '<td class="tnum">'+r.archivos+'</td><td>'+badge+'</td><td>'+carp+'</td><td style="white-space:nowrap">'+acc+'</td></tr>';
-  }).join("");
+  var col=COL_ATS[r.tipo]||"#64748b";
+  var pill='<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:'+col+'">'+esc(r.tipo)+'</span>';
+  var carp=r.carpeta?'<a href="'+esc(r.carpeta)+'" target="_blank" rel="noopener" style="color:#0284c7;font-weight:600">Abrir ▸</a>':'—';
+  var st=estadoInfo(r.estado);
+  var badge='<span'+(r.revisadoPor?' title="Revisado por '+esc(r.revisadoPor)+(r.revisadoEn?" · "+esc(r.revisadoEn):"")+'"':'')+' style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;background:'+st.bg+';color:'+st.fg+'">'+st.label+'</span>';
+  if(st.key==="Anulado" && r.mensaje){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">✗ '+esc(r.mensaje)+'</span>'; }
+  else if(st.key==="Aprobado" && r.revisadoPor){ badge+='<span style="display:block;font-size:10.5px;color:#94a3b8;margin-top:3px;max-width:170px;white-space:normal">'+esc(r.revisadoPor)+'</span>'; }
+  var acc;
+  if(st.key==="Anulado"){ acc='<span style="font-size:11px;color:#94a3b8">Se pidió resubir</span>'+
+    '<button class="ats-archivar" data-c="'+esc(r.carpeta)+'" title="Quitar de Anulados (queda guardado en el registro). Úsalo si ya se corrigió y volvió a subir con otros datos." style="'+bArch+'">Archivar</button>'; }
+  else if(st.key==="Aprobado"){ acc='<button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+';margin-left:0">Anular</button>'; }
+  else { acc='<button class="ats-aprobar" data-c="'+esc(r.carpeta)+'" style="'+bAp+'">Aprobar</button><button class="ats-anular" data-c="'+esc(r.carpeta)+'" style="'+bAn+'">Anular</button>'; }
+  return '<td class="tnum">'+esc(fechaLarga(r.fecha))+'</td><td>'+pill+'</td><td>'+esc(r.cliente||"—")+'</td>'+
+    '<td>'+esc(r.circuito||"—")+'</td><td class="tnum">'+esc(r.cuadrilla||"—")+'</td>'+
+    '<td><b>'+esc(divName(r.area))+'</b><span style="display:block;font-size:11px;color:#94a3b8">'+esc(parentArea(r.area))+'</span></td>'+
+    '<td class="tnum">'+r.archivos+'</td><td>'+badge+'</td><td>'+carp+'</td><td style="white-space:nowrap">'+acc+'</td>';
+}
+/* Tabla ATS: cola "Por revisar" arriba + historial completo agrupado por mes (plegable).
+   base = alcance+período+tipo+búsqueda (todos los estados);
+   estadoFilter = "" | "Pendiente" | "Aprobado" | "Anulado" (desde los tiles / el selector). */
+function renderAtsTabla(base, estadoFilter){
+  var body=document.getElementById("atsBody"); if(!body) return;
+  var COLS=10;
+  var byDateDesc=function(a,b){ return (b.fecha||"").localeCompare(a.fecha||""); };
+  var keyOf=function(r){ return estadoInfo(r.estado).key; };
+  function monthSections(list){
+    if(!list.length) return "";
+    var by={}, order=[];
+    list.forEach(function(r){ var ym=String(r.fecha||"").slice(0,7)||"—"; if(!by[ym]){ by[ym]=[]; order.push(ym); } by[ym].push(r); });
+    order.sort(function(x,y){ return x<y?1:(x>y?-1:0); });   // meses más recientes primero
+    var h="";
+    order.forEach(function(ym,idx){
+      var items=by[ym].slice().sort(byDateDesc);
+      var gid="mg_"+ym.replace(/[^0-9]/g,"");
+      var open=(idx===0);                                    // mes más reciente abierto; el resto plegado
+      var nP=0,nA=0,nX=0;
+      items.forEach(function(r){ var k=keyOf(r); if(k==="Pendiente")nP++; else if(k==="Aprobado")nA++; else if(k==="Anulado")nX++; });
+      var meta=[]; if(nP)meta.push(nP+" por revisar"); if(nA)meta.push(nA+" aprob."); if(nX)meta.push(nX+" anul.");
+      h+='<tr class="ats-mhead" data-g="'+gid+'" data-open="'+(open?"1":"0")+'"><td colspan="'+COLS+'">'+
+         '<span class="ats-mchev">'+(open?"▾":"▸")+'</span><span class="ats-mname">'+esc(nombreMes(ym))+'</span>'+
+         '<span class="ats-mcount">'+items.length+(items.length===1?" registro":" registros")+(meta.length?" · "+meta.join(" · "):"")+'</span></td></tr>';
+      items.forEach(function(r){ h+='<tr class="ats-mrow" data-g="'+gid+'"'+(open?"":' style="display:none"')+'>'+atsRowCells(r)+'</tr>'; });
+    });
+    return h;
+  }
+  var html="";
+  if(estadoFilter){
+    // Filtro explícito de un estado (tile o selector): solo ese estado, agrupado por mes.
+    var set=base.filter(function(r){ return keyOf(r)===estadoFilter; });
+    html=monthSections(set) || '<tr><td colspan="'+COLS+'"><div class="empty-state" style="padding:20px">Sin registros con ese estado.</div></td></tr>';
+  } else {
+    // Vista por defecto: cola "Por revisar" arriba + historial (resueltos) por mes.
+    var pend=base.filter(function(r){ return keyOf(r)==="Pendiente"; }).slice().sort(byDateDesc);
+    var resto=base.filter(function(r){ return keyOf(r)!=="Pendiente"; });
+    html+='<tr class="ats-queue-head"><td colspan="'+COLS+'">🕒 Por revisar <b>('+pend.length+')</b>'+(pend.length?'<span class="ats-qh">— aprueba o anula para moverlos al historial</span>':'')+'</td></tr>';
+    if(pend.length){ html+=pend.map(function(r){ return '<tr>'+atsRowCells(r)+'</tr>'; }).join(""); }
+    else { html+='<tr><td colspan="'+COLS+'"><div style="padding:12px 14px;color:#15803d;font-size:13px">✓ No hay documentos por revisar. ¡Todo al día!</div></td></tr>'; }
+    if(resto.length){
+      html+='<tr class="ats-sec-head"><td colspan="'+COLS+'">📁 Historial por mes</td></tr>';
+      html+=monthSections(resto);
+    }
+  }
+  body.innerHTML=html;
+  // Plegar/desplegar meses
+  body.querySelectorAll("tr.ats-mhead").forEach(function(hd){
+    hd.style.cursor="pointer";
+    hd.onclick=function(){
+      var g=hd.getAttribute("data-g"), open=hd.getAttribute("data-open")==="1";
+      hd.setAttribute("data-open", open?"0":"1");
+      var chev=hd.querySelector(".ats-mchev"); if(chev) chev.textContent=open?"▸":"▾";
+      body.querySelectorAll('tr.ats-mrow[data-g="'+g+'"]').forEach(function(r){ r.style.display=open?"none":""; });
+    };
+  });
+  // Acciones de revisión
   body.querySelectorAll(".ats-aprobar").forEach(function(b){ b.onclick=function(){ atsAprobar(b.getAttribute("data-c")); }; });
   body.querySelectorAll(".ats-anular").forEach(function(b){ b.onclick=function(){ atsAnular(b.getAttribute("data-c")); }; });
   body.querySelectorAll(".ats-archivar").forEach(function(b){ b.onclick=function(){ atsArchivar(b.getAttribute("data-c")); }; });
