@@ -657,6 +657,10 @@
           <div class="ch"><h3>Llenado por área ▸ división</h3></div>
           <div class="cb" id="atsArea"></div>
         </div>
+        <div class="card" id="atsRevisoresCard" style="margin-bottom:16px">
+          <div class="ch"><h3>Verificado por jefe</h3><span class="sub" id="atsRevisoresSub"></span></div>
+          <div class="cb" style="overflow-x:auto" id="atsRevisores"></div>
+        </div>
         <div class="tbl-wrap">
           <table class="data">
             <thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Circuito</th><th>Cuadrilla</th><th>Área ▸ División</th><th>Arch.</th><th>Estado</th><th>Carpeta</th><th>Revisión</th></tr></thead>
@@ -2175,6 +2179,48 @@ function atsPendientesReales(list, resueltas){
   });
   return out;
 }
+/* Apartado "Verificado por jefe": agrupa lo revisado (Aprobado/Anulado) por
+   revisadoPor → total, aprobados, anulados y última revisión. Excluye entradas
+   de sistema (Limpieza fantasmas) y sin nombre. Usa el alcance área/división. */
+function renderAtsRevisores(scope){
+  var cont=document.getElementById("atsRevisores"); if(!cont) return;
+  var sub=document.getElementById("atsRevisoresSub");
+  var by={};
+  (scope||[]).forEach(function(r){
+    var kk=estadoInfo(r.estado).key;
+    if(kk!=="Aprobado" && kk!=="Anulado") return;
+    var nom=String(r.revisadoPor||"").trim();
+    if(!nom || nom.toLowerCase().indexOf("limpieza")>=0) return;   // excluir sistema / sin nombre
+    var o=by[nom]||(by[nom]={aprob:0,anul:0,tot:0,ult:""});
+    o.tot++; if(kk==="Aprobado") o.aprob++; else o.anul++;
+    var fr=String(r.revisadoEn||"").slice(0,10);
+    if(fr>o.ult) o.ult=fr;
+  });
+  var lista=Object.keys(by).map(function(n){ var o=by[n]; o.nombre=n; return o; })
+    .sort(function(a,b){ return b.tot-a.tot; });
+  if(sub) sub.textContent = lista.length ? (lista.length+(lista.length===1?" revisor":" revisores")) : "";
+  if(!lista.length){ cont.innerHTML=emptyChart("Aún no hay revisiones registradas en este alcance."); return; }
+  var th="padding:8px 12px;border-bottom:2px solid #e2e8f0;font-size:12px;color:#64748b;text-align:left;white-space:nowrap";
+  var thc=th+";text-align:center";
+  var td="padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:13px";
+  var tdc=td+";text-align:center;font-variant-numeric:tabular-nums";
+  function jefe(n){
+    var i=n.indexOf(" (");
+    if(i<0) return '<b>'+esc(n)+'</b>';
+    return '<b>'+esc(n.slice(0,i))+'</b><span style="display:block;font-size:11px;color:#94a3b8">'+esc(n.slice(i+2).replace(/\)\s*$/,""))+'</span>';
+  }
+  var rows=lista.map(function(o){
+    return '<tr><td style="'+td+'">'+jefe(o.nombre)+'</td>'+
+      '<td style="'+tdc+';font-weight:800">'+o.tot+'</td>'+
+      '<td style="'+tdc+';color:#15803d">'+o.aprob+'</td>'+
+      '<td style="'+tdc+';color:#b91c1c">'+o.anul+'</td>'+
+      '<td style="'+tdc+';color:#475569;white-space:nowrap">'+(o.ult?esc(fechaLarga(o.ult)):"—")+'</td></tr>';
+  }).join("");
+  cont.innerHTML='<table style="width:100%;border-collapse:collapse">'+
+    '<thead><tr><th style="'+th+'">Jefe / revisor</th><th style="'+thc+'">Revisados</th>'+
+    '<th style="'+thc+'">Aprobados</th><th style="'+thc+'">Anulados</th><th style="'+thc+'">Última revisión</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+}
 function renderAts(){
   wireAtsFiltros();
   var kp=document.getElementById("kpisAts");
@@ -2190,6 +2236,7 @@ function renderAts(){
     return;
   }
   var scope=datosAtsScope(), f=APP.filtrosAts;
+  renderAtsRevisores(scope);   // apartado "Verificado por jefe" (se pinta aun si no hay pendientes)
   var cut=null;
   if(f.periodo){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); cut=fechaISO(dd); }
   // baseT = alcance + período + búsqueda (SIN tipo ni estado): los tiles "ATS" y "Charlas"
