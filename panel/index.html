@@ -2150,6 +2150,31 @@ function wireAtsKpis(){
     el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
   });
 }
+/* Anti-fantasma (mismo criterio que el correo diario): una carpeta con alguna
+   fila ya resuelta (Aprobado/Anulado/Archivado) NO debe seguir generando
+   "Por revisar" aunque quede un Pendiente suelto (p. ej. una re-subida). */
+function atsCarpetasResueltas(){
+  var s={};
+  (APP.ats||[]).forEach(function(r){
+    var c=String(r.carpeta||"").trim(); if(!c) return;
+    var k=estadoInfo(r.estado).key;
+    if(k==="Aprobado"||k==="Anulado"||k==="Archivado") s[c]=true;
+  });
+  return s;
+}
+/* Deja SOLO pendientes reales: estado Pendiente, carpeta no resuelta y sin
+   duplicar la misma carpeta (un pendiente por carpeta). */
+function atsPendientesReales(list, resueltas){
+  resueltas = resueltas || atsCarpetasResueltas();
+  var seen={}, out=[];
+  list.forEach(function(r){
+    if(estadoInfo(r.estado).key!=="Pendiente") return;
+    var c=String(r.carpeta||"").trim();
+    if(c){ if(resueltas[c]) return; if(seen[c]) return; seen[c]=true; }
+    out.push(r);
+  });
+  return out;
+}
 function renderAts(){
   wireAtsFiltros();
   var kp=document.getElementById("kpisAts");
@@ -2178,7 +2203,7 @@ function renderAts(){
   // (además con el filtro de estado) la tabla. Así los tiles de estado reflejan el contexto.
   var base = f.tipo ? baseT.filter(function(r){return r.tipo===f.tipo;}) : baseT;
 
-  var pend=base.filter(function(r){return estadoInfo(r.estado).key==="Pendiente";}).length;
+  var pend=atsPendientesReales(base).length;   // solo pendientes reales (anti-fantasma)
   var aprob=base.filter(function(r){return estadoInfo(r.estado).key==="Aprobado";}).length;
   var anul=base.filter(function(r){return estadoInfo(r.estado).key==="Anulado";}).length;
   var ats=baseT.filter(function(r){return r.tipo==="ATS";}).length;
@@ -2286,11 +2311,11 @@ function renderAtsTabla(base, estadoFilter){
   var html="";
   if(estadoFilter){
     // Filtro explícito de un estado (tile o selector): solo ese estado, agrupado por mes.
-    var set=base.filter(function(r){ return keyOf(r)===estadoFilter; });
+    var set=(estadoFilter==="Pendiente") ? atsPendientesReales(base) : base.filter(function(r){ return keyOf(r)===estadoFilter; });
     html=monthSections(set) || '<tr><td colspan="'+COLS+'"><div class="empty-state" style="padding:20px">Sin registros con ese estado.</div></td></tr>';
   } else {
     // Vista por defecto: cola "Por revisar" arriba + historial (resueltos) por mes.
-    var pend=base.filter(function(r){ return keyOf(r)==="Pendiente"; }).slice().sort(byDateDesc);
+    var pend=atsPendientesReales(base).slice().sort(byDateDesc);   // solo pendientes reales (anti-fantasma)
     var resto=base.filter(function(r){ return keyOf(r)!=="Pendiente"; });
     html+='<tr class="ats-queue-head"><td colspan="'+COLS+'">🕒 Por revisar <b>('+pend.length+')</b>'+(pend.length?'<span class="ats-qh">— aprueba o anula para moverlos al historial</span>':'')+'</td></tr>';
     if(pend.length){ html+=pend.map(function(r){ return '<tr>'+atsRowCells(r)+'</tr>'; }).join(""); }
