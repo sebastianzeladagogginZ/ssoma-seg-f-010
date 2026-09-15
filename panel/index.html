@@ -2063,7 +2063,7 @@ function cargarAts(onReady){
     APP.ats=[]; APP.atsCargado=true; APP.atsError=false; renderAts(); done(); return;
   }
   if(kp) kp.innerHTML='<div class="load-note" style="grid-column:1/-1"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>';
-  var url=CONFIG.ATS_ENDPOINT_URL+(CONFIG.ATS_ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=registros";
+  var url=CONFIG.ATS_ENDPOINT_URL+(CONFIG.ATS_ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=registros&limit=100000";  // limit alto: carga TODO (incl. pendientes viejos), no solo los ~1000 más recientes
   // El /exec de Apps Script a veces responde un 404 transitorio en el primer intento
   // (por la redirección a googleusercontent). Reintentamos unas pocas veces antes de rendirnos.
   var intentos=0, MAX=4;
