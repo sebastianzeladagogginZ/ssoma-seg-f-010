@@ -233,14 +233,12 @@ var TOOLS_ONSITE=["Alicate de corte 6\" cod. 84-054","Cable de consola USB tipo 
 function esOnSite(){ return ST.area==="NETWORKING" && ST.division==="ON-Site - Corporativo"; }
 function eppActual(){ return esOnSite()?EPP_ONSITE:EPP; }
 function toolsActual(){ return esOnSite()?TOOLS_ONSITE:TOOLS; }
-/* Roster de personal por «Área ▸ División»: autocompleta a la persona en el registro individual.
-   Para sumar colaboradores, agrega una línea {tipo,num,ape,nom} al arreglo correspondiente. */
-var ROSTER={
-  "NETWORKING ▸ ON-Site - Corporativo":[
-    {tipo:"DNI",num:"45321581",ape:"BRAVO VARGAS",nom:"JAVIER ELLIOT"}
-  ]
-};
-function rosterActual(){ return ROSTER[ST.area+" ▸ "+ST.division]||null; }
+/* Registro de personal = INGRESO MANUAL (Apellidos, Nombres, N° de documento),
+   igual que en el resto de la herramienta. No hay lista desplegable ni
+   autocompletado por DNI.
+   Referencia (por si a futuro se requiere precargar personal de ON-Site):
+     NETWORKING ▸ ON-Site - Corporativo:
+       · BRAVO VARGAS JAVIER ELLIOT — DNI 45321581  */
 /* Personal INDIVIDUAL sin recursos de cuadrilla (redes/oficina): el formulario
    solo inspecciona persona + EPP + herramientas. Se ocultan señalización,
    herramientas generales, escalera, kit FO, extintor y botiquín. */
@@ -498,11 +496,9 @@ function render(){
     /* Personal INDIVIDUAL (sin cuadrilla): solo nombres + documento. */
     g+='<div class="field"><label>1.4 Personal inspeccionado (individual) <span class="req">*</span></label>'+
       '<div class="hint" style="margin-bottom:8px">Esta área trabaja de forma individual (sin cuadrilla). Registra a la(s) persona(s) por sus nombres y documento.</div>';
-    var roster=rosterActual();
     ST.personas.forEach(function(p,i){
       var esDNI=p.tipo!=="CE";
       g+='<div class="subblock"><h3>Persona '+(i+1)+(ST.personas.length>1?' <button class="linkbtn" data-act="delpersona" data-i="'+i+'" type="button" style="float:right">✕ Quitar</button>':'')+'</h3>'+
-        (roster?'<div class="field"><label>Colaborador ('+eh(ST.division)+')</label><select data-pick="'+i+'"><option value="">— Escribir manualmente —</option>'+roster.map(function(rp,ri){return '<option value="'+ri+'"'+((p.num&&p.num===rp.num)?' selected':'')+'>'+eh((rp.ape||"")+" "+(rp.nom||"")+" — "+(rp.tipo||"DNI")+" "+(rp.num||""))+'</option>';}).join("")+'</select><div class="hint">Elige tu nombre para autocompletar tus datos, o deja en “Escribir manualmente”.</div></div>':'')+
         '<div class="field"><label>Tipo de documento <span class="req">*</span></label>'+
           '<select data-per="tipo" data-i="'+i+'">'+
             '<option value="DNI"'+(esDNI?' selected':'')+'>DNI</option>'+
@@ -1049,11 +1045,6 @@ document.getElementById("app").addEventListener("change",function(e){
     actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
-  else if(t.dataset && t.dataset.pick!==undefined){          // roster: autocompletar persona
-    var rp=rosterActual(), pk=ST.personas[+t.dataset.pick];
-    if(rp && pk && t.value!==""){ var s=rp[+t.value]; if(s){ pk.tipo=s.tipo||"DNI"; pk.num=s.num||""; pk.ape=s.ape||""; pk.nom=s.nom||""; } }
-    render();
-  }
   else if(t.dataset && t.dataset.per==="tipo"){ var pp=ST.personas[+t.dataset.i]; if(pp){ pp.tipo=t.value; pp.num=""; } render(); }
   else if(t.dataset && t.dataset.doc==="tipo"){ doc(t.dataset.id).tipo=t.value; doc(t.dataset.id).num=""; render(); }
 });
