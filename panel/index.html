@@ -991,6 +991,9 @@ function obsCacheKey(){ return "panelObsCache::"+((APP.userAreas||[]).join("|"))
 function guardarCacheLocal(){ try{ localStorage.setItem(obsCacheKey(), JSON.stringify({t:Date.now(), d:APP.datos})); }catch(e){} }
 function leerCacheLocal(){ try{ var s=localStorage.getItem(obsCacheKey()); if(!s) return null; var o=JSON.parse(s); return (o&&o.d&&o.d.length)?o.d:null; }catch(e){ return null; } }
 
+// Firma barata de las observaciones para saber si el auto-refresco trae novedades.
+function _obsSig(l){ var h=0,i,j,o,t; for(i=0;i<l.length;i++){ o=l[i]; t=(o.id||"")+(o.estado||"")+(o.levantamiento||""); for(j=0;j<t.length;j++){ h=(h*31+t.charCodeAt(j))|0; } } return l.length+"|"+h; }
+
 // silent=true → refresco en segundo plano (no borra la vista si falla; conserva datos previos).
 function cargarDatos(silent){
   if(!tieneEndpoint()){ APP.demo=true; APP.error=false; APP.datos=generarDemo(); refrescar(); return; }
@@ -1005,11 +1008,17 @@ function cargarDatos(silent){
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=observaciones"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(data){
     if(data && data.ok===false) throw new Error(data.error||"backend");
-    APP.datos=(data.observaciones||[]).map(normalizarObs);
+    var _nuevos=(data.observaciones||[]).map(normalizarObs);
+    var _sig=_obsSig(_nuevos), _cambio=(APP._obsSig!==undefined && _sig!==APP._obsSig);
+    APP.datos=_nuevos; APP._obsSig=_sig;
     APP.cargando=false; APP.error=false; APP.pintadoDeCache=false; setRefreshSpinning(false);
     guardarCacheLocal();
-    refrescar();
-    if(silent) toast("Datos actualizados ✓","ok");
+    // Refresco silencioso (auto-poll cada 60 s): NO repintamos la vista, porque
+    // reconstruir el DOM colapsaba lo que el usuario tuviera desplegado (pasaba en
+    // TODAS las pestañas). Los datos quedan frescos en memoria: se ven al cambiar de
+    // pestaña o al pulsar "Actualizar". Si el poll trae novedades, solo avisamos.
+    if(!silent){ refrescar(); }
+    else if(_cambio){ toast("Hay datos nuevos — pulsa Actualizar para verlos","ok"); }
   }).catch(function(){
     APP.cargando=false; setRefreshSpinning(false);
     if(silent){ toast("No se pudo actualizar. Se conservan los últimos datos.","bad"); return; }
