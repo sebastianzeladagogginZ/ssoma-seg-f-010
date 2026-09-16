@@ -241,6 +241,18 @@ var ROSTER={
   ]
 };
 function rosterActual(){ return ROSTER[ST.area+" ▸ "+ST.division]||null; }
+/* Personal INDIVIDUAL sin recursos de cuadrilla (redes/oficina): el formulario
+   solo inspecciona persona + EPP + herramientas. Se ocultan señalización,
+   herramientas generales, escalera, kit FO, extintor y botiquín. */
+var SIN_CUADRILLA={
+  "NETWORKING ▸ ON-Site - Corporativo":1,
+  "INSPECCIÓN Y DISEÑO ▸ Inspección y Diseño - Corporativo":1
+};
+function sinCuadrilla(){ return !!SIN_CUADRILLA[ST.area+" ▸ "+ST.division]; }
+/* Numeración de secciones: en flujos recortados renumera 1,2,3… corrido (sin huecos);
+   en cuadrilla/otros conserva los números originales (incluido el 5.2). */
+var _secN=0;
+function secN(f){ return sinCuadrilla()?(++_secN):f; }
 var SIGNAL=["Conos de seguridad","Barras retráctiles","Banderines de escalera","Tacos de seguridad"];
 var GEN=["Escalera extensible de 28 pasos","Wincha pasa cable","Extensión eléctrica (mín. 15 m)","Cinta aislante",
   "Soga de escalera","Carrete para FO DROP (porta bobina)","Plumón indeleble negro","Broca para concreto o pasante",
@@ -461,7 +473,7 @@ function card(n,title,bodyHtml,sec){
 
 function render(){
   var presentRoles=ROLES.filter(function(r){return ST.presence[r.id];});
-  var H="";
+  var H=""; _secN=0;
 
   var indiv=esIndividual();
   if(indiv && !ST.personas.length) ST.personas=[personaNueva()];
@@ -521,7 +533,7 @@ function render(){
       '</div>';
     });
   }
-  H+=card(1,"Datos generales de la inspección",g,null);
+  H+=card(secN(1),"Datos generales de la inspección",g,null);
 
   /* Secciones 2–8: RECURSOS Y MEDIOS A INSPECCIONAR (en AMBOS modos).
      En modo individual, EPP y Herramientas van como checklist GENERAL (no por
@@ -529,7 +541,7 @@ function render(){
 
   /* 2. EPP */
   if(indiv){
-    H+=card(2,esOnSite()?"EPP · ON-Site":"EPP",checklist("epp",null,eppActual(),S_PERSON),"epp");
+    H+=card(secN(2),esOnSite()?"EPP · ON-Site":"EPP",checklist("epp",null,eppActual(),S_PERSON),"epp");
   } else if(presentRoles.length){
     var e="";
     presentRoles.forEach(function(r){ e+='<div class="subblock"><h3>EPP · '+r.label+(nombreDe(r.id)?' — '+nombreDe(r.id):'')+'</h3>'+checklist("epp",r.id,EPP,S_PERSON)+'</div>'; });
@@ -538,12 +550,12 @@ function render(){
     H+=card(2,"EPP por técnico",'<p class="hint">Selecciona arriba los técnicos presentes para mostrar su checklist de EPP.</p>',null);
   }
 
-  /* 3. Señalización (recurso de cuadrilla/unidad; no aplica al personal individual de ON-Site) */
-  if(!esOnSite()) H+=card(3,"Elementos de señalización",checklist("senal",null,SIGNAL,S_EQUIP),"senal");
+  /* 3. Señalización (recurso de cuadrilla/unidad; se oculta en flujos sin cuadrilla) */
+  if(!sinCuadrilla()) H+=card(secN(3),"Elementos de señalización",checklist("senal",null,SIGNAL,S_EQUIP),"senal");
 
   /* 4. Herramientas */
   if(indiv){
-    H+=card(4,esOnSite()?"Herramientas · ON-Site":"Herramientas",checklist("tools",null,toolsActual(),S_PERSON),"tools");
+    H+=card(secN(4),esOnSite()?"Herramientas · ON-Site":"Herramientas",checklist("tools",null,toolsActual(),S_PERSON),"tools");
   } else {
     var toolRoles=presentRoles.filter(function(r){return r.tools;});
     if(toolRoles.length){
@@ -554,11 +566,11 @@ function render(){
   }
 
   /* Secciones 5–8 (herramientas generales, escalera telescópica, kit FO, extintor,
-     botiquín): recursos de CUADRILLA/unidad. No aplican al personal individual de
-     ON-Site (redes/oficina), por eso se ocultan en esa división. */
-  if(!esOnSite()){
+     botiquín): recursos de CUADRILLA/unidad. Se ocultan en flujos sin cuadrilla
+     (personal individual de redes/oficina: ON-Site, Inspección y Diseño). */
+  if(!sinCuadrilla()){
   /* 5. Herramientas generales */
-  H+=card(5,indiv?"Herramientas generales":"Herramientas generales de la cuadrilla",checklist("gen",null,GEN,S_EQUIP),"gen");
+  H+=card(secN(5),indiv?"Herramientas generales":"Herramientas generales de la cuadrilla",checklist("gen",null,GEN,S_EQUIP),"gen");
 
   /* 5.2 Escalera (branch) */
   var esc='<div class="field"><label>'+(indiv?'¿Cuenta con escalera telescópica de 28 pasos?':'¿La cuadrilla cuenta con escalera telescópica de 28 pasos?')+'</label><div class="toggle">'+
@@ -566,10 +578,10 @@ function render(){
     '<button class="no'+(ST.branch.escalera===false?' on':'')+'" data-act="branch" data-b="escalera" data-v="0">No</button></div></div>';
   if(ST.branch.escalera===true) esc+=checklist("escalera",null,LADDER,S_EQUIP);
   else if(ST.branch.escalera===false) esc+='<p class="hint">Sin escalera telescópica: se omiten 13 preguntas.</p>';
-  H+=card("5.2","Inspección de escalera telescópica",esc,"escalera");
+  H+=card(secN("5.2"),"Inspección de escalera telescópica",esc,"escalera");
 
   /* 6. Kit FO */
-  H+=card(6,"Kit de fibra óptica",checklist("fo",null,FO,S_EQUIP),"fo");
+  H+=card(secN(6),"Kit de fibra óptica",checklist("fo",null,FO,S_EQUIP),"fo");
 
   /* 7. Extintor (branch) */
   var ex='<div class="field"><label>¿La unidad cuenta con extintor?</label><div class="toggle">'+
@@ -577,7 +589,7 @@ function render(){
     '<button class="no'+(ST.branch.extintor===false?' on':'')+'" data-act="branch" data-b="extintor" data-v="0">No</button></div></div>';
   if(ST.branch.extintor===true) ex+=checklist("extintor",null,EXT,S_SEG);
   else if(ST.branch.extintor===false) ex+='<p class="hint">Sin extintor: se omiten 16 preguntas (registrar en observaciones).</p>';
-  H+=card(7,"Estado del extintor",ex,"extintor");
+  H+=card(secN(7),"Estado del extintor",ex,"extintor");
 
   /* 8. Botiquín (branch) */
   var bo='<div class="field"><label>¿La unidad cuenta con botiquín?</label><div class="toggle">'+
@@ -585,51 +597,52 @@ function render(){
     '<button class="no'+(ST.branch.botiquin===false?' on':'')+'" data-act="branch" data-b="botiquin" data-v="0">No</button></div></div>';
   if(ST.branch.botiquin===true) bo+='<div class="hint" style="margin:2px 2px 8px">Además del estado, en los ítems que aplican registra la <b>fecha de vencimiento</b> (semáforo automático 🟢 vigente · 🟠 por vencer · 🔴 vencido) y el <b>nivel de contenido</b> 🟢 lleno · 🟠 mitad · 🔴 ¼ (listo para cambio).</div>'+checklist("botiquin",null,BOT,S_SEG,BOT_META);
   else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (registrar en observaciones).</p>';
-  H+=card(8,"Estado del botiquín",bo,"botiquin");
-  } /* fin secciones 5–8 (ocultas en ON-Site) */
+  H+=card(secN(8),"Estado del botiquín",bo,"botiquin");
+  } /* fin secciones 5–8 (ocultas en flujos sin cuadrilla) */
 
   /* 9. Evidencias y observaciones */
-  var ev='<div class="field"><label>9.1 Evidencias fotográficas <span class="req">*</span></label>'+
+  var n9=secN(9);
+  var ev='<div class="field"><label>'+n9+'.1 Evidencias fotográficas <span class="req">*</span></label>'+
     '<label class="uploadbtn">📷 Tomar / adjuntar fotos<input type="file" accept="image/*" capture="environment" multiple style="display:none" id="f_photos"></label>'+
     '<div class="photos" id="ph"></div><div class="hint">'+(indiv?'Personal en campo, EPP y todo recurso relevante.':'Cuadrilla, EPP, vehículo y todo recurso dañado.')+'</div></div>'+
-    '<div class="field"><label>9.2 Observaciones <span class="req">*</span></label>'+
+    '<div class="field"><label>'+n9+'.2 Observaciones <span class="req">*</span></label>'+
     '<textarea id="f_obs" placeholder="Recursos que requieren reparación, cambio o asignación. Si es EPP/uniforme, indica el técnico." required>'+ST.obs+'</textarea></div>';
-  H+=card(9,"Evidencias y observaciones",ev,null);
+  H+=card(n9,"Evidencias y observaciones",ev,null);
 
   /* 10. Cierre y responsables */
-  var sem=semaforo(metrics().pct), ra=responsableActual();
-  var c10='<div class="field"><label>10.1 Modalidad de la inspección <span class="req">*</span></label><div class="seg2">'+
+  var sem=semaforo(metrics().pct), ra=responsableActual(), n10=secN(10);
+  var c10='<div class="field"><label>'+n10+'.1 Modalidad de la inspección <span class="req">*</span></label><div class="seg2">'+
     ["Autoinspección","Inspección inopinada"].map(function(o){return '<button data-act="modal" data-v="'+o+'" class="'+(ST.modalidad===o?"on":"")+'">'+o+'</button>';}).join("")+
     '</div><div class="hint">Autoinspección: '+(indiv?'el propio personal revisa sus recursos (el responsable es la primera persona registrada).':'la propia cuadrilla revisa sus recursos (el responsable es el líder T1).')+' Inopinada: la realiza un inspector externo sin aviso.</div></div>'+
-    '<div class="field"><label>10.2 Tipo de inspección (RM 050-2013-TR) <span class="req">*</span></label><select id="f_tipo">'+
+    '<div class="field"><label>'+n10+'.2 Tipo de inspección (RM 050-2013-TR) <span class="req">*</span></label><select id="f_tipo">'+
       ["Planeada","No planeada"].map(function(o){return '<option'+(ST.tipo===o?" selected":"")+'>'+o+'</option>';}).join("")+
     '</select></div>'+
     /* 10.3 Conformidad (ambos modos: ya hay checklist de recursos en las dos). */
-    '<div class="field"><label>10.3 Estado de conformidad</label><br>'+
+    '<div class="field"><label>'+n10+'.3 Estado de conformidad</label><br>'+
       '<span class="badge" id="semBadge" style="color:var('+sem.col+');background:var('+sem.bg+');border-color:var('+sem.col+')">'+sem.estado+' · '+(metrics().pct===null?"—":metrics().pct+"%")+'</span>'+
       '<div class="hint">Cálculo automático: ≥90% Conforme · 70–89% Observado · &lt;70% No conforme.</div></div>'+
-    '<div class="field"><label>10.4 Conclusiones y recomendaciones <span class="req">*</span></label>'+
+    '<div class="field"><label>'+n10+'.4 Conclusiones y recomendaciones <span class="req">*</span></label>'+
       '<textarea id="f_concl" placeholder="Resumen de hallazgos, acciones correctivas, responsables y plazos.">'+eh(ST.conclusiones)+'</textarea></div>';
   if(ST.modalidad==="Inspección inopinada"){
-    c10+='<div class="subblock"><h3>10.5 Responsable de la inspección (externo)</h3>'+
+    c10+='<div class="subblock"><h3>'+n10+'.5 Responsable de la inspección (externo)</h3>'+
       '<div class="field"><label>Apellidos y nombres <span class="req">*</span></label><input type="text" id="r_nom" value="'+eh(ST.resp.nombre)+'" placeholder="Apellidos y nombres"></div>'+
       '<div class="field"><label>Cargo / función <span class="req">*</span></label><input type="text" id="r_car" value="'+eh(ST.resp.cargo)+'" placeholder="Cargo"></div>'+
       '<div class="field"><label>Documento (DNI / CE) <span class="req">*</span></label><input type="text" id="r_doc" value="'+eh(ST.resp.documento)+'" placeholder="N° de documento"></div></div>';
   } else {
-    c10+='<div class="subblock"><h3>10.5 Responsable de la inspección</h3>'+
+    c10+='<div class="subblock"><h3>'+n10+'.5 Responsable de la inspección</h3>'+
       '<div class="hint">'+(indiv?'Tomado de la primera persona registrada.':'Tomado del líder de cuadrilla (T1).')+' Cambia a “Inspección inopinada” si la realiza un externo.</div>'+
       '<div class="field"><label>Apellidos y nombres</label><input type="text" value="'+eh(ra.nombre)+'" disabled></div>'+
       '<div class="field"><label>Cargo</label><input type="text" value="'+eh(ra.cargo)+'" disabled></div>'+
       '<div class="field"><label>Documento</label><input type="text" value="'+eh(ra.documento)+'" disabled></div></div>';
   }
-  c10+='<div class="field"><label>10.6 Foto del responsable</label>'+
+  c10+='<div class="field"><label>'+n10+'.6 Foto del responsable</label>'+
       '<label class="uploadbtn">📷 Adjuntar foto del responsable<input type="file" accept="image/*" capture="user" style="display:none" id="f_resp"></label>'+
       '<div class="photos" id="phResp"></div></div>'+
-    '<div class="field"><label>10.7 Firma del responsable <span class="req">*</span></label>'+
+    '<div class="field"><label>'+n10+'.7 Firma del responsable <span class="req">*</span></label>'+
       '<div class="sigwrap"><canvas class="sig" id="sigCanvas"></canvas></div>'+
       '<button class="linkbtn" data-act="clearsig" type="button">✕ Borrar firma</button>'+
       '<div class="hint">Dibuja la firma con el dedo o el mouse.</div></div>';
-  H+=card(10,"Cierre y responsables",c10,null);
+  H+=card(n10,"Cierre y responsables",c10,null);
 
   document.getElementById("app").innerHTML=H;
   drawPhotos();
@@ -736,8 +749,8 @@ function metrics(){
 }
 function visibleQuestionCount(){
   if(esIndividual()){                                    // individual: recursos generales (sin desglose por técnico)
-    // ON-Site solo inspecciona su personal + EPP + herramientas (sin señalización/generales/escalera/FO/extintor/botiquín).
-    if(esOnSite()) return (ST.personas||[]).length + eppActual().length + toolsActual().length;
+    // Flujos sin cuadrilla (ON-Site, Inspección y Diseño): solo personal + EPP + herramientas.
+    if(sinCuadrilla()) return (ST.personas||[]).length + eppActual().length + toolsActual().length;
     var ni=(ST.personas||[]).length + eppActual().length + SIGNAL.length + toolsActual().length + GEN.length + FO.length;
     ni+=(ST.branch.escalera===true?LADDER.length:1);
     ni+=(ST.branch.extintor===true?EXT.length:1);
