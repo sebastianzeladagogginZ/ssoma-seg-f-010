@@ -538,8 +538,8 @@ function render(){
     H+=card(2,"EPP por técnico",'<p class="hint">Selecciona arriba los técnicos presentes para mostrar su checklist de EPP.</p>',null);
   }
 
-  /* 3. Señalización */
-  H+=card(3,"Elementos de señalización",checklist("senal",null,SIGNAL,S_EQUIP),"senal");
+  /* 3. Señalización (recurso de cuadrilla/unidad; no aplica al personal individual de ON-Site) */
+  if(!esOnSite()) H+=card(3,"Elementos de señalización",checklist("senal",null,SIGNAL,S_EQUIP),"senal");
 
   /* 4. Herramientas */
   if(indiv){
@@ -553,6 +553,10 @@ function render(){
     }
   }
 
+  /* Secciones 5–8 (herramientas generales, escalera telescópica, kit FO, extintor,
+     botiquín): recursos de CUADRILLA/unidad. No aplican al personal individual de
+     ON-Site (redes/oficina), por eso se ocultan en esa división. */
+  if(!esOnSite()){
   /* 5. Herramientas generales */
   H+=card(5,indiv?"Herramientas generales":"Herramientas generales de la cuadrilla",checklist("gen",null,GEN,S_EQUIP),"gen");
 
@@ -582,6 +586,7 @@ function render(){
   if(ST.branch.botiquin===true) bo+='<div class="hint" style="margin:2px 2px 8px">Además del estado, en los ítems que aplican registra la <b>fecha de vencimiento</b> (semáforo automático 🟢 vigente · 🟠 por vencer · 🔴 vencido) y el <b>nivel de contenido</b> 🟢 lleno · 🟠 mitad · 🔴 ¼ (listo para cambio).</div>'+checklist("botiquin",null,BOT,S_SEG,BOT_META);
   else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (registrar en observaciones).</p>';
   H+=card(8,"Estado del botiquín",bo,"botiquin");
+  } /* fin secciones 5–8 (ocultas en ON-Site) */
 
   /* 9. Evidencias y observaciones */
   var ev='<div class="field"><label>9.1 Evidencias fotográficas <span class="req">*</span></label>'+
@@ -731,6 +736,8 @@ function metrics(){
 }
 function visibleQuestionCount(){
   if(esIndividual()){                                    // individual: recursos generales (sin desglose por técnico)
+    // ON-Site solo inspecciona su personal + EPP + herramientas (sin señalización/generales/escalera/FO/extintor/botiquín).
+    if(esOnSite()) return (ST.personas||[]).length + eppActual().length + toolsActual().length;
     var ni=(ST.personas||[]).length + eppActual().length + SIGNAL.length + toolsActual().length + GEN.length + FO.length;
     ni+=(ST.branch.escalera===true?LADDER.length:1);
     ni+=(ST.branch.extintor===true?EXT.length:1);
@@ -1022,9 +1029,10 @@ document.getElementById("app").addEventListener("change",function(e){
   else if(t.id==="f_resp") addRespPhoto(t.files[0]);
   else if(t.id==="f_area"){ ST.area=t.value; resetPorArea(); actualizarRoles(); render(); }
   else if(t.id==="f_division"){ ST.division=t.value;
-    /* Al cambiar de división en un área individual, las listas de EPP/Herramientas
-       pueden cambiar (ON-Site tiene inventario propio): se limpian sus respuestas. */
-    if(esIndividual()){ for(var kd in ST.ans){ if(kd.indexOf("epp||")===0||kd.indexOf("tools||")===0) delete ST.ans[kd]; } }
+    /* En áreas individuales, la división cambia las listas y las secciones visibles
+       (ON-Site oculta señalización/generales/escalera/FO/extintor/botiquín): se limpian
+       respuestas y ramas para no arrastrar ítems que ya no se muestran. */
+    if(esIndividual()){ ST.ans={}; ST.branch={escalera:null,extintor:null,botiquin:null}; }
     actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
