@@ -217,6 +217,30 @@ var EPP=["Fotocheck","Chaleco de seguridad","Uniforme · Polo","Uniforme · Pant
   "Tapa nuca","Guantes de poliuretano","Guantes de cuero","Guantes dieléctricos","Cinturón con 2 estrobos",
   "Conector de anclaje","Linterna para casco","Tapones para oídos","Arnés con línea de vida y absorbedor"];
 var TOOLS=["Martillo de 10 OZ","Celular","Alicate Universal","Alicate de Corte","Juego de desarmadores","Cinturón Porta Herramientas"];
+/* ── NETWORKING ▸ ON-Site - Corporativo: inventario propio de EPP y herramientas ── */
+var EPP_ONSITE=["Barbiquejo elástico con mentonera","Botas dieléctricas con punta reforzada",
+  "Lentes de seguridad lunas claras - Eco Line","Sobre lente Topgun A/F claro",
+  "Casco jockey azul claro c/ suspensión 4 puntas de nylon y rachet",
+  "Guante de badana con elástico importado color amarillo","Linterna para casco de seguridad",
+  "Pantalón con cinta reflectiva","Polo camisero sin logo",
+  "Chaleco drill Uniforte suavizado naranja c/cinta reflect. coreana 2 pulg tipo H c/logo bordado espalda y ambos pecho Partner Win"];
+var TOOLS_ONSITE=["Alicate de corte 6\" cod. 84-054","Cable de consola USB tipo A - USB tipo micro 1.8 m",
+  "Etiquetadora P-Touch E310BTVP","Crimpeadora modular HT-315","Desarmador tipo estrella 2x4\" (69-145)",
+  "Desarmador tipo plano 1/4\"x4\" 60-826-840","LAN Tester RJ45 y RJ11","Mouse inalámbrico","Celular","Laptop",
+  "Revelador de voltaje IAC-D 90-1000V AC/LED Light","Cable consola DB9 to RJ45",
+  "Cable adaptador consola USB TRENDnet TU-S9","Mochila campera ONI","Cable adaptador consola USB macho - USB macho 3.0 - 3 m"];
+/* ON-Site tiene EPP/herramientas propios; el resto usa las listas por defecto. */
+function esOnSite(){ return ST.area==="NETWORKING" && ST.division==="ON-Site - Corporativo"; }
+function eppActual(){ return esOnSite()?EPP_ONSITE:EPP; }
+function toolsActual(){ return esOnSite()?TOOLS_ONSITE:TOOLS; }
+/* Roster de personal por «Área ▸ División»: autocompleta a la persona en el registro individual.
+   Para sumar colaboradores, agrega una línea {tipo,num,ape,nom} al arreglo correspondiente. */
+var ROSTER={
+  "NETWORKING ▸ ON-Site - Corporativo":[
+    {tipo:"DNI",num:"45321581",ape:"BRAVO VARGAS",nom:"JAVIER ELLIOT"}
+  ]
+};
+function rosterActual(){ return ROSTER[ST.area+" ▸ "+ST.division]||null; }
 var SIGNAL=["Conos de seguridad","Barras retráctiles","Banderines de escalera","Tacos de seguridad"];
 var GEN=["Escalera extensible de 28 pasos","Wincha pasa cable","Extensión eléctrica (mín. 15 m)","Cinta aislante",
   "Soga de escalera","Carrete para FO DROP (porta bobina)","Plumón indeleble negro","Broca para concreto o pasante",
@@ -462,9 +486,11 @@ function render(){
     /* Personal INDIVIDUAL (sin cuadrilla): solo nombres + documento. */
     g+='<div class="field"><label>1.4 Personal inspeccionado (individual) <span class="req">*</span></label>'+
       '<div class="hint" style="margin-bottom:8px">Esta área trabaja de forma individual (sin cuadrilla). Registra a la(s) persona(s) por sus nombres y documento.</div>';
+    var roster=rosterActual();
     ST.personas.forEach(function(p,i){
       var esDNI=p.tipo!=="CE";
       g+='<div class="subblock"><h3>Persona '+(i+1)+(ST.personas.length>1?' <button class="linkbtn" data-act="delpersona" data-i="'+i+'" type="button" style="float:right">✕ Quitar</button>':'')+'</h3>'+
+        (roster?'<div class="field"><label>Colaborador ('+eh(ST.division)+')</label><select data-pick="'+i+'"><option value="">— Escribir manualmente —</option>'+roster.map(function(rp,ri){return '<option value="'+ri+'"'+((p.num&&p.num===rp.num)?' selected':'')+'>'+eh((rp.ape||"")+" "+(rp.nom||"")+" — "+(rp.tipo||"DNI")+" "+(rp.num||""))+'</option>';}).join("")+'</select><div class="hint">Elige tu nombre para autocompletar tus datos, o deja en “Escribir manualmente”.</div></div>':'')+
         '<div class="field"><label>Tipo de documento <span class="req">*</span></label>'+
           '<select data-per="tipo" data-i="'+i+'">'+
             '<option value="DNI"'+(esDNI?' selected':'')+'>DNI</option>'+
@@ -503,7 +529,7 @@ function render(){
 
   /* 2. EPP */
   if(indiv){
-    H+=card(2,"EPP",checklist("epp",null,EPP,S_PERSON),"epp");
+    H+=card(2,esOnSite()?"EPP · ON-Site":"EPP",checklist("epp",null,eppActual(),S_PERSON),"epp");
   } else if(presentRoles.length){
     var e="";
     presentRoles.forEach(function(r){ e+='<div class="subblock"><h3>EPP · '+r.label+(nombreDe(r.id)?' — '+nombreDe(r.id):'')+'</h3>'+checklist("epp",r.id,EPP,S_PERSON)+'</div>'; });
@@ -517,7 +543,7 @@ function render(){
 
   /* 4. Herramientas */
   if(indiv){
-    H+=card(4,"Herramientas",checklist("tools",null,TOOLS,S_PERSON),"tools");
+    H+=card(4,esOnSite()?"Herramientas · ON-Site":"Herramientas",checklist("tools",null,toolsActual(),S_PERSON),"tools");
   } else {
     var toolRoles=presentRoles.filter(function(r){return r.tools;});
     if(toolRoles.length){
@@ -705,7 +731,7 @@ function metrics(){
 }
 function visibleQuestionCount(){
   if(esIndividual()){                                    // individual: recursos generales (sin desglose por técnico)
-    var ni=(ST.personas||[]).length + EPP.length + SIGNAL.length + TOOLS.length + GEN.length + FO.length;
+    var ni=(ST.personas||[]).length + eppActual().length + SIGNAL.length + toolsActual().length + GEN.length + FO.length;
     ni+=(ST.branch.escalera===true?LADDER.length:1);
     ni+=(ST.branch.extintor===true?EXT.length:1);
     ni+=(ST.branch.botiquin===true?BOT.length:1);
@@ -995,9 +1021,18 @@ document.getElementById("app").addEventListener("change",function(e){
   if(t.id==="f_photos") addPhotos(t.files);
   else if(t.id==="f_resp") addRespPhoto(t.files[0]);
   else if(t.id==="f_area"){ ST.area=t.value; resetPorArea(); actualizarRoles(); render(); }
-  else if(t.id==="f_division"){ ST.division=t.value; actualizarRoles(); render(); }
+  else if(t.id==="f_division"){ ST.division=t.value;
+    /* Al cambiar de división en un área individual, las listas de EPP/Herramientas
+       pueden cambiar (ON-Site tiene inventario propio): se limpian sus respuestas. */
+    if(esIndividual()){ for(var kd in ST.ans){ if(kd.indexOf("epp||")===0||kd.indexOf("tools||")===0) delete ST.ans[kd]; } }
+    actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
+  else if(t.dataset && t.dataset.pick!==undefined){          // roster: autocompletar persona
+    var rp=rosterActual(), pk=ST.personas[+t.dataset.pick];
+    if(rp && pk && t.value!==""){ var s=rp[+t.value]; if(s){ pk.tipo=s.tipo||"DNI"; pk.num=s.num||""; pk.ape=s.ape||""; pk.nom=s.nom||""; } }
+    render();
+  }
   else if(t.dataset && t.dataset.per==="tipo"){ var pp=ST.personas[+t.dataset.i]; if(pp){ pp.tipo=t.value; pp.num=""; } render(); }
   else if(t.dataset && t.dataset.doc==="tipo"){ doc(t.dataset.id).tipo=t.value; doc(t.dataset.id).num=""; render(); }
 });
