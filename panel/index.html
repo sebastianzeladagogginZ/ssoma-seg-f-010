@@ -954,7 +954,17 @@ function iniciarSesion(user){
   if(tieneEndpoint()){
     rb.style.display=""; rb.onclick=function(){ cargarDatos(true); };
     if(APP.pollTimer) clearInterval(APP.pollTimer);
-    APP.pollTimer=setInterval(function(){ if(!document.hidden) cargarDatos(true); }, 60000); // cada 1 min
+    APP.pollTimer=setInterval(function(){                                   // auto-refresco cada 1 min
+      if(document.hidden) return;
+      var _v=(document.querySelector(".nav-item.active")||{dataset:{}}).dataset.view;
+      if(_v==="ats"){                                                       // refresca ATS de verdad, sin colapsar ni saltar el scroll
+        var _sy=window.pageYOffset||0;
+        cargarAts(function(){ try{ window.scrollTo(0,_sy); }catch(e){} }, true);
+      } else if(_v==="historico" || _v==="cobertura"){                      // usan APP.historico; el poll no trae dato nuevo → no repintar (no colapsar)
+      } else {
+        cargarDatos(true);                                                  // observaciones/resumen/etc.: repinta solo si cambió
+      }
+    }, 60000);
   }
   cargarDatos();
 }
@@ -1013,12 +1023,11 @@ function cargarDatos(silent){
     APP.datos=_nuevos; APP._obsSig=_sig;
     APP.cargando=false; APP.error=false; APP.pintadoDeCache=false; setRefreshSpinning(false);
     guardarCacheLocal();
-    // Refresco silencioso (auto-poll cada 60 s): NO repintamos la vista, porque
-    // reconstruir el DOM colapsaba lo que el usuario tuviera desplegado (pasaba en
-    // TODAS las pestañas). Los datos quedan frescos en memoria: se ven al cambiar de
-    // pestaña o al pulsar "Actualizar". Si el poll trae novedades, solo avisamos.
+    // Auto-actualiza cuando hay datos nuevos (o en carga explícita). Estas vistas no
+    // tienen acordeones que colapsar (el detalle de Observaciones es un panel aparte).
+    // En el refresco silencioso solo repintamos si algo cambió y conservamos el scroll.
     if(!silent){ refrescar(); }
-    else if(_cambio){ toast("Hay datos nuevos — pulsa Actualizar para verlos","ok"); }
+    else if(_cambio){ var _sy=window.pageYOffset||0; refrescar(); try{ window.scrollTo(0,_sy); }catch(e){} }
   }).catch(function(){
     APP.cargando=false; setRefreshSpinning(false);
     if(silent){ toast("No se pudo actualizar. Se conservan los últimos datos.","bad"); return; }
@@ -2069,13 +2078,13 @@ function atsDocKey(x){
   if(logico.replace(/\|/g,"")) return "k:"+logico;                                  // identidad lógica (habitual)
   return "u:"+String(x.carpeta||"").replace(/[?#].*$/,"").replace(/\/+$/,"").toLowerCase();  // respaldo por URL
 }
-function cargarAts(onReady){
+function cargarAts(onReady, silent){
   var done=function(){ if(typeof onReady==="function"){ try{ onReady(); }catch(e){} } };
   var kp=document.getElementById("kpisAts");
   if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)){
     APP.ats=[]; APP.atsCargado=true; APP.atsError=false; renderAts(); done(); return;
   }
-  if(kp) kp.innerHTML='<div class="load-note" style="grid-column:1/-1"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>';
+  if(kp && !silent) kp.innerHTML='<div class="load-note" style="grid-column:1/-1"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>';   // silent=auto-refresco: sin spinner (no parpadea ni colapsa)
   var url=CONFIG.ATS_ENDPOINT_URL+(CONFIG.ATS_ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=registros&limit=100000";  // limit alto: carga TODO (incl. pendientes viejos), no solo los ~1000 más recientes
   // El /exec de Apps Script a veces responde un 404 transitorio en el primer intento
   // (por la redirección a googleusercontent). Reintentamos unas pocas veces antes de rendirnos.
@@ -2195,6 +2204,7 @@ function atsPendientesReales(list, resueltas){
    entradas de sistema (Limpieza fantasmas). Usa el alcance área/división. */
 function renderAtsRevisores(scope){
   var cont=document.getElementById("atsRevisores"); if(!cont) return;
+  APP.openSecs=APP.openSecs||{};   // recuerda qué jefes dejó desplegados (sobrevive a auto-refrescos)
   var sub=document.getElementById("atsRevisoresSub");
   var by={};
   (scope||[]).forEach(function(r){
@@ -2226,14 +2236,16 @@ function renderAtsRevisores(scope){
     '<th style="'+thc+'">Aprobados</th><th style="'+thc+'">Anulados</th><th style="'+thc+'">Última revisión</th></tr></thead><tbody>';
   lista.forEach(function(o,idx){
     var gid="rev"+idx;
-    html+='<tr class="rev-head" data-g="'+gid+'" data-open="0" style="cursor:pointer">'+
-      '<td style="'+td+';color:#0284c7;font-weight:800;text-align:center"><span class="rev-chev">▸</span></td>'+
+    var skey="revA:"+o.nombre;                 // clave estable por jefe
+    var op=!!APP.openSecs[skey];               // recuerda si estaba desplegado
+    html+='<tr class="rev-head" data-g="'+gid+'" data-k="'+esc(skey)+'" data-open="'+(op?"1":"0")+'" style="cursor:pointer">'+
+      '<td style="'+td+';color:#0284c7;font-weight:800;text-align:center"><span class="rev-chev">'+(op?"▾":"▸")+'</span></td>'+
       '<td style="'+td+'">'+jefe(o.nombre)+'</td>'+
       '<td style="'+tdc+';font-weight:800">'+o.tot+'</td>'+
       '<td style="'+tdc+';color:#15803d">'+o.aprob+'</td>'+
       '<td style="'+tdc+';color:#b91c1c">'+o.anul+'</td>'+
       '<td style="'+tdc+';color:#475569;white-space:nowrap">'+(o.ult?esc(fechaLarga(o.ult)):"—")+'</td></tr>';
-    html+='<tr class="rev-det" data-g="'+gid+'" data-loaded="0" style="display:none"><td colspan="6" style="padding:0 10px 10px 30px;background:#f8fafc"></td></tr>';
+    html+='<tr class="rev-det" data-g="'+gid+'" data-loaded="'+(op?"1":"0")+'" style="display:'+(op?"":"none")+'"><td colspan="6" style="padding:0 10px 10px 30px;background:#f8fafc">'+(op?detalleHTML(o.items):"")+'</td></tr>';
   });
   html+='</tbody></table>';
   cont.innerHTML=html;
@@ -2262,6 +2274,7 @@ function renderAtsRevisores(scope){
     hd.onclick=function(){
       var g=hd.getAttribute("data-g"), open=hd.getAttribute("data-open")==="1";
       hd.setAttribute("data-open",open?"0":"1");
+      APP.openSecs[hd.getAttribute("data-k")]=!open;   // recuerda el estado tras auto-refrescos
       var ch=hd.querySelector(".rev-chev"); if(ch) ch.textContent=open?"▸":"▾";
       var det=cont.querySelector('tr.rev-det[data-g="'+g+'"]');
       if(det){
@@ -2385,6 +2398,7 @@ function atsRowCells(r){
    estadoFilter = "" | "Pendiente" | "Aprobado" | "Anulado" (desde los tiles / el selector). */
 function renderAtsTabla(base, estadoFilter){
   var body=document.getElementById("atsBody"); if(!body) return;
+  APP.openSecs=APP.openSecs||{};   // recuerda qué secciones dejó abiertas el usuario (sobrevive a auto-refrescos)
   var COLS=10;
   var byDateDesc=function(a,b){ return (b.fecha||"").localeCompare(a.fecha||""); };
   var keyOf=function(r){ return estadoInfo(r.estado).key; };
@@ -2397,11 +2411,12 @@ function renderAtsTabla(base, estadoFilter){
     order.forEach(function(ym,idx){
       var items=by[ym].slice().sort(byDateDesc);
       var gid="mg_"+ym.replace(/[^0-9]/g,"");
-      var open=(idx===0);                                    // mes más reciente abierto; el resto plegado
+      var skey="mgA:"+ym;                                    // clave estable para recordar abierto/cerrado
+      var open=(skey in APP.openSecs) ? APP.openSecs[skey] : (idx===0);   // recuerda tu elección; por defecto abre el mes más reciente
       var nP=0,nA=0,nX=0;
       items.forEach(function(r){ var k=keyOf(r); if(k==="Pendiente")nP++; else if(k==="Aprobado")nA++; else if(k==="Anulado")nX++; });
       var meta=[]; if(nP)meta.push(nP+" por revisar"); if(nA)meta.push(nA+" aprob."); if(nX)meta.push(nX+" anul.");
-      h+='<tr class="ats-mhead" data-g="'+gid+'" data-open="'+(open?"1":"0")+'"><td colspan="'+COLS+'">'+
+      h+='<tr class="ats-mhead" data-g="'+gid+'" data-k="'+skey+'" data-open="'+(open?"1":"0")+'"><td colspan="'+COLS+'">'+
          '<span class="ats-mchev">'+(open?"▾":"▸")+'</span><span class="ats-mname">'+esc(nombreMes(ym))+'</span>'+
          '<span class="ats-mcount">'+items.length+(items.length===1?" registro":" registros")+(meta.length?" · "+meta.join(" · "):"")+'</span></td></tr>';
       items.forEach(function(r){ h+='<tr class="ats-mrow" data-g="'+gid+'"'+(open?"":' style="display:none"')+'>'+atsRowCells(r)+'</tr>'; });
@@ -2432,6 +2447,7 @@ function renderAtsTabla(base, estadoFilter){
     hd.onclick=function(){
       var g=hd.getAttribute("data-g"), open=hd.getAttribute("data-open")==="1";
       hd.setAttribute("data-open", open?"0":"1");
+      APP.openSecs[hd.getAttribute("data-k")]=!open;   // recuerda el estado tras auto-refrescos
       var chev=hd.querySelector(".ats-mchev"); if(chev) chev.textContent=open?"▸":"▾";
       body.querySelectorAll('tr.ats-mrow[data-g="'+g+'"]').forEach(function(r){ r.style.display=open?"none":""; });
     };
