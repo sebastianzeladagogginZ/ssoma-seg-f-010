@@ -2613,11 +2613,14 @@ document.getElementById("fLev").onchange=function(){ APP.filtros.lev=this.value;
    - SSOMA (área="*" con permiso): aprobar / rechazar en lote lo que está "En revisión".
    - Jefe de área: adjuntar UNA evidencia + comentario a varias observaciones a la vez.
    ============================================================ */
+// ¿El jefe ya gestionó esta observación? = subió evidencia O dejó una justificación
+// escrita (p. ej. "no aplica"). Ambas cuentan como gestión revisable por SSOMA.
+function hayGestionJefe(o){ return !!o.evidencia_lev || !!(o.mensaje_jefe && String(o.mensaje_jefe).trim()); }
 // ¿Esta observación puede seleccionarse para una acción masiva del rol actual?
 function esSeleccionableMasivo(o){
   var isSSOMA=APP.user && APP.user.area==="*";
   var puedeAprobar=isSSOMA && !(APP.user && APP.user.puede_aprobar===false);
-  if(puedeAprobar) return !!o.evidencia_lev && o.levantamiento==="en_proceso";  // SSOMA: hay evidencia por revisar
+  if(puedeAprobar) return hayGestionJefe(o) && o.levantamiento==="en_proceso";  // SSOMA: hay evidencia o justificación por revisar
   if(!isSSOMA)     return o.levantamiento!=="levantado";                         // Jefe: cualquiera aún no cerrada
   return false;                                                                   // SSOMA visualización: sin acciones
 }
@@ -2863,13 +2866,13 @@ function abrirDrawer(id){
         ? '<div class="sect">Revisión SSOMA</div>'+
           '<textarea id="aMsg" class="msg-input" placeholder="Indicación para el jefe (obligatoria si vas a rechazar)">'+esc(o.mensaje_ssoma||"")+'</textarea>'+
           '<div class="act-btns" style="margin-top:8px">'+
-            (o.evidencia_lev
+            (hayGestionJefe(o)
               ? (puedeAprobar
                   ? '<button class="act green" id="aApprove">✓ Aprobar y validar levantamiento</button>'+
-                    '<button class="act ghost-bad" id="aReject">✗ Rechazar evidencia (la elimina de la nube)</button>'
+                    '<button class="act ghost-bad" id="aReject">✗ Rechazar '+(o.evidencia_lev?'evidencia (la elimina de la nube)':'gestión')+'</button>'
                   : '<p class="msg-empty">Tu rol es de visualización: la aprobación o rechazo la realiza el personal autorizado de SSOMA.</p>')+
-                '<button class="act" id="aFolder">📂 Abrir evidencia en la nube</button>'
-              : '<p class="msg-empty">El área aún no ha cargado evidencia para revisar.</p>')+
+                (o.evidencia_lev?'<button class="act" id="aFolder">📂 Abrir evidencia en la nube</button>':'')
+              : '<p class="msg-empty">El área aún no ha gestionado (evidencia o justificación) para revisar.</p>')+
             '<button class="act" id="aMsgSend">✉ Enviar indicación al jefe</button>'+
           '</div>'
         : '<div class="sect">Gestión del levantamiento</div>'+
@@ -3021,7 +3024,9 @@ function enviarLevantamiento(o){
     enviarAccion("guardar_mensaje",o,{rol:"jefe",texto:msg}).then(function(res){
       drawerBusy(false);
       if(res && res.ok===false){ toast(errTxt(res),"bad"); return; }
-      cerrarDrawer(); toast("Comentario enviado a SSOMA ✉","ok"); recargarTrasAccion();
+      // La gestión del jefe (justificación escrita) mueve la observación a "En revisión".
+      if(o.levantamiento==="pendiente"||o.levantamiento==="rechazado"){ o.levantamiento="en_proceso"; o.soma_rechazo=false; }
+      cerrarDrawer(); toast("Gestión enviada a SSOMA · pasó a En revisión ✉","ok"); recargarTrasAccion();
     });
   }
 }
