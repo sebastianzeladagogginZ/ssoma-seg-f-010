@@ -2074,7 +2074,11 @@ function atsDocKey(x){
   // Incluye el DNI (áreas por persona): dos personas distintas que suben el MISMO
   // cliente/circuito/cuadrilla/fecha por separado NO deben colapsar en un solo doc
   // (undercount de cobertura individual). En cuadrilla x.dni="" → no cambia su clave.
-  var logico=[x.tipo,x.cliente,x.circuito,x.cuadrilla,x.area,x.fecha,x.dni||""].map(function(s){return norm(s);}).join("|");
+  // El cliente se "limpia" (solo letras/números): así una re-subida del MISMO ATS con
+  // el nombre sucio (p. ej. "S.A.C." vs "S.A.C. |") colapsa igual y el registro viejo
+  // (anulado) no queda duplicado. El circuito/cuadrilla/área/fecha ya identifican el doc.
+  var _cli=norm(x.cliente).replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim();
+  var logico=[norm(x.tipo),_cli,norm(x.circuito),norm(x.cuadrilla),norm(x.area),norm(x.fecha),norm(x.dni||"")].join("|");
   if(logico.replace(/\|/g,"")) return "k:"+logico;                                  // identidad lógica (habitual)
   return "u:"+String(x.carpeta||"").replace(/[?#].*$/,"").replace(/\/+$/,"").toLowerCase();  // respaldo por URL
 }
