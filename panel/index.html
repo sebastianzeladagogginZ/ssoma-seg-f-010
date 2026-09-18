@@ -2074,11 +2074,19 @@ function atsDocKey(x){
   // Incluye el DNI (áreas por persona): dos personas distintas que suben el MISMO
   // cliente/circuito/cuadrilla/fecha por separado NO deben colapsar en un solo doc
   // (undercount de cobertura individual). En cuadrilla x.dni="" → no cambia su clave.
-  // El cliente se "limpia" (solo letras/números): así una re-subida del MISMO ATS con
-  // el nombre sucio (p. ej. "S.A.C." vs "S.A.C. |") colapsa igual y el registro viejo
-  // (anulado) no queda duplicado. El circuito/cuadrilla/área/fecha ya identifican el doc.
-  var _cli=norm(x.cliente).replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim();
-  var logico=[norm(x.tipo),_cli,norm(x.circuito),norm(x.cuadrilla),norm(x.area),norm(x.fecha),norm(x.dni||"")].join("|");
+  // Identidad del documento (para no duplicar re-subidas del MISMO ATS/Charla):
+  //  · Si hay CÓDIGO de circuito real (código único del cliente) → se cruza por ese
+  //    código e IGNORA el nombre, que suele venir "sucio" ("S.A.C." vs "S.A.C. |",
+  //    "BCP" vs "Banco de Crédito del Perú"…). Así toda re-subida del mismo circuito colapsa.
+  //  · Sin código (S/N, vacío, "no aplica") → se cae al NOMBRE limpio (solo letras/números),
+  //    porque el circuito no discrimina.
+  var _codRaw=norm(x.circuito);
+  var _cod=_codRaw.replace(/[^a-z0-9]/g,"");
+  var _sinCod=(!_cod || _cod==="0" || _cod==="sn" || _cod==="na" || _codRaw.indexOf("no aplica")>=0 || _cod.indexOf("noaplica")>=0);
+  var _ident=_sinCod
+    ? ("cli:"+norm(x.cliente).replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim())
+    : ("cod:"+_cod);
+  var logico=[norm(x.tipo),_ident,norm(x.cuadrilla),norm(x.area),norm(x.fecha),norm(x.dni||"")].join("|");
   if(logico.replace(/\|/g,"")) return "k:"+logico;                                  // identidad lógica (habitual)
   return "u:"+String(x.carpeta||"").replace(/[?#].*$/,"").replace(/\/+$/,"").toLowerCase();  // respaldo por URL
 }
