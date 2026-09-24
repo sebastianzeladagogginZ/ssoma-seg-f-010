@@ -122,6 +122,9 @@
     transition:height .18s ease,background .18s ease}
   .botmeta.locked{opacity:.5}
   .nivel button:disabled,.venc-wrap input:disabled{cursor:not-allowed}
+  /* Placa / series: se muestran y guardan en MAYÚSCULAS (el texto de ayuda no). */
+  .upper{text-transform:uppercase}
+  .upper::placeholder{text-transform:none}
 </style>
 </head>
 <body>
@@ -325,7 +328,8 @@ var EMPRESA={razon:"OPTICAL NETWORKS S.A.C.",ruc:"20602576702",
 /* ===== Estado ===== */
 var ST={area:"",division:"",fecha:"",hora:"",cuadrilla:"",presence:{T1:false,T2:false,T3:false,T4:false},docs:{},
   personas:[], enviado:false,
-  ans:{}, venc:{}, nivel:{}, ident:{escalera:{},extintor:{},botiquin:{}}, branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
+  ans:{}, venc:{}, nivel:{}, ident:{extintor:{},botiquin:{}}, escaleras:[], escSeq:0,
+  branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
   modalidad:"Autoinspección", tipo:"Planeada", conclusiones:"",
   resp:{nombre:"",cargo:"",documento:""}, firma:"", fotoResp:""};
 var LISTS={}, SCALES={};
@@ -584,20 +588,22 @@ function render(){
     }
   }
 
-  /* Secciones 5–8 (herramientas generales, escalera telescópica, kit FO, extintor,
+  /* Secciones 5–8 (herramientas generales, escaleras, kit FO, extintor,
      botiquín): recursos de CUADRILLA/unidad. Se ocultan en flujos sin cuadrilla
      (personal individual de redes/oficina: ON-Site, Inspección y Diseño). */
   if(!sinCuadrilla()){
   /* 5. Herramientas generales */
   H+=card(secN(5),indiv?"Herramientas generales":"Herramientas generales de la cuadrilla",checklist("gen",null,GEN,S_EQUIP),"gen");
 
-  /* 5.2 Escalera (branch) */
-  var esc='<div class="field"><label>'+(indiv?'¿Cuenta con escalera telescópica de 28 pasos?':'¿La cuadrilla cuenta con escalera telescópica de 28 pasos?')+'</label><div class="toggle">'+
+  /* 5.2 Escaleras (branch): la cuadrilla puede tener varias (telescópica y/o tijera, de
+     distintos pasos). Cada una se registra e inspecciona con el checklist de su tipo. */
+  var esc='<div class="field"><label>'+(indiv?'¿Cuenta con escaleras?':'¿La cuadrilla cuenta con escaleras?')+'</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.escalera===true?' on':'')+'" data-act="branch" data-b="escalera" data-v="1">Sí</button>'+
-    '<button class="no'+(ST.branch.escalera===false?' on':'')+'" data-act="branch" data-b="escalera" data-v="0">No</button></div></div>';
-  if(ST.branch.escalera===true) esc+=identFields("escalera")+checklist("escalera",null,LADDER,S_EQUIP);
-  else if(ST.branch.escalera===false) esc+='<p class="hint">Sin escalera telescópica: se omiten 13 preguntas.</p>';
-  H+=card(secN("5.2"),"Inspección de escalera telescópica",esc,"escalera");
+    '<button class="no'+(ST.branch.escalera===false?' on':'')+'" data-act="branch" data-b="escalera" data-v="0">No</button></div>'+
+    '<div class="hint">Registra cada escalera (telescópica y/o tijera) con su tipo, N° de pasos y serie; cada una tiene su propio checklist.</div></div>';
+  if(ST.branch.escalera===true) esc+=escaleraHTML();
+  else if(ST.branch.escalera===false) esc+='<p class="hint">Sin escaleras: se omite su inspección.</p>';
+  H+=card(secN("5.2"),"Inspección de escaleras",esc,"escalera");
 
   /* 6. Kit FO */
   H+=card(secN(6),"Kit de fibra óptica",checklist("fo",null,FO,S_EQUIP),"fo");
@@ -678,42 +684,125 @@ function togglePresence(id){
   render();
 }
 /* ── Identificación específica de la unidad inspeccionada (trazabilidad) ──
-   Responde la observación de auditoría: registrar QUÉ extintor/escalera/botiquín se
-   inspeccionó (serie, capacidad, tipo, vigencia…), no solo su estado. */
+   Responde la observación de auditoría: registrar QUÉ extintor/botiquín se inspeccionó
+   (serie, capacidad, clase de agente, placa…), no solo su estado. Donde aplica se usa
+   lista desplegable para que no se escriba mal. Las escaleras tienen su propio
+   registro (pueden ser varias por cuadrilla), más abajo. */
 var IDENT_DEFS={
-  escalera:[{k:"tipo",l:"Tipo / modelo de escalera",ph:"Ej. Telescópica de fibra 28 pasos",req:true},
-    {k:"serie",l:"N° de serie / código",ph:"Serie o código del activo",req:true},
-    {k:"material",l:"Material",sel:["Fibra de vidrio","Aluminio","Otro"]},
-    {k:"pasos",l:"N° de pasos",num:true,ph:"28"}],
-  extintor:[{k:"serie",l:"N° de serie / código",ph:"Serie del extintor",req:true},
-    {k:"capacidad",l:"Capacidad",ph:"Ej. 6 kg / 9 kg / 4 kg",req:true},
-    {k:"tipo",l:"Tipo / clase de agente",ph:"Ej. PQS ABC, CO₂",req:true},
+  extintor:[{k:"serie",l:"N° de serie / código",ph:"Serie del extintor",req:true,upper:true},
+    {k:"capacidad",l:"Capacidad",req:true,
+      sel:["1 kg","2 kg","3 kg","4 kg","5 kg","6 kg","9 kg","12 kg","Otra (detallar en observaciones)"]},
+    {k:"tipo",l:"Tipo / clase de agente",req:true,
+      sel:["PQS ABC","PQS BC","CO₂","Agua presurizada","Espuma (AFFF)","Acetato de potasio (clase K)",
+           "Agente limpio (Halotron / HCFC)","Otro (detallar en observaciones)"]},
     {k:"venc",l:"Vence / próxima recarga",date:true}],
-  botiquin:[{k:"codigo",l:"Código / ubicación",ph:"Código o ubicación del botiquín",req:true},
-    {k:"tipo",l:"Tipo / capacidad",ph:"Ej. Tipo II · para 10 personas",req:true}]
+  botiquin:[{k:"codigo",l:"Código (placa de la movilidad)",ph:"Digite la placa del carro o movilidad (ej. ABC-123)",req:true,upper:true}]
 };
-var IDENT_TIT={escalera:"Identificación de la escalera",extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
+var IDENT_TIT={extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
+var IDENT_NOMBRE={extintor:"Extintor",botiquin:"Botiquín"};
 function identFields(branch){
   var arr=IDENT_DEFS[branch]||[], d=(ST.ident&&ST.ident[branch])||{};
   var h='<div class="subblock"><h3>'+IDENT_TIT[branch]+'</h3>'+
-    '<div class="hint" style="margin:-2px 2px 6px">Datos para validar exactamente qué unidad se inspeccionó.</div><div class="grid2">';
+    '<div class="hint" style="margin:-2px 2px 6px">Datos para validar exactamente qué unidad se inspeccionó.</div>'+
+    '<div'+(arr.length>1?' class="grid2"':'')+'>';
   arr.forEach(function(f){
-    var v=eh(d[f.k]||""), rq=f.req?' required':'';
+    var v=eh(d[f.k]||""), rq=f.req?' required':'', up=f.upper?' class="upper" data-up="1"':'';
     h+='<div class="field"><label>'+f.l+(f.req?' <span class="req">*</span>':'')+'</label>';
     if(f.sel){ h+='<select data-ident="'+branch+'" data-k="'+f.k+'"'+rq+'><option value="">— Seleccionar —</option>'+
         f.sel.map(function(o){return '<option'+((d[f.k]||"")===o?' selected':'')+'>'+o+'</option>';}).join("")+'</select>'; }
     else if(f.date){ h+='<input type="date" data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'"'+rq+'>'; }
-    else { h+='<input type="'+(f.num?"number":"text")+'"'+(f.num?' inputmode="numeric"':'')+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'"'+rq+'>'; }
+    else { h+='<input type="text"'+up+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'"'+rq+'>'; }
     h+='</div>';
   });
   return h+'</div></div>';
 }
-function _setIdent(t){ var br=t.dataset.ident; if(!ST.ident[br]) ST.ident[br]={}; ST.ident[br][t.dataset.k]=t.value; }
+function _setIdent(t){ var br=t.dataset.ident; if(!ST.ident[br]) ST.ident[br]={}; ST.ident[br][t.dataset.k]=t.dataset.up?t.value.toUpperCase():t.value; }
+
+/* ── Escaleras: una cuadrilla puede llevar VARIAS (telescópica y/o tijera, de distintos
+   pasos). Cada una se identifica (tipo, pasos, serie, material) y se inspecciona con el
+   checklist propio de su tipo; sus respuestas se guardan por escalera (sub = id E1, E2…). ── */
+var LADDER_TIJERA=["Largueros","Peldaños","Unión de largueros con peldaños","Zapatas antideslizantes",
+  "Bisagras / cabezal superior","Tirantes / separadores de apertura","Seguro de bloqueo de apertura",
+  "Plataforma / bandeja porta herramientas","Piezas de ajuste (tornillos, pernos, remaches)",
+  "Etiqueta de capacidad de carga","Aseo de escalera"];
+var ESC_TIPOS={
+  "Telescópica":{pasos:["16","20","24","28","32","36","40","Otro"],items:LADDER},
+  "Tijera":{pasos:["3","4","5","6","7","8","9","10","12","Otro"],items:LADDER_TIJERA}
+};
+var ESC_MATERIAL=["Fibra de vidrio","Aluminio","Otro"];
+function escNueva(){ ST.escSeq=(ST.escSeq||0)+1; return {id:"E"+ST.escSeq,tipo:"",pasos:"",serie:"",material:""}; }
+function escPos(id){ for(var i=0;i<ST.escaleras.length;i++){ if(ST.escaleras[i].id===id) return i; } return -1; }
+function escLabel(id){
+  var i=escPos(id); if(i<0) return id;
+  var e=ST.escaleras[i];
+  return "Escalera "+(i+1)+(e.tipo?" · "+e.tipo:"")+(e.pasos?" "+e.pasos+" pasos":"")+(e.serie?" · S/N "+e.serie:"");
+}
+function escItemsCount(){
+  if(ST.branch.escalera!==true) return 1;
+  var n=0; ST.escaleras.forEach(function(e){ var t=ESC_TIPOS[e.tipo]; n+=t?t.items.length:1; }); return n||1;
+}
+function escSelect(e,f,opts,req){
+  return '<select data-esc="'+e.id+'" data-f="'+f+'"'+(req?' required':'')+'><option value="">— Seleccionar —</option>'+
+    opts.map(function(o){return '<option'+(e[f]===o?' selected':'')+'>'+o+'</option>';}).join("")+'</select>';
+}
+function escaleraHTML(){
+  var h='', n=ST.escaleras.length;
+  ST.escaleras.forEach(function(e,i){
+    var t=ESC_TIPOS[e.tipo];
+    h+='<div class="subblock"><h3>Escalera '+(i+1)+(e.tipo?' · '+e.tipo:'')+
+        (n>1?' <button class="linkbtn" data-act="delesc" data-id="'+e.id+'" type="button" style="float:right">✕ Quitar</button>':'')+'</h3>'+
+      '<div class="grid2">'+
+        '<div class="field"><label>Tipo de escalera <span class="req">*</span></label>'+escSelect(e,"tipo",Object.keys(ESC_TIPOS),true)+'</div>'+
+        '<div class="field"><label>N° de pasos <span class="req">*</span></label>'+
+          (t?escSelect(e,"pasos",t.pasos,true):'<select disabled><option>— Elige primero el tipo —</option></select>')+'</div>'+
+        '<div class="field"><label>N° de serie / código <span class="req">*</span></label>'+
+          '<input type="text" class="upper" data-esc="'+e.id+'" data-f="serie" value="'+eh(e.serie)+'" placeholder="Serie o código del activo" required></div>'+
+        '<div class="field"><label>Material</label>'+escSelect(e,"material",ESC_MATERIAL,false)+'</div>'+
+      '</div>'+
+      (t?checklist("escalera",e.id,t.items,S_EQUIP):'<p class="hint">Selecciona el tipo de escalera para ver su checklist de inspección.</p>')+
+    '</div>';
+  });
+  return h+'<button type="button" class="uploadbtn" data-act="addesc" style="margin-top:4px">＋ Agregar escalera</button>';
+}
+function addEsc(){ ST.escaleras.push(escNueva()); render(); }
+function delEsc(id){
+  for(var k in ST.ans){ if(k.indexOf("escalera||"+id+"||")===0) delete ST.ans[k]; }
+  var i=escPos(id); if(i>=0) ST.escaleras.splice(i,1);
+  if(!ST.escaleras.length) ST.escaleras=[escNueva()];
+  render();
+}
+/* Guarda un campo de la escalera. Si cambia el TIPO cambia su checklist: se limpian sus
+   respuestas y los pasos que no correspondan (devuelve true → hay que re-renderizar). */
+function setEscField(t){
+  var e=ST.escaleras[escPos(t.dataset.esc)]; if(!e) return false;
+  var f=t.dataset.f, v=(f==="serie")?t.value.toUpperCase():t.value;
+  if(f==="tipo"){
+    if(v===e.tipo) return false;
+    e.tipo=v;
+    for(var k in ST.ans){ if(k.indexOf("escalera||"+e.id+"||")===0) delete ST.ans[k]; }
+    var tp=ESC_TIPOS[v]; if(!tp || tp.pasos.indexOf(e.pasos)<0) e.pasos="";
+    return true;
+  }
+  e[f]=v; return false;
+}
+/* Etiqueta del recurso (técnico o escalera) para hallazgos y detalle. */
+function recursoDe(a,vacio){
+  if(a.sec==="escalera" && a.sub && a.sub!=="-") return escLabel(a.sub);
+  if(a.sub && a.sub!=="-") return a.sub+(nombreDe(a.sub)?" · "+nombreDe(a.sub):"");
+  return vacio;
+}
+
 /* Resumen legible de identificaciones para el registro/nube. */
-var IDENT_NOMBRE={extintor:"Extintor",escalera:"Escalera",botiquin:"Botiquín"};
 function identResumen(){
   var out=[];
-  ["extintor","escalera","botiquin"].forEach(function(br){
+  if(ST.branch.escalera===true){
+    ST.escaleras.forEach(function(s,i){
+      var p=[]; if(s.tipo)p.push("Tipo: "+s.tipo); if(s.pasos)p.push("Pasos: "+s.pasos);
+      if(s.serie)p.push("Serie: "+s.serie); if(s.material)p.push("Material: "+s.material);
+      if(p.length) out.push("Escalera "+(i+1)+" — "+p.join(" · "));
+    });
+  }
+  ["extintor","botiquin"].forEach(function(br){
     if(ST.branch[br]!==true) return;
     var d=ST.ident[br]||{}, parts=[];
     IDENT_DEFS[br].forEach(function(f){ if((d[f.k]||"").toString().trim()) parts.push(f.l+": "+d[f.k]); });
@@ -721,10 +810,20 @@ function identResumen(){
   });
   return out.join("  ||  ");
 }
-/* Valida que los campos obligatorios de identificación estén llenos cuando la unidad existe. */
+/* Valida los datos obligatorios de identificación cuando la unidad existe
+   (en el orden del formulario: escaleras → extintor → botiquín). */
 function _validarIdent(){
-  var nom={extintor:"del extintor",escalera:"de la escalera",botiquin:"del botiquín"}, e="";
-  ["extintor","escalera","botiquin"].some(function(br){
+  if(ST.branch.escalera===true){
+    if(!ST.escaleras.length) return "Registra al menos una escalera (o marca «No»).";
+    for(var i=0;i<ST.escaleras.length;i++){
+      var s=ST.escaleras[i], lab=" de la Escalera "+(i+1)+".";
+      if(!s.tipo) return "Selecciona el «Tipo de escalera»"+lab;
+      if(!s.pasos) return "Selecciona el «N° de pasos»"+lab;
+      if(!(s.serie||"").trim()) return "Completa el «N° de serie / código»"+lab;
+    }
+  }
+  var nom={extintor:"del extintor",botiquin:"del botiquín"}, e="";
+  ["extintor","botiquin"].some(function(br){
     if(ST.branch[br]!==true) return false;
     var d=ST.ident[br]||{};
     return IDENT_DEFS[br].some(function(f){
@@ -741,6 +840,9 @@ function setBranch(b,val){
     for(var kv in ST.venc){ if(kv.indexOf(b+"||")===0) delete ST.venc[kv]; }
     for(var kn in ST.nivel){ if(kn.indexOf(b+"||")===0) delete ST.nivel[kn]; }
     if(ST.ident && ST.ident[b]) ST.ident[b]={};
+    if(b==="escalera") ST.escaleras=[];
+  } else if(b==="escalera" && !ST.escaleras.length){
+    ST.escaleras=[escNueva()];   // al marcar «Sí» se abre la primera escalera
   }
   render();
 }
@@ -751,7 +853,7 @@ function delPersona(i){ ST.personas.splice(i,1); if(!ST.personas.length) ST.pers
    para que respuestas/roles/personas de un modo no contaminen al otro. */
 function resetPorArea(){
   ST.division=""; ST.cuadrilla=""; ST.ans={}; ST.venc={}; ST.nivel={};
-  ST.ident={escalera:{},extintor:{},botiquin:{}};
+  ST.ident={extintor:{},botiquin:{}}; ST.escaleras=[];
   ST.branch={escalera:null,extintor:null,botiquin:null};
   ST.presence={T1:false,T2:false,T3:false,T4:false}; ST.docs={};
   ST.personas=[];
@@ -830,7 +932,7 @@ function visibleQuestionCount(){
     // Flujos sin cuadrilla (ON-Site, Inspección y Diseño): solo personal + EPP + herramientas.
     if(sinCuadrilla()) return (ST.personas||[]).length + eppActual().length + toolsActual().length;
     var ni=(ST.personas||[]).length + eppActual().length + SIGNAL.length + toolsActual().length + GEN.length + FO.length;
-    ni+=(ST.branch.escalera===true?LADDER.length:1);
+    ni+=escItemsCount();
     ni+=(ST.branch.extintor===true?EXT.length:1);
     ni+=(ST.branch.botiquin===true?BOT.length:1);
     return ni;
@@ -841,7 +943,7 @@ function visibleQuestionCount(){
   n+=SIGNAL.length;
   n+=pr.filter(function(r){return r.tools;}).length*TOOLS.length;
   n+=GEN.length;
-  n+=(ST.branch.escalera===true?LADDER.length:1);
+  n+=escItemsCount();
   n+=FO.length;
   n+=(ST.branch.extintor===true?EXT.length:1);
   n+=(ST.branch.botiquin===true?BOT.length:1);
@@ -863,14 +965,12 @@ function updateMetrics(){
   if(sb){ sb.textContent=sem.estado+" · "+(m.pct===null?"—":m.pct+"%");
     sb.style.color="var("+sem.col+")"; sb.style.background="var("+sem.bg+")"; sb.style.borderColor="var("+sem.col+")"; }
 }
-function secNombre(sec){var m={epp:"EPP",tools:"Herramientas ind.",senal:"Señalización",gen:"Herr. generales",escalera:"Escalera telescópica",fo:"Kit fibra óptica",extintor:"Extintor",botiquin:"Botiquín"};return m[sec]||sec;}
+function secNombre(sec){var m={epp:"EPP",tools:"Herramientas ind.",senal:"Señalización",gen:"Herr. generales",escalera:"Escaleras",fo:"Kit fibra óptica",extintor:"Extintor",botiquin:"Botiquín"};return m[sec]||sec;}
 function findingsList(){
   var out=[];
   allAnswers().forEach(function(a){
     if(a.v==="No aplica"||OKVALS[a.v])return;
-    var who="—";
-    if(a.sub&&a.sub!=="-"){ who=a.sub+(nombreDe(a.sub)?" · "+nombreDe(a.sub):""); }
-    out.push({seccion:secNombre(a.sec),recurso:who,item:a.item,estado:a.v});
+    out.push({seccion:secNombre(a.sec),recurso:recursoDe(a,"—"),item:a.item,estado:a.v});
   });
   var al=botAlertas();
   al.venc.forEach(function(x){ out.push({seccion:"Botiquín",recurso:"—",item:x.item,estado:"Vencido ("+x.fecha+")"}); });
@@ -880,8 +980,7 @@ function findingsList(){
 }
 function buildDetalle(){
   var rows=allAnswers().map(function(a){
-    var who=(a.sub&&a.sub!=="-")?(a.sub+(nombreDe(a.sub)?" · "+nombreDe(a.sub):"")):"";
-    var row={seccion:secNombre(a.sec),recurso:who,item:a.item,estado:a.v};
+    var row={seccion:secNombre(a.sec),recurso:recursoDe(a,""),item:a.item,estado:a.v};
     if(a.sec==="botiquin"){
       var kk=key(a.sec,a.sub,a.item), locked=botLocked(a.v), vf=locked?"":(ST.venc[kk]||"");
       row.vencimiento=vf;
@@ -902,8 +1001,16 @@ function buildDetalle(){
     rows.push({seccion:"Botiquín",recurso:"—",item:it,estado:"",
       vencimiento:vf2, estado_vencimiento:vf2?vencEstado(vf2).txt:"", nivel:ST.nivel[k]?nivelTxt(ST.nivel[k]):""});
   }
-  /* Identificación de la unidad (extintor/escalera/botiquín): filas de trazabilidad. */
-  ["extintor","escalera","botiquin"].forEach(function(br){
+  /* Identificación de las unidades (escaleras/extintor/botiquín): filas de trazabilidad. */
+  if(ST.branch.escalera===true){
+    ST.escaleras.forEach(function(s,i){
+      [["tipo","Tipo de escalera"],["pasos","N° de pasos"],["serie","N° de serie / código"],["material","Material"]].forEach(function(p){
+        var v=(s[p[0]]||"").toString().trim();
+        if(v) rows.push({seccion:"Escaleras · identificación",recurso:"Escalera "+(i+1),item:p[1],estado:v});
+      });
+    });
+  }
+  ["extintor","botiquin"].forEach(function(br){
     if(ST.branch[br]!==true) return;
     var d=ST.ident[br]||{}, sec=secNombre(br)+" · identificación";
     IDENT_DEFS[br].forEach(function(f){ var v=(d[f.k]||"").toString().trim(); if(v) rows.push({seccion:sec,recurso:"—",item:f.l,estado:v}); });
@@ -1033,7 +1140,7 @@ function buildPayload(){
     hallazgos:hall, observaciones:ST.obs,
     botiquin_vencidos:al.venc.length, botiquin_por_vencer:al.porV.length, botiquin_nivel_bajo:al.bajo.length,
     extintor_ident:(ST.branch.extintor===true?ST.ident.extintor:{}),
-    escalera_ident:(ST.branch.escalera===true?ST.ident.escalera:{}),
+    escaleras:(ST.branch.escalera===true?ST.escaleras.map(function(s,i){return {n:i+1,tipo:s.tipo,pasos:s.pasos,serie:s.serie,material:s.material};}):[]),
     botiquin_ident:(ST.branch.botiquin===true?ST.ident.botiquin:{}),
     identificacion:identResumen(),
     empresa:EMPRESA.razon, ruc:EMPRESA.ruc, domicilio:EMPRESA.domicilio, actividad:EMPRESA.actividad,
@@ -1098,6 +1205,8 @@ document.getElementById("app").addEventListener("click",function(e){
   else if(act==="modal"){ ST.modalidad=b.dataset.v; render(); }
   else if(act==="addpersona") addPersona();
   else if(act==="delpersona") delPersona(+b.dataset.i);
+  else if(act==="addesc") addEsc();
+  else if(act==="delesc") delEsc(b.dataset.id);
   else if(act==="nivel") onNivel(b);
   else if(act==="clearsig") clearSignature();
 });
@@ -1112,7 +1221,8 @@ document.getElementById("app").addEventListener("input",function(e){
   else if(t.id==="r_nom") ST.resp.nombre=t.value;
   else if(t.id==="r_car") ST.resp.cargo=t.value;
   else if(t.id==="r_doc") ST.resp.documento=t.value;
-  else if(t.dataset && t.dataset.ident){ _setIdent(t); }   // identificación de extintor/escalera/botiquín
+  else if(t.dataset && t.dataset.ident){ _setIdent(t); }   // identificación de extintor/botiquín
+  else if(t.dataset && t.dataset.esc){ if(t.tagName==="INPUT") setEscField(t); }   // serie de escalera (sin re-render)
   else if(t.dataset && t.dataset.per){          // persona individual
     var pi=+t.dataset.i, campo=t.dataset.per, p=ST.personas[pi], val=t.value;
     if(!p) return;
@@ -1135,11 +1245,12 @@ document.getElementById("app").addEventListener("change",function(e){
     /* En áreas individuales, la división cambia las listas y las secciones visibles
        (ON-Site oculta señalización/generales/escalera/FO/extintor/botiquín): se limpian
        respuestas y ramas para no arrastrar ítems que ya no se muestran. */
-    if(esIndividual()){ ST.ans={}; ST.branch={escalera:null,extintor:null,botiquin:null}; }
+    if(esIndividual()){ ST.ans={}; ST.branch={escalera:null,extintor:null,botiquin:null}; ST.ident={extintor:{},botiquin:{}}; ST.escaleras=[]; }
     actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
   else if(t.dataset && t.dataset.ident){ _setIdent(t); }   // select/date de identificación
+  else if(t.dataset && t.dataset.esc){ if(setEscField(t)) render(); }   // tipo/pasos/material de escalera
   else if(t.dataset && t.dataset.per==="tipo"){ var pp=ST.personas[+t.dataset.i]; if(pp){ pp.tipo=t.value; pp.num=""; } render(); }
   else if(t.dataset && t.dataset.doc==="tipo"){ doc(t.dataset.id).tipo=t.value; doc(t.dataset.id).num=""; render(); }
 });
