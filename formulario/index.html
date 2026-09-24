@@ -217,7 +217,7 @@ var EPP=["Fotocheck","Chaleco de seguridad","Uniforme · Polo","Uniforme · Pant
   "Tapa nuca","Guantes de poliuretano","Guantes de cuero","Guantes dieléctricos","Cinturón con 2 estrobos",
   "Conector de anclaje","Linterna para casco","Tapones para oídos","Arnés con línea de vida y absorbedor"];
 var TOOLS=["Martillo de 10 OZ","Celular","Alicate Universal","Alicate de Corte","Juego de desarmadores","Cinturón Porta Herramientas"];
-/* ── NETWORKING ▸ ON-Site - Corporativo: inventario propio de EPP y herramientas ── */
+/* ── Inventario propio de EPP y herramientas por «Área ▸ División» (perfiles de red) ── */
 var EPP_ONSITE=["Barbiquejo elástico con mentonera","Botas dieléctricas con punta reforzada",
   "Lentes de seguridad lunas claras - Eco Line","Sobre lente Topgun A/F claro",
   "Casco jockey azul claro c/ suspensión 4 puntas de nylon y rachet",
@@ -229,10 +229,32 @@ var TOOLS_ONSITE=["Alicate de corte 6\" cod. 84-054","Cable de consola USB tipo 
   "Desarmador tipo plano 1/4\"x4\" 60-826-840","LAN Tester RJ45 y RJ11","Mouse inalámbrico","Celular","Laptop",
   "Revelador de voltaje IAC-D 90-1000V AC/LED Light","Cable consola DB9 to RJ45",
   "Cable adaptador consola USB TRENDnet TU-S9","Mochila campera ONI","Cable adaptador consola USB macho - USB macho 3.0 - 3 m"];
-/* ON-Site tiene EPP/herramientas propios; el resto usa las listas por defecto. */
-function esOnSite(){ return ST.area==="NETWORKING" && ST.division==="ON-Site - Corporativo"; }
-function eppActual(){ return esOnSite()?EPP_ONSITE:EPP; }
-function toolsActual(){ return esOnSite()?TOOLS_ONSITE:TOOLS; }
+var EPP_INSTALACIONES=["Barbiquejo elástico con mentonera","Botas dieléctricas con punta reforzada",
+  "Lentes de seguridad lunas claras - Eco Line","Sobre lente Topgun A/F claro",
+  "Casco jockey azul claro c/ suspensión 4 puntas de nylon y rachet",
+  "Guante de badana con elástico importado color amarillo","Linterna para casco de seguridad",
+  "Pantalón con cinta reflectiva","Polo camisero sin logo",
+  "Chaleco drill tecnología naranja c/cinta reflect. coreana 2\" tipo H c/logo bordado espalda y pecho Optical"];
+var TOOLS_INSTALACIONES=["Alicate de corte 6\" cod. 84-054","Cable de consola USB tipo A - USB tipo micro 1.8 m",
+  "Etiquetadora P-Touch E310BTVP","Etiquetadora P-Touch E300VP","Crimpeadora modular HT-315",
+  "Desarmador tipo estrella 2x4\" (69-145)","Desarmador tipo plano 1/4\"x4\" 60-826-840","LAN Tester RJ45 y RJ11",
+  "Mouse inalámbrico","Celular","Laptop","Revelador de voltaje IAC-D 90-1000V AC/LED Light",
+  "Cable consola DB9 to RJ45","Cable adaptador consola USB TRENDnet TU-S9","Mochila campera ONI",
+  "Cable adaptador consola USB macho - USB macho 3.0 - 3 m"];
+/* Cada división puede tener inventario propio; el resto usa las listas por defecto. */
+var EPP_DIV={
+  "NETWORKING ▸ ON-Site - Corporativo":EPP_ONSITE,
+  "NETWORKING ▸ Instalaciones - Corporativo":EPP_INSTALACIONES
+};
+var TOOLS_DIV={
+  "NETWORKING ▸ ON-Site - Corporativo":TOOLS_ONSITE,
+  "NETWORKING ▸ Instalaciones - Corporativo":TOOLS_INSTALACIONES
+};
+function _claveDiv(){ return ST.area+" ▸ "+ST.division; }
+function eppActual(){ return EPP_DIV[_claveDiv()]||EPP; }
+function toolsActual(){ return TOOLS_DIV[_claveDiv()]||TOOLS; }
+function tieneListaPropia(){ return !!(EPP_DIV[_claveDiv()]||TOOLS_DIV[_claveDiv()]); }
+function divCorta(){ return String(ST.division||"").replace(/ - Corporativo$/,""); }
 /* Registro de personal = INGRESO MANUAL (Apellidos, Nombres, N° de documento),
    igual que en el resto de la herramienta. No hay lista desplegable ni
    autocompletado por DNI.
@@ -244,6 +266,7 @@ function toolsActual(){ return esOnSite()?TOOLS_ONSITE:TOOLS; }
    herramientas generales, escalera, kit FO, extintor y botiquín. */
 var SIN_CUADRILLA={
   "NETWORKING ▸ ON-Site - Corporativo":1,
+  "NETWORKING ▸ Instalaciones - Corporativo":1,
   "INSPECCIÓN Y DISEÑO ▸ Inspección y Diseño - Corporativo":1
 };
 function sinCuadrilla(){ return !!SIN_CUADRILLA[ST.area+" ▸ "+ST.division]; }
@@ -537,7 +560,7 @@ function render(){
 
   /* 2. EPP */
   if(indiv){
-    H+=card(secN(2),esOnSite()?"EPP · ON-Site":"EPP",checklist("epp",null,eppActual(),S_PERSON),"epp");
+    H+=card(secN(2),tieneListaPropia()?"EPP · "+divCorta():"EPP",checklist("epp",null,eppActual(),S_PERSON),"epp");
   } else if(presentRoles.length){
     var e="";
     presentRoles.forEach(function(r){ e+='<div class="subblock"><h3>EPP · '+r.label+(nombreDe(r.id)?' — '+nombreDe(r.id):'')+'</h3>'+checklist("epp",r.id,EPP,S_PERSON)+'</div>'; });
@@ -551,7 +574,7 @@ function render(){
 
   /* 4. Herramientas */
   if(indiv){
-    H+=card(secN(4),esOnSite()?"Herramientas · ON-Site":"Herramientas",checklist("tools",null,toolsActual(),S_PERSON),"tools");
+    H+=card(secN(4),tieneListaPropia()?"Herramientas · "+divCorta():"Herramientas",checklist("tools",null,toolsActual(),S_PERSON),"tools");
   } else {
     var toolRoles=presentRoles.filter(function(r){return r.tools;});
     if(toolRoles.length){
