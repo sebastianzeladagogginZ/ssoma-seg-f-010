@@ -278,9 +278,11 @@ function sinCuadrilla(){ return !!SIN_CUADRILLA[ST.area+" ▸ "+ST.division]; }
 var _secN=0;
 function secN(f){ return sinCuadrilla()?(++_secN):f; }
 var SIGNAL=["Conos de seguridad","Barras retráctiles","Banderines de escalera","Tacos de seguridad"];
-var GEN=["Escalera extensible de 28 pasos","Wincha pasa cable","Extensión eléctrica (mín. 15 m)","Cinta aislante",
+/* Las escaleras (y su cadena) se inspeccionan en la sección «Escaleras», una por una;
+   por eso ya no figuran aquí (evita preguntar lo mismo dos veces). */
+var GEN=["Wincha pasa cable","Extensión eléctrica (mín. 15 m)","Cinta aislante",
   "Soga de escalera","Carrete para FO DROP (porta bobina)","Plumón indeleble negro","Broca para concreto o pasante",
-  "Arco de sierra","Cuchilla (cúter)","Candado anticizalla","Cadena para escalera (2)"];
+  "Arco de sierra","Cuchilla (cúter)","Candado anticizalla"];
 var LADDER=["Largueros","Peldaños","Unión de largueros con peldaños","Zapatas antideslizantes","Polea","Cuerda",
   "Ganchos trabapeldaños","Seguro de gancho trabapeldaños","Piezas de ajuste (tornillos, pernos)","Apoya poste",
   "Aseo de escalera","Cadena para escalera (2)","Guías externas para unión de largueros"];
@@ -978,8 +980,40 @@ function findingsList(){
   al.bajo.forEach(function(x){ out.push({seccion:"Botiquín",recurso:"—",item:x.item,estado:"Nivel ¼ · reponer"}); });
   return out;
 }
+/* Un dato de identificación escrito a mano (serie, placa) nunca debe leerse como un estado
+   del checklist: el panel y el reporte semanal toman como observación toda fila cuyo
+   estado sea «Requiere cambio» o «No tiene». Si el valor coincide con un estado de la
+   escala (p. ej. alguien escribe "NO TIENE" como serie), se guarda entre comillas. */
+var _ESTADOS_ESCALA={"buen estado":1,"requiere cambio":1,"no tiene":1,"no aplica":1};
+function _valorIdent(v){
+  var n=String(v).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ");
+  return _ESTADOS_ESCALA[n]?("«"+v+"»"):v;
+}
 function buildDetalle(){
-  var rows=allAnswers().map(function(a){
+  /* Filas de identificación por unidad. Se insertan justo antes de la primera respuesta de
+     esa unidad, para que el PDF muestre «identificación → checklist» de cada una. */
+  var pend={};   // "escalera:E1" | "extintor" | "botiquin" → [filas]
+  if(ST.branch.escalera===true){
+    ST.escaleras.forEach(function(s,i){
+      var f=[];
+      [["tipo","Tipo de escalera"],["pasos","N° de pasos"],["serie","N° de serie / código"],["material","Material"]].forEach(function(p){
+        var v=(s[p[0]]||"").toString().trim();
+        if(v) f.push({seccion:"Escaleras · identificación",recurso:"Escalera "+(i+1),item:p[1],estado:_valorIdent(v)});
+      });
+      if(f.length) pend["escalera:"+s.id]=f;
+    });
+  }
+  ["extintor","botiquin"].forEach(function(br){
+    if(ST.branch[br]!==true) return;
+    var d=ST.ident[br]||{}, sec=secNombre(br)+" · identificación", f=[];
+    IDENT_DEFS[br].forEach(function(fd){ var v=(d[fd.k]||"").toString().trim(); if(v) f.push({seccion:sec,recurso:"—",item:fd.l,estado:_valorIdent(v)}); });
+    if(f.length) pend[br]=f;
+  });
+  var rows=[];
+  function soltar(k){ if(pend[k]){ Array.prototype.push.apply(rows,pend[k]); delete pend[k]; } }
+
+  allAnswers().forEach(function(a){
+    soltar(a.sec==="escalera"?("escalera:"+a.sub):a.sec);
     var row={seccion:secNombre(a.sec),recurso:recursoDe(a,""),item:a.item,estado:a.v};
     if(a.sec==="botiquin"){
       var kk=key(a.sec,a.sub,a.item), locked=botLocked(a.v), vf=locked?"":(ST.venc[kk]||"");
@@ -987,7 +1021,7 @@ function buildDetalle(){
       row.estado_vencimiento=vf?vencEstado(vf).txt:"";
       row.nivel=(locked?"":(ST.nivel[kk]?nivelTxt(ST.nivel[kk]):""));
     }
-    return row;
+    rows.push(row);
   });
   /* Botiquín: no perder vencimiento/nivel si el ítem tiene ese dato pero
      aún no se marcó su estado (se agrega como fila con estado en blanco). */
@@ -998,23 +1032,12 @@ function buildDetalle(){
   for(k in claves){
     var it=k.split("||")[2]; if(vistos[it]) continue;
     var vf2=ST.venc[k]||"";
+    soltar("botiquin");
     rows.push({seccion:"Botiquín",recurso:"—",item:it,estado:"",
       vencimiento:vf2, estado_vencimiento:vf2?vencEstado(vf2).txt:"", nivel:ST.nivel[k]?nivelTxt(ST.nivel[k]):""});
   }
-  /* Identificación de las unidades (escaleras/extintor/botiquín): filas de trazabilidad. */
-  if(ST.branch.escalera===true){
-    ST.escaleras.forEach(function(s,i){
-      [["tipo","Tipo de escalera"],["pasos","N° de pasos"],["serie","N° de serie / código"],["material","Material"]].forEach(function(p){
-        var v=(s[p[0]]||"").toString().trim();
-        if(v) rows.push({seccion:"Escaleras · identificación",recurso:"Escalera "+(i+1),item:p[1],estado:v});
-      });
-    });
-  }
-  ["extintor","botiquin"].forEach(function(br){
-    if(ST.branch[br]!==true) return;
-    var d=ST.ident[br]||{}, sec=secNombre(br)+" · identificación";
-    IDENT_DEFS[br].forEach(function(f){ var v=(d[f.k]||"").toString().trim(); if(v) rows.push({seccion:sec,recurso:"—",item:f.l,estado:v}); });
-  });
+  /* Unidades identificadas pero aún sin respuestas marcadas: al final, en orden del formulario. */
+  Object.keys(pend).forEach(soltar);
   return rows;
 }
 function openSheet(){
