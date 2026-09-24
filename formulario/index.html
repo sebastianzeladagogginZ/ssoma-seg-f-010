@@ -325,7 +325,7 @@ var EMPRESA={razon:"OPTICAL NETWORKS S.A.C.",ruc:"20602576702",
 /* ===== Estado ===== */
 var ST={area:"",division:"",fecha:"",hora:"",cuadrilla:"",presence:{T1:false,T2:false,T3:false,T4:false},docs:{},
   personas:[], enviado:false,
-  ans:{}, venc:{}, nivel:{}, branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
+  ans:{}, venc:{}, nivel:{}, ident:{escalera:{},extintor:{},botiquin:{}}, branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
   modalidad:"Autoinspección", tipo:"Planeada", conclusiones:"",
   resp:{nombre:"",cargo:"",documento:""}, firma:"", fotoResp:""};
 var LISTS={}, SCALES={};
@@ -595,7 +595,7 @@ function render(){
   var esc='<div class="field"><label>'+(indiv?'¿Cuenta con escalera telescópica de 28 pasos?':'¿La cuadrilla cuenta con escalera telescópica de 28 pasos?')+'</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.escalera===true?' on':'')+'" data-act="branch" data-b="escalera" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.escalera===false?' on':'')+'" data-act="branch" data-b="escalera" data-v="0">No</button></div></div>';
-  if(ST.branch.escalera===true) esc+=checklist("escalera",null,LADDER,S_EQUIP);
+  if(ST.branch.escalera===true) esc+=identFields("escalera")+checklist("escalera",null,LADDER,S_EQUIP);
   else if(ST.branch.escalera===false) esc+='<p class="hint">Sin escalera telescópica: se omiten 13 preguntas.</p>';
   H+=card(secN("5.2"),"Inspección de escalera telescópica",esc,"escalera");
 
@@ -606,7 +606,7 @@ function render(){
   var ex='<div class="field"><label>¿La unidad cuenta con extintor?</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.extintor===true?' on':'')+'" data-act="branch" data-b="extintor" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.extintor===false?' on':'')+'" data-act="branch" data-b="extintor" data-v="0">No</button></div></div>';
-  if(ST.branch.extintor===true) ex+=checklist("extintor",null,EXT,S_SEG);
+  if(ST.branch.extintor===true) ex+=identFields("extintor")+checklist("extintor",null,EXT,S_SEG);
   else if(ST.branch.extintor===false) ex+='<p class="hint">Sin extintor: se omiten 16 preguntas (registrar en observaciones).</p>';
   H+=card(secN(7),"Estado del extintor",ex,"extintor");
 
@@ -614,7 +614,7 @@ function render(){
   var bo='<div class="field"><label>¿La unidad cuenta con botiquín?</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.botiquin===true?' on':'')+'" data-act="branch" data-b="botiquin" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.botiquin===false?' on':'')+'" data-act="branch" data-b="botiquin" data-v="0">No</button></div></div>';
-  if(ST.branch.botiquin===true) bo+='<div class="hint" style="margin:2px 2px 8px">Además del estado, en los ítems que aplican registra la <b>fecha de vencimiento</b> (semáforo automático 🟢 vigente · 🟠 por vencer · 🔴 vencido) y el <b>nivel de contenido</b> 🟢 lleno · 🟠 mitad · 🔴 ¼ (listo para cambio).</div>'+checklist("botiquin",null,BOT,S_SEG,BOT_META);
+  if(ST.branch.botiquin===true) bo+='<div class="hint" style="margin:2px 2px 8px">Además del estado, en los ítems que aplican registra la <b>fecha de vencimiento</b> (semáforo automático 🟢 vigente · 🟠 por vencer · 🔴 vencido) y el <b>nivel de contenido</b> 🟢 lleno · 🟠 mitad · 🔴 ¼ (listo para cambio).</div>'+identFields("botiquin")+checklist("botiquin",null,BOT,S_SEG,BOT_META);
   else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (registrar en observaciones).</p>';
   H+=card(secN(8),"Estado del botiquín",bo,"botiquin");
   } /* fin secciones 5–8 (ocultas en flujos sin cuadrilla) */
@@ -677,12 +677,57 @@ function togglePresence(id){
     for(var k in ST.ans){ if(k.indexOf("epp||"+id+"||")===0||k.indexOf("tools||"+id+"||")===0) delete ST.ans[k]; } }
   render();
 }
+/* ── Identificación específica de la unidad inspeccionada (trazabilidad) ──
+   Responde la observación de auditoría: registrar QUÉ extintor/escalera/botiquín se
+   inspeccionó (serie, capacidad, tipo, vigencia…), no solo su estado. */
+var IDENT_DEFS={
+  escalera:[{k:"tipo",l:"Tipo / modelo de escalera",ph:"Ej. Telescópica de fibra 28 pasos"},
+    {k:"serie",l:"N° de serie / código",ph:"Serie o código del activo"},
+    {k:"material",l:"Material",sel:["Fibra de vidrio","Aluminio","Otro"]},
+    {k:"pasos",l:"N° de pasos",num:true,ph:"28"}],
+  extintor:[{k:"serie",l:"N° de serie / código",ph:"Serie del extintor"},
+    {k:"capacidad",l:"Capacidad",ph:"Ej. 6 kg / 9 kg / 4 kg"},
+    {k:"tipo",l:"Tipo / clase de agente",ph:"Ej. PQS ABC, CO₂"},
+    {k:"venc",l:"Vence / próxima recarga",date:true}],
+  botiquin:[{k:"codigo",l:"Código / ubicación",ph:"Código o ubicación del botiquín"},
+    {k:"tipo",l:"Tipo / capacidad",ph:"Ej. Tipo II · para 10 personas"}]
+};
+var IDENT_TIT={escalera:"Identificación de la escalera",extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
+function identFields(branch){
+  var arr=IDENT_DEFS[branch]||[], d=(ST.ident&&ST.ident[branch])||{};
+  var h='<div class="subblock"><h3>'+IDENT_TIT[branch]+'</h3>'+
+    '<div class="hint" style="margin:-2px 2px 6px">Datos para validar exactamente qué unidad se inspeccionó.</div><div class="grid2">';
+  arr.forEach(function(f){
+    var v=eh(d[f.k]||"");
+    h+='<div class="field"><label>'+f.l+'</label>';
+    if(f.sel){ h+='<select data-ident="'+branch+'" data-k="'+f.k+'"><option value="">— Seleccionar —</option>'+
+        f.sel.map(function(o){return '<option'+((d[f.k]||"")===o?' selected':'')+'>'+o+'</option>';}).join("")+'</select>'; }
+    else if(f.date){ h+='<input type="date" data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'">'; }
+    else { h+='<input type="'+(f.num?"number":"text")+'"'+(f.num?' inputmode="numeric"':'')+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'">'; }
+    h+='</div>';
+  });
+  return h+'</div></div>';
+}
+function _setIdent(t){ var br=t.dataset.ident; if(!ST.ident[br]) ST.ident[br]={}; ST.ident[br][t.dataset.k]=t.value; }
+/* Resumen legible de identificaciones para el registro/nube. */
+var IDENT_NOMBRE={extintor:"Extintor",escalera:"Escalera",botiquin:"Botiquín"};
+function identResumen(){
+  var out=[];
+  ["extintor","escalera","botiquin"].forEach(function(br){
+    if(ST.branch[br]!==true) return;
+    var d=ST.ident[br]||{}, parts=[];
+    IDENT_DEFS[br].forEach(function(f){ if((d[f.k]||"").toString().trim()) parts.push(f.l+": "+d[f.k]); });
+    if(parts.length) out.push(IDENT_NOMBRE[br]+" — "+parts.join(" · "));
+  });
+  return out.join("  ||  ");
+}
 function setBranch(b,val){
   ST.branch[b]=val;
   if(!val){
     for(var k in ST.ans){ if(k.indexOf(b+"||")===0) delete ST.ans[k]; }
     for(var kv in ST.venc){ if(kv.indexOf(b+"||")===0) delete ST.venc[kv]; }
     for(var kn in ST.nivel){ if(kn.indexOf(b+"||")===0) delete ST.nivel[kn]; }
+    if(ST.ident && ST.ident[b]) ST.ident[b]={};
   }
   render();
 }
@@ -693,6 +738,7 @@ function delPersona(i){ ST.personas.splice(i,1); if(!ST.personas.length) ST.pers
    para que respuestas/roles/personas de un modo no contaminen al otro. */
 function resetPorArea(){
   ST.division=""; ST.cuadrilla=""; ST.ans={}; ST.venc={}; ST.nivel={};
+  ST.ident={escalera:{},extintor:{},botiquin:{}};
   ST.branch={escalera:null,extintor:null,botiquin:null};
   ST.presence={T1:false,T2:false,T3:false,T4:false}; ST.docs={};
   ST.personas=[];
@@ -843,6 +889,12 @@ function buildDetalle(){
     rows.push({seccion:"Botiquín",recurso:"—",item:it,estado:"",
       vencimiento:vf2, estado_vencimiento:vf2?vencEstado(vf2).txt:"", nivel:ST.nivel[k]?nivelTxt(ST.nivel[k]):""});
   }
+  /* Identificación de la unidad (extintor/escalera/botiquín): filas de trazabilidad. */
+  ["extintor","escalera","botiquin"].forEach(function(br){
+    if(ST.branch[br]!==true) return;
+    var d=ST.ident[br]||{}, sec=secNombre(br)+" · identificación";
+    IDENT_DEFS[br].forEach(function(f){ var v=(d[f.k]||"").toString().trim(); if(v) rows.push({seccion:sec,recurso:"—",item:f.l,estado:v}); });
+  });
   return rows;
 }
 function openSheet(){
@@ -966,6 +1018,10 @@ function buildPayload(){
     responsable_nombre:ra.nombre, responsable_cargo:ra.cargo, responsable_documento:ra.documento,
     hallazgos:hall, observaciones:ST.obs,
     botiquin_vencidos:al.venc.length, botiquin_por_vencer:al.porV.length, botiquin_nivel_bajo:al.bajo.length,
+    extintor_ident:(ST.branch.extintor===true?ST.ident.extintor:{}),
+    escalera_ident:(ST.branch.escalera===true?ST.ident.escalera:{}),
+    botiquin_ident:(ST.branch.botiquin===true?ST.ident.botiquin:{}),
+    identificacion:identResumen(),
     empresa:EMPRESA.razon, ruc:EMPRESA.ruc, domicilio:EMPRESA.domicilio, actividad:EMPRESA.actividad,
     firma:(String(ST.firma).split(",")[1]||""),
     foto_responsable:(String(ST.fotoResp).split(",")[1]||""),
@@ -1042,6 +1098,7 @@ document.getElementById("app").addEventListener("input",function(e){
   else if(t.id==="r_nom") ST.resp.nombre=t.value;
   else if(t.id==="r_car") ST.resp.cargo=t.value;
   else if(t.id==="r_doc") ST.resp.documento=t.value;
+  else if(t.dataset && t.dataset.ident){ _setIdent(t); }   // identificación de extintor/escalera/botiquín
   else if(t.dataset && t.dataset.per){          // persona individual
     var pi=+t.dataset.i, campo=t.dataset.per, p=ST.personas[pi], val=t.value;
     if(!p) return;
@@ -1068,6 +1125,7 @@ document.getElementById("app").addEventListener("change",function(e){
     actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
+  else if(t.dataset && t.dataset.ident){ _setIdent(t); }   // select/date de identificación
   else if(t.dataset && t.dataset.per==="tipo"){ var pp=ST.personas[+t.dataset.i]; if(pp){ pp.tipo=t.value; pp.num=""; } render(); }
   else if(t.dataset && t.dataset.doc==="tipo"){ doc(t.dataset.id).tipo=t.value; doc(t.dataset.id).num=""; render(); }
 });
