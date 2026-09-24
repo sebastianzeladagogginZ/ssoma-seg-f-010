@@ -681,16 +681,16 @@ function togglePresence(id){
    Responde la observación de auditoría: registrar QUÉ extintor/escalera/botiquín se
    inspeccionó (serie, capacidad, tipo, vigencia…), no solo su estado. */
 var IDENT_DEFS={
-  escalera:[{k:"tipo",l:"Tipo / modelo de escalera",ph:"Ej. Telescópica de fibra 28 pasos"},
-    {k:"serie",l:"N° de serie / código",ph:"Serie o código del activo"},
+  escalera:[{k:"tipo",l:"Tipo / modelo de escalera",ph:"Ej. Telescópica de fibra 28 pasos",req:true},
+    {k:"serie",l:"N° de serie / código",ph:"Serie o código del activo",req:true},
     {k:"material",l:"Material",sel:["Fibra de vidrio","Aluminio","Otro"]},
     {k:"pasos",l:"N° de pasos",num:true,ph:"28"}],
-  extintor:[{k:"serie",l:"N° de serie / código",ph:"Serie del extintor"},
-    {k:"capacidad",l:"Capacidad",ph:"Ej. 6 kg / 9 kg / 4 kg"},
-    {k:"tipo",l:"Tipo / clase de agente",ph:"Ej. PQS ABC, CO₂"},
+  extintor:[{k:"serie",l:"N° de serie / código",ph:"Serie del extintor",req:true},
+    {k:"capacidad",l:"Capacidad",ph:"Ej. 6 kg / 9 kg / 4 kg",req:true},
+    {k:"tipo",l:"Tipo / clase de agente",ph:"Ej. PQS ABC, CO₂",req:true},
     {k:"venc",l:"Vence / próxima recarga",date:true}],
-  botiquin:[{k:"codigo",l:"Código / ubicación",ph:"Código o ubicación del botiquín"},
-    {k:"tipo",l:"Tipo / capacidad",ph:"Ej. Tipo II · para 10 personas"}]
+  botiquin:[{k:"codigo",l:"Código / ubicación",ph:"Código o ubicación del botiquín",req:true},
+    {k:"tipo",l:"Tipo / capacidad",ph:"Ej. Tipo II · para 10 personas",req:true}]
 };
 var IDENT_TIT={escalera:"Identificación de la escalera",extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
 function identFields(branch){
@@ -698,12 +698,12 @@ function identFields(branch){
   var h='<div class="subblock"><h3>'+IDENT_TIT[branch]+'</h3>'+
     '<div class="hint" style="margin:-2px 2px 6px">Datos para validar exactamente qué unidad se inspeccionó.</div><div class="grid2">';
   arr.forEach(function(f){
-    var v=eh(d[f.k]||"");
-    h+='<div class="field"><label>'+f.l+'</label>';
-    if(f.sel){ h+='<select data-ident="'+branch+'" data-k="'+f.k+'"><option value="">— Seleccionar —</option>'+
+    var v=eh(d[f.k]||""), rq=f.req?' required':'';
+    h+='<div class="field"><label>'+f.l+(f.req?' <span class="req">*</span>':'')+'</label>';
+    if(f.sel){ h+='<select data-ident="'+branch+'" data-k="'+f.k+'"'+rq+'><option value="">— Seleccionar —</option>'+
         f.sel.map(function(o){return '<option'+((d[f.k]||"")===o?' selected':'')+'>'+o+'</option>';}).join("")+'</select>'; }
-    else if(f.date){ h+='<input type="date" data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'">'; }
-    else { h+='<input type="'+(f.num?"number":"text")+'"'+(f.num?' inputmode="numeric"':'')+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'">'; }
+    else if(f.date){ h+='<input type="date" data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'"'+rq+'>'; }
+    else { h+='<input type="'+(f.num?"number":"text")+'"'+(f.num?' inputmode="numeric"':'')+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'"'+rq+'>'; }
     h+='</div>';
   });
   return h+'</div></div>';
@@ -720,6 +720,19 @@ function identResumen(){
     if(parts.length) out.push(IDENT_NOMBRE[br]+" — "+parts.join(" · "));
   });
   return out.join("  ||  ");
+}
+/* Valida que los campos obligatorios de identificación estén llenos cuando la unidad existe. */
+function _validarIdent(){
+  var nom={extintor:"del extintor",escalera:"de la escalera",botiquin:"del botiquín"}, e="";
+  ["extintor","escalera","botiquin"].some(function(br){
+    if(ST.branch[br]!==true) return false;
+    var d=ST.ident[br]||{};
+    return IDENT_DEFS[br].some(function(f){
+      if(f.req && !(d[f.k]||"").toString().trim()){ e="Completa «"+f.l+"» en la identificación "+nom[br]+"."; return true; }
+      return false;
+    });
+  });
+  return e;
 }
 function setBranch(b,val){
   ST.branch[b]=val;
@@ -959,6 +972,7 @@ function validar(){
       else { if(!/^[A-Za-z0-9]{9,12}$/.test(num)) return "El Carnet de Extranjería de "+id+" debe tener 9 a 12 caracteres."; }
     }
   }
+  var _ie=_validarIdent(); if(_ie) return _ie;
   if(!ST.photos.length) return "Adjunta al menos una foto (9.1).";
   if(!String(ST.obs).trim()) return "Completa las Observaciones (9.2).";
   if(!String(ST.conclusiones).trim()) return "Completa las Conclusiones (10.4).";
