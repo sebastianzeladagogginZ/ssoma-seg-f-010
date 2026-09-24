@@ -698,14 +698,18 @@ var IDENT_DEFS={
       sel:["PQS ABC","PQS BC","CO₂","Agua presurizada","Espuma (AFFF)","Acetato de potasio (clase K)",
            "Agente limpio (Halotron / HCFC)","Otro (detallar en observaciones)"]},
     {k:"venc",l:"Vence / próxima recarga",date:true}],
-  botiquin:[{k:"codigo",l:"Código (placa de la movilidad)",ph:"Digite la placa del carro o movilidad (ej. ABC-123)",req:true,upper:true}]
+  /* La placa se separa en dos casillas (letras + números) para que TODOS registren igual:
+     evita minúsculas, plaquita pegada sin guion o el guion en distinto lugar. */
+  botiquin:[{k:"placa_let",l:"Placa — letras",ph:"ABC",req:true,upper:true,only:"AZ",max:3},
+    {k:"placa_num",l:"Placa — números",ph:"123",req:true,only:"09",max:4}]
 };
 var IDENT_TIT={extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
+var IDENT_HINT={botiquin:"Placa de la unidad: escribe las <b>letras</b> en una casilla y los <b>números</b> en la otra (se une como <b>ABC-123</b>)."};
 var IDENT_NOMBRE={extintor:"Extintor",botiquin:"Botiquín"};
 function identFields(branch){
   var arr=IDENT_DEFS[branch]||[], d=(ST.ident&&ST.ident[branch])||{};
   var h='<div class="subblock"><h3>'+IDENT_TIT[branch]+'</h3>'+
-    '<div class="hint" style="margin:-2px 2px 6px">Datos para validar exactamente qué unidad se inspeccionó.</div>'+
+    '<div class="hint" style="margin:-2px 2px 6px">'+(IDENT_HINT[branch]||"Datos para validar exactamente qué unidad se inspeccionó.")+'</div>'+
     '<div'+(arr.length>1?' class="grid2"':'')+'>';
   arr.forEach(function(f){
     var v=eh(d[f.k]||""), rq=f.req?' required':'', up=f.upper?' class="upper" data-up="1"':'';
@@ -713,12 +717,23 @@ function identFields(branch){
     if(f.sel){ h+='<select data-ident="'+branch+'" data-k="'+f.k+'"'+rq+'><option value="">— Seleccionar —</option>'+
         f.sel.map(function(o){return '<option'+((d[f.k]||"")===o?' selected':'')+'>'+o+'</option>';}).join("")+'</select>'; }
     else if(f.date){ h+='<input type="date" data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'"'+rq+'>'; }
-    else { h+='<input type="text"'+up+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'"'+rq+'>'; }
+    else {
+      var only=f.only?' data-only="'+f.only+'"':'', im=(f.only==="09")?' inputmode="numeric"':'', ml=f.max?' maxlength="'+f.max+'"':'';
+      h+='<input type="text"'+up+only+im+ml+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'"'+rq+'>';
+    }
     h+='</div>';
   });
   return h+'</div></div>';
 }
-function _setIdent(t){ var br=t.dataset.ident; if(!ST.ident[br]) ST.ident[br]={}; ST.ident[br][t.dataset.k]=t.dataset.up?t.value.toUpperCase():t.value; }
+function _setIdent(t){
+  var br=t.dataset.ident; if(!ST.ident[br]) ST.ident[br]={};
+  var val=t.value, only=t.dataset.only;
+  if(only==="AZ") val=val.replace(/[^A-Za-z]/g,"").toUpperCase();       // placa: solo letras, MAYÚSC.
+  else if(only==="09") val=val.replace(/[^0-9]/g,"");                    // placa: solo dígitos
+  else if(t.dataset.up) val=val.toUpperCase();
+  if(t.value!==val) t.value=val;                                        // refleja la limpieza en la casilla
+  ST.ident[br][t.dataset.k]=val;
+}
 
 /* ── Escaleras: una cuadrilla puede llevar VARIAS (telescópica y/o tijera, de distintos
    pasos). Cada una se identifica (tipo, pasos, serie, material) y se inspecciona con el
@@ -811,6 +826,15 @@ function identResumen(){
     if(parts.length) out.push(IDENT_NOMBRE[br]+" — "+parts.join(" · "));
   });
   return out.join("  ||  ");
+}
+/* Identificación del botiquín para la nube: conserva las 2 casillas (placa_let/placa_num)
+   y añade la placa unida «ABC-123» para lectura directa aguas abajo. */
+function _botiquinIdent(){
+  if(ST.branch.botiquin!==true) return {};
+  var d=ST.ident.botiquin||{}, out={}; for(var k in d) out[k]=d[k];
+  var l=(d.placa_let||"").trim(), n=(d.placa_num||"").trim();
+  if(l||n) out.placa=(l&&n)?(l+"-"+n):(l||n);
+  return out;
 }
 /* Valida los datos obligatorios de identificación cuando la unidad existe
    (en el orden del formulario: escaleras → extintor → botiquín). */
@@ -1164,7 +1188,7 @@ function buildPayload(){
     botiquin_vencidos:al.venc.length, botiquin_por_vencer:al.porV.length, botiquin_nivel_bajo:al.bajo.length,
     extintor_ident:(ST.branch.extintor===true?ST.ident.extintor:{}),
     escaleras:(ST.branch.escalera===true?ST.escaleras.map(function(s,i){return {n:i+1,tipo:s.tipo,pasos:s.pasos,serie:s.serie,material:s.material};}):[]),
-    botiquin_ident:(ST.branch.botiquin===true?ST.ident.botiquin:{}),
+    botiquin_ident:_botiquinIdent(),
     identificacion:identResumen(),
     empresa:EMPRESA.razon, ruc:EMPRESA.ruc, domicilio:EMPRESA.domicilio, actividad:EMPRESA.actividad,
     firma:(String(ST.firma).split(",")[1]||""),
