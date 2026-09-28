@@ -125,6 +125,32 @@
   /* Placa / series: se muestran y guardan en MAYÚSCULAS (el texto de ayuda no). */
   .upper{text-transform:uppercase}
   .upper::placeholder{text-transform:none}
+  /* ── Bloques plegables por excepción (llenado rápido) ── */
+  .blk{border:1px solid var(--line);border-radius:12px;margin:8px 0;background:#fff}
+  .blkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px}
+  .blkstat{flex:1 1 150px;font-size:12.5px;font-weight:700;color:var(--muted)}
+  .blkstat.ok{color:var(--ok)} .blkstat.warn{color:var(--warn)}
+  .blkbtns{display:flex;gap:6px;flex:1 1 280px}
+  .blkbtns button{flex:1;min-height:46px;border-radius:10px;border:1.5px solid var(--line);background:#fff;
+    font-weight:800;font-size:13px;cursor:pointer;padding:6px}
+  .blkbtns .bok{color:var(--ok);border-color:#86efac;background:#f0fdf4}
+  .blkbtns .bok.sel{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .blkbtns .bobs{color:var(--warn);border-color:#fcd34d;background:#fffbeb}
+  .blkbtns .bobs.sel{background:var(--warn);color:#fff;border-color:var(--warn)}
+  .blkitems{display:none;padding:0 12px 6px;border-top:1px solid var(--line)}
+  .blk.open .blkitems{display:block}
+  .blkhint{font-size:11.5px;color:var(--muted);padding:8px 0 2px}
+  .blkclose{display:block;width:100%;border:none;background:#f1f5f9;color:var(--brand);font-weight:700;font-size:12.5px;
+    border-radius:9px;padding:11px;margin:6px 0 4px;cursor:pointer}
+  .placaref{font-size:13px;padding:4px 2px 8px}
+  .placaref b{letter-spacing:.5px}
+  .placaref.falta{color:var(--bad);font-weight:700}
+  .repeat{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;border:1.5px solid var(--brand2);
+    background:#f0f9ff;color:var(--brand);border-radius:12px;padding:12px 14px;cursor:pointer;margin:0 0 4px}
+  .repeat b{font-size:14px} .repeat span{font-size:12px;color:#334155}
+  .autolink{border:none;background:none;color:var(--brand2);font-weight:700;font-size:11.5px;cursor:pointer;padding:4px 0}
+  .flash{animation:flash 1.8s ease}
+  @keyframes flash{0%,45%{box-shadow:0 0 0 4px #fbbf24}100%{box-shadow:0 0 0 0 rgba(251,191,36,0)}}
 </style>
 </head>
 <body>
@@ -140,15 +166,15 @@
 
 <div class="wrap">
   <div class="note">
-    Marca cuántos técnicos hay y solo verás <b>lo que aplica</b>. Usa <b>“Todo en buen estado”</b> por sección
-    y corrige solo las excepciones. Los campos con <span class="req">*</span> son obligatorios.<span id="counter"></span>
+    En cada sección toca <b>✓ Todo conforme</b> si todo está bien, o <b>⚠ Hay observaciones</b> para marcar
+    solo lo que falla. Los campos con <span class="req">*</span> son obligatorios.<span id="counter"></span>
   </div>
   <div id="app"></div>
 </div>
 
 <footer class="bar">
   <div class="inner">
-    <div class="stat"><b id="fRev">0</b>revisados</div>
+    <div class="stat"><b id="fRev">0/0</b>secciones</div>
     <div class="stat"><b id="fHall">0</b>hallazgos</div>
     <button class="cta" id="finish">Ver resumen y exportar</button>
   </div>
@@ -169,6 +195,7 @@
       <button id="expSum">⬇ Resumen (CSV)</button>
     </div>
     <p id="cloudStatus" class="hint" style="text-align:center;margin-top:8px;font-weight:700;min-height:16px"></p>
+    <button id="gotoBtn" class="cta" type="button" style="display:none;width:100%;background:var(--warn)">Ir a completar →</button>
     <p class="hint" style="margin-top:14px">Con "Guardar en la nube" la inspección (datos + fotos) se envía a tu
       hoja de Google. Los botones de CSV quedan como respaldo offline si no hay internet.</p>
   </div>
@@ -333,7 +360,10 @@ var ST={area:"",division:"",fecha:"",hora:"",cuadrilla:"",presence:{T1:false,T2:
   ans:{}, venc:{}, nivel:{}, ident:{extintor:{},botiquin:{}}, escaleras:[], escSeq:0,
   branch:{escalera:null,extintor:null,botiquin:null}, obs:"", photos:[],
   modalidad:"Autoinspección", tipo:"Planeada", conclusiones:"",
-  resp:{nombre:"",cargo:"",documento:""}, firma:"", fotoResp:""};
+  resp:{nombre:"",cargo:"",documento:""}, firma:"", fotoResp:"",
+  placa:"",            // placa de la movilidad: se pide UNA vez (Datos generales) y la usan extintor y botiquín
+  open:{},             // bloques de checklist abiertos/cerrados por el usuario ("sec||sub" → bool)
+  obsAuto:true, conclAuto:true};   // observaciones/conclusiones se autocompletan hasta que el técnico las edite
 var LISTS={}, SCALES={};
 
 function key(sec,sub,item){return sec+"||"+(sub||"-")+"||"+item;}
@@ -454,9 +484,33 @@ function botAlertas(){
   return {venc:venc,porV:porV,bajo:bajo};
 }
 
+/* ===== Bloques de checklist plegables (llenado por excepción) =====
+   Cada bloque (una lista: EPP de un técnico, señalización, kit FO…) muestra solo
+   «✓ Todo conforme» y «⚠ Hay observaciones». El segundo abre la lista con todo
+   pre-marcado en buen estado para cambiar solo lo que falla. El botiquín queda siempre
+   abierto: en su lista se registran las fechas de vencimiento y el nivel por ítem. */
+var BLK={};   // "sec||sub" → {sec,sub,items,scale,meta} de los bloques visibles (se rehace en cada render)
+function blkCounts(k){
+  var b=BLK[k], c={n:b.items.length,ans:0,obs:0};
+  b.items.forEach(function(it){ var v=getAns(b.sec,b.sub,it); if(v){ c.ans++; if(!OKVALS[v]&&v!=="No aplica") c.obs++; } });
+  c.done=(c.ans===c.n); return c;
+}
+function blkOpen(k,c){ if(BLK[k].meta) return true; return (k in ST.open)?ST.open[k]:c.obs>0; }
+function blkBarHTML(k,c,open){
+  var cls="", txt;
+  if(c.obs){ cls="warn"; txt="⚠ "+c.obs+" con observación"; }
+  else if(c.done){ cls="ok"; txt="✓ Conforme · "+c.n+" ítems"; }
+  else if(c.ans){ txt=c.ans+" de "+c.n+" revisados"; }
+  else txt=c.n+" ítems · sin revisar";
+  return '<div class="blkstat '+cls+'">'+txt+'</div><div class="blkbtns">'+
+    '<button type="button" class="bok'+(c.done&&!c.obs?' sel':'')+'" data-act="allok" data-k="'+k+'">✓ Todo conforme</button>'+
+    '<button type="button" class="bobs'+(open&&!BLK[k].meta?' sel':'')+'" data-act="obs" data-k="'+k+'">⚠ Hay observaciones</button></div>';
+}
 function checklist(sec,sub,items,scale,meta){
-  var k=lk(sec,sub); LISTS[k]=items; SCALES[k]=scale;
-  var h='<div class="quick"><button data-act="fill" data-k="'+k+'">✓ Todo '+scale[0].v.toLowerCase()+'</button></div>';
+  var k=lk(sec,sub); LISTS[k]=items; SCALES[k]=scale; BLK[k]={sec:sec,sub:sub,items:items,scale:scale,meta:meta};
+  var c=blkCounts(k), open=blkOpen(k,c);
+  var h='<div class="blk'+(open?' open':'')+'" data-blk="'+k+'"><div class="blkbar">'+blkBarHTML(k,c,open)+'</div><div class="blkitems">'+
+    (meta?'':'<div class="blkhint">Marca solo lo que falla; lo demás queda en buen estado.</div>');
   items.forEach(function(it,i){
     var cur=getAns(sec,sub,it);
     h+='<div class="item"><div class="lbl">'+it+'</div><div class="seg">';
@@ -467,23 +521,60 @@ function checklist(sec,sub,items,scale,meta){
     if(meta && meta[it]) h+=botMetaHTML(sec,sub,it,meta[it]);
     h+='</div>';
   });
-  return h;
+  if(!meta) h+='<button type="button" class="blkclose" data-act="cerrar" data-k="'+k+'">▲ Listo, cerrar lista</button>';
+  return h+'</div></div>';
+}
+function blkEl(k){ return document.querySelector('.blk[data-blk="'+k+'"]'); }
+/* Redibuja SOLO ese bloque (sin re-render global: no se pierde el scroll ni la firma). */
+function refreshBlk(k){
+  var b=BLK[k], el=blkEl(k); if(!b||!el) return;
+  var tmp=document.createElement("div"); tmp.innerHTML=checklist(b.sec,b.sub,b.items,b.scale,b.meta);
+  el.parentNode.replaceChild(tmp.firstChild,el);
+  updateSectionPct(b.sec); updateMetrics();
+}
+function refreshBar(k){
+  var el=blkEl(k); if(!el) return; var bar=el.querySelector(".blkbar");
+  if(bar) bar.innerHTML=blkBarHTML(k,blkCounts(k),el.classList.contains("open"));
+}
+/* Marca «Buen estado» en todo el bloque (o solo en lo que falta responder). */
+function setAll(k,soloFaltantes){
+  var b=BLK[k], val=b.scale[0].v;
+  b.items.forEach(function(it){ var kk=key(b.sec,b.sub,it); if(!soloFaltantes||!ST.ans[kk]) ST.ans[kk]=val; });
+}
+function allOk(k){
+  var c=blkCounts(k);
+  if(c.obs && !confirm("Este bloque tiene "+c.obs+" ítem(s) con observación. ¿Marcar TODO como buen estado?")) return;
+  setAll(k,false);
+  if(!BLK[k].meta) ST.open[k]=false;
+  refreshBlk(k);
+  if(!BLK[k].meta) irSiguiente(k);
+}
+function hayObs(k){ setAll(k,true); ST.open[k]=true; refreshBlk(k); }
+function cerrarBlk(k){ ST.open[k]=false; refreshBlk(k); irSiguiente(k,true); }
+/* Lleva al siguiente pendiente (bloque sin revisar o pregunta Sí/No sin responder). */
+function irSiguiente(k,volver){
+  var el=blkEl(k); if(!el) return;
+  var cands=document.querySelectorAll(".blk,[data-branchq]"), pasado=false;
+  for(var i=0;i<cands.length;i++){
+    var x=cands[i];
+    if(x===el){ pasado=true; continue; }
+    if(!pasado) continue;
+    var pend=x.dataset.blk ? !blkCounts(x.dataset.blk).done : ST.branch[x.dataset.branchq]===null;
+    if(pend){ x.scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  }
+  var ev=document.getElementById("lbl_photos");
+  if(ev && !ST.photos.length) ev.scrollIntoView({behavior:"smooth",block:"center"});
+  else if(volver && el.getBoundingClientRect().top<70) el.scrollIntoView({block:"center"});
 }
 function paintItem(k,i,j){
   var bs=document.querySelectorAll('button[data-act="ans"][data-k="'+k+'"][data-i="'+i+'"]');
   for(var x=0;x<bs.length;x++){ bs[x].classList.toggle('sel', (+bs[x].dataset.j)===j); }
 }
-function fillAll(k){
-  var items=LISTS[k],val=SCALES[k][0].v,p=k.split("||"),sec=p[0],sub=p[1]==="-"?null:p[1];
-  items.forEach(function(it,i){ ST.ans[key(sec,sub,it)]=val; paintItem(k,i,0);
-    if(sec==="botiquin"){ var b=document.querySelector('button[data-act="ans"][data-k="'+k+'"][data-i="'+i+'"]'); applyBotState(b&&b.closest(".item"),val); } });
-  updateSectionPct(sec); updateMetrics();
-}
 function onAns(k,i,j){
   var items=LISTS[k],scale=SCALES[k],p=k.split("||"),sec=p[0],sub=p[1]==="-"?null:p[1],val=scale[j].v;
   ST.ans[key(sec,sub,items[i])]=val; paintItem(k,i,j);
   if(sec==="botiquin"){ var b=document.querySelector('button[data-act="ans"][data-k="'+k+'"][data-i="'+i+'"]'); applyBotState(b&&b.closest(".item"),val); }
-  updateSectionPct(sec); updateMetrics();
+  refreshBar(k); updateSectionPct(sec); updateMetrics();
 }
 function sectionPct(sec){
   var tot=0,ok=0;
@@ -500,13 +591,20 @@ function card(n,title,bodyHtml,sec){
 
 function render(){
   var presentRoles=ROLES.filter(function(r){return ST.presence[r.id];});
-  var H=""; _secN=0;
+  var H=""; _secN=0; BLK={};
 
   var indiv=esIndividual();
   if(indiv && !ST.personas.length) ST.personas=[personaNueva()];
+  /* Observaciones y conclusiones automáticas (mientras el técnico no las edite). */
+  if(ST.obsAuto) ST.obs=textoObs();
+  if(ST.conclAuto) ST.conclusiones=textoConcl();
 
   /* 1. Datos generales */
-  var g='<div class="note" style="margin:2px 0 12px;border-left-color:var(--brand)"><b>'+EMPRESA.razon+'</b> · RUC '+EMPRESA.ruc+'<br>'+EMPRESA.domicilio+'<br>'+EMPRESA.actividad+'</div>'+
+  var ult=!ST.area?leerUltima():null;
+  var verPlaca=!sinCuadrilla() && !(indiv && !ST.division), reqPlaca=placaReq();
+  var g=(ult?repeatHTML(ult):'')+
+  (ST.cargadaDe?'<div class="note" style="margin:0 0 10px;border-left-color:var(--ok)">↻ Datos cargados de la inspección del <b>'+fechaCorta(ST.cargadaDe)+'</b>. Revisa que la cuadrilla, los técnicos y la placa sean los mismos de hoy.</div>':'')+
+  '<div class="note" style="margin:2px 0 12px;border-left-color:var(--brand)"><b>'+EMPRESA.razon+'</b> · RUC '+EMPRESA.ruc+'<br>'+EMPRESA.domicilio+'<br>'+EMPRESA.actividad+'</div>'+
   '<div class="grid2">'+
     '<div class="field"><label>1.1 Área a inspeccionar <span class="req">*</span></label><select id="f_area" required>'+
       '<option value="">— Seleccionar —</option>'+AREAS.map(function(a){return '<option'+(ST.area===a?' selected':'')+'>'+a+'</option>';}).join("")+
@@ -519,6 +617,10 @@ function render(){
     '<div class="field"><label>1.3 Hora de la inspección <span class="req">*</span></label><input type="time" id="f_hora" value="'+ST.hora+'" required></div>'+
     /* N° de cuadrilla: solo para áreas que trabajan en cuadrilla. */
     (indiv?'':'<div class="field"><label>1.4 N° de cuadrilla <span class="req">*</span></label><input type="number" inputmode="numeric" id="f_cuad" value="'+ST.cuadrilla+'" required></div>')+
+    /* Placa: se escribe UNA sola vez aquí; extintor y botiquín la toman de este campo. */
+    (verPlaca?'<div class="field"><label>1.5 Placa de la movilidad'+(reqPlaca?' <span class="req">*</span>':'')+'</label>'+
+      '<input type="text" class="upper" id="f_placa" value="'+eh(ST.placa)+'" placeholder="Ej. ABC-123" autocomplete="off" autocapitalize="characters" spellcheck="false"'+(reqPlaca?' required':'')+'>'+
+      '<div class="hint">Guion y mayúsculas automáticos. Se usa en extintor y botiquín.</div></div>':'')+
   '</div>';
 
   if(indiv){
@@ -541,12 +643,12 @@ function render(){
     g+='<button type="button" class="uploadbtn" data-act="addpersona" style="margin-top:4px">＋ Agregar persona</button></div>';
   } else {
     /* Cuadrilla: roles T1–T4 con su identificación. */
-    g+='<div class="field"><label>1.4 ¿Qué técnicos integran la cuadrilla hoy? <span class="req">*</span></label><div class="roles">'+
+    g+='<div class="field"><label>1.6 ¿Qué técnicos integran la cuadrilla hoy? <span class="req">*</span></label><div class="roles">'+
       ROLES.map(function(r){return '<div class="chip'+(ST.presence[r.id]?' on':'')+'" data-act="role" data-id="'+r.id+'">'+(ST.presence[r.id]?'✓ ':'')+r.id+'</div>';}).join("")+
     '</div><div class="hint">Solo se mostrarán los datos de los técnicos presentes.</div></div>';
     presentRoles.forEach(function(r){
       var d=doc(r.id); var esDNI=d.tipo!=="CE";
-      g+='<div class="subblock"><h3>1.4 Identificación · '+r.label+'</h3>'+
+      g+='<div class="subblock"><h3>1.6 Identificación · '+r.label+'</h3>'+
         '<div class="field"><label>Tipo de documento <span class="req">*</span></label>'+
           '<select data-doc="tipo" data-id="'+r.id+'" required>'+
             '<option value="DNI"'+(esDNI?' selected':'')+'>DNI</option>'+
@@ -599,7 +701,7 @@ function render(){
 
   /* 5.2 Escaleras (branch): la cuadrilla puede tener varias (telescópica y/o tijera, de
      distintos pasos). Cada una se registra e inspecciona con el checklist de su tipo. */
-  var esc='<div class="field"><label>'+(indiv?'¿Cuenta con escaleras?':'¿La cuadrilla cuenta con escaleras?')+'</label><div class="toggle">'+
+  var esc='<div class="field" data-branchq="escalera"><label>'+(indiv?'¿Cuenta con escaleras?':'¿La cuadrilla cuenta con escaleras?')+'</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.escalera===true?' on':'')+'" data-act="branch" data-b="escalera" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.escalera===false?' on':'')+'" data-act="branch" data-b="escalera" data-v="0">No</button></div>'+
     '<div class="hint">Registra cada escalera (telescópica y/o tijera) con su tipo, N° de pasos y serie; cada una tiene su propio checklist.</div></div>';
@@ -611,29 +713,30 @@ function render(){
   H+=card(secN(6),"Kit de fibra óptica",checklist("fo",null,FO,S_EQUIP),"fo");
 
   /* 7. Extintor (branch) */
-  var ex='<div class="field"><label>¿La unidad cuenta con extintor?</label><div class="toggle">'+
+  var ex='<div class="field" data-branchq="extintor"><label>¿La unidad cuenta con extintor?</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.extintor===true?' on':'')+'" data-act="branch" data-b="extintor" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.extintor===false?' on':'')+'" data-act="branch" data-b="extintor" data-v="0">No</button></div></div>';
   if(ST.branch.extintor===true) ex+=identFields("extintor")+checklist("extintor",null,EXT,S_SEG);
-  else if(ST.branch.extintor===false) ex+='<p class="hint">Sin extintor: se omiten 16 preguntas (registrar en observaciones).</p>';
+  else if(ST.branch.extintor===false) ex+='<p class="hint">Sin extintor: se omiten 16 preguntas (queda anotado solo en observaciones).</p>';
   H+=card(secN(7),"Estado del extintor",ex,"extintor");
 
   /* 8. Botiquín (branch) */
-  var bo='<div class="field"><label>¿La unidad cuenta con botiquín?</label><div class="toggle">'+
+  var bo='<div class="field" data-branchq="botiquin"><label>¿La unidad cuenta con botiquín?</label><div class="toggle">'+
     '<button class="yes'+(ST.branch.botiquin===true?' on':'')+'" data-act="branch" data-b="botiquin" data-v="1">Sí</button>'+
     '<button class="no'+(ST.branch.botiquin===false?' on':'')+'" data-act="branch" data-b="botiquin" data-v="0">No</button></div></div>';
-  if(ST.branch.botiquin===true) bo+='<div class="hint" style="margin:2px 2px 8px">Además del estado, en los ítems que aplican registra la <b>fecha de vencimiento</b> (semáforo automático 🟢 vigente · 🟠 por vencer · 🔴 vencido) y el <b>nivel de contenido</b> 🟢 lleno · 🟠 mitad · 🔴 ¼ (listo para cambio).</div>'+identFields("botiquin")+checklist("botiquin",null,BOT,S_SEG,BOT_META);
-  else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (registrar en observaciones).</p>';
+  if(ST.branch.botiquin===true) bo+=identFields("botiquin")+'<div class="hint" style="margin:2px 2px 8px">En los ítems que aplican registra la <b>fecha de vencimiento</b> (🟢 vigente · 🟠 por vencer · 🔴 vencido) y el <b>nivel</b> (🟢 lleno · 🟠 mitad · 🔴 ¼, listo para cambio).</div>'+checklist("botiquin",null,BOT,S_SEG,BOT_META);
+  else if(ST.branch.botiquin===false) bo+='<p class="hint">Sin botiquín: se omiten 14 preguntas (queda anotado solo en observaciones).</p>';
   H+=card(secN(8),"Estado del botiquín",bo,"botiquin");
   } /* fin secciones 5–8 (ocultas en flujos sin cuadrilla) */
 
   /* 9. Evidencias y observaciones */
   var n9=secN(9);
   var ev='<div class="field"><label>'+n9+'.1 Evidencias fotográficas <span class="req">*</span></label>'+
-    '<label class="uploadbtn">📷 Tomar / adjuntar fotos<input type="file" accept="image/*" capture="environment" multiple style="display:none" id="f_photos"></label>'+
+    '<label class="uploadbtn" id="lbl_photos">📷 Tomar / adjuntar fotos<input type="file" accept="image/*" capture="environment" multiple style="display:none" id="f_photos"></label>'+
     '<div class="photos" id="ph"></div><div class="hint">'+(indiv?'Personal en campo, EPP y todo recurso relevante.':'Cuadrilla, EPP, vehículo y todo recurso dañado.')+'</div></div>'+
     '<div class="field"><label>'+n9+'.2 Observaciones <span class="req">*</span></label>'+
-    '<textarea id="f_obs" placeholder="Recursos que requieren reparación, cambio o asignación. Si es EPP/uniforme, indica el técnico." required>'+ST.obs+'</textarea></div>';
+    '<textarea id="f_obs" placeholder="Recursos que requieren reparación, cambio o asignación. Si es EPP/uniforme, indica el técnico." required>'+eh(ST.obs)+'</textarea>'+
+    '<div class="hint" id="obsHint">'+autoHint("obs")+'</div></div>';
   H+=card(n9,"Evidencias y observaciones",ev,null);
 
   /* 10. Cierre y responsables */
@@ -649,7 +752,8 @@ function render(){
       '<span class="badge" id="semBadge" style="color:var('+sem.col+');background:var('+sem.bg+');border-color:var('+sem.col+')">'+sem.estado+' · '+(metrics().pct===null?"—":metrics().pct+"%")+'</span>'+
       '<div class="hint">Cálculo automático: ≥90% Conforme · 70–89% Observado · &lt;70% No conforme.</div></div>'+
     '<div class="field"><label>'+n10+'.4 Conclusiones y recomendaciones <span class="req">*</span></label>'+
-      '<textarea id="f_concl" placeholder="Resumen de hallazgos, acciones correctivas, responsables y plazos.">'+eh(ST.conclusiones)+'</textarea></div>';
+      '<textarea id="f_concl" placeholder="Resumen de hallazgos, acciones correctivas, responsables y plazos.">'+eh(ST.conclusiones)+'</textarea>'+
+      '<div class="hint" id="conclHint">'+autoHint("concl")+'</div></div>';
   if(ST.modalidad==="Inspección inopinada"){
     c10+='<div class="subblock"><h3>'+n10+'.5 Responsable de la inspección (externo)</h3>'+
       '<div class="field"><label>Apellidos y nombres <span class="req">*</span></label><input type="text" id="r_nom" value="'+eh(ST.resp.nombre)+'" placeholder="Apellidos y nombres"></div>'+
@@ -690,11 +794,11 @@ function togglePresence(id){
    (serie, capacidad, clase de agente, placa…), no solo su estado. Donde aplica se usa
    lista desplegable para que no se escriba mal. Las escaleras tienen su propio
    registro (pueden ser varias por cuadrilla), más abajo. */
-/* Campo de PLACA VEHICULAR reutilizable — mismas variables en extintor y botiquín:
-   MAYÚSCULAS + guion automático tras el 3er carácter (formato peruano XXX-XXX). NO
-   bloquea caracteres: acepta letras y números en cualquier posición (placas de moto/
-   vehículos con número en el grupo delantero, que antes quedaban trancadas). */
-var PLACA_FIELD={k:"placa",l:"Placa de la movilidad",ph:"Ej. ABC-123",req:true,upper:true,fmt:"placa"};
+/* PLACA VEHICULAR compartida: se escribe UNA sola vez en Datos generales (ST.placa, con
+   MAYÚSCULAS + guion automático XXX-XXX, sin bloquear caracteres) y extintor y botiquín
+   la toman de ahí. `shared:true` = no se dibuja como casilla propia; en el registro/PDF
+   sigue apareciendo como fila de identificación de cada unidad. */
+var PLACA_FIELD={k:"placa",l:"Placa de la movilidad",shared:true};
 var IDENT_DEFS={
   extintor:[PLACA_FIELD,
     {k:"serie",l:"N° de serie / código",ph:"Serie del extintor",req:true,upper:true},
@@ -705,12 +809,31 @@ var IDENT_DEFS={
   botiquin:[PLACA_FIELD]
 };
 var IDENT_TIT={extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
-var IDENT_HINT={botiquin:"Escribe la <b>placa</b> del carro o movilidad; el <b>guion</b> se coloca solo y todo queda en <b>MAYÚSCULAS</b> (ej. ABC-123)."};
+var IDENT_HINT={};
 var IDENT_NOMBRE={extintor:"Extintor",botiquin:"Botiquín"};
+/* ¿La placa es obligatoria? Sí, cuando la unidad tiene extintor o botiquín. */
+function placaReq(){ return ST.branch.extintor===true||ST.branch.botiquin===true; }
+function placaRefInner(){
+  return ST.placa
+    ? '<div class="placaref">🚐 Placa de la movilidad: <b>'+eh(ST.placa)+'</b> <span class="hint">(de Datos generales)</span></div>'
+    : '<div class="placaref falta">⚠ Falta la placa de la movilidad en Datos generales (1.5).</div>';
+}
+function refrescarPlacaRefs(){ var s=document.querySelectorAll(".placaslot"); for(var i=0;i<s.length;i++) s[i].innerHTML=placaRefInner(); }
+/* Valor de un campo de identificación (la placa compartida sale de Datos generales). */
+function identVal(br,f){ return f.shared?(ST.placa||""):(((ST.ident||{})[br]||{})[f.k]||""); }
+/* Identificación de la unidad para la nube (incluye la placa compartida). */
+function identData(br){
+  if(ST.branch[br]!==true) return {};
+  var d=ST.ident[br]||{}, o={}; for(var k in d) o[k]=d[k];
+  if(ST.placa && IDENT_DEFS[br].some(function(f){return f.shared;})) o.placa=ST.placa;
+  return o;
+}
 function identFields(branch){
-  var arr=IDENT_DEFS[branch]||[], d=(ST.ident&&ST.ident[branch])||{};
-  var h='<div class="subblock"><h3>'+IDENT_TIT[branch]+'</h3>'+
-    '<div class="hint" style="margin:-2px 2px 6px">'+(IDENT_HINT[branch]||"Datos para validar exactamente qué unidad se inspeccionó.")+'</div>'+
+  var defs=IDENT_DEFS[branch]||[], arr=defs.filter(function(f){return !f.shared;}), d=(ST.ident&&ST.ident[branch])||{};
+  var h='<div class="subblock"><h3>'+IDENT_TIT[branch]+'</h3>';
+  if(defs.some(function(f){return f.shared;})) h+='<div class="placaslot">'+placaRefInner()+'</div>';
+  if(!arr.length) return h+'</div>';
+  h+='<div class="hint" style="margin:-2px 2px 6px">'+(IDENT_HINT[branch]||"Datos para validar exactamente qué unidad se inspeccionó.")+'</div>'+
     '<div'+(arr.length>1?' class="grid2"':'')+'>';
   arr.forEach(function(f){
     var v=eh(d[f.k]||""), rq=f.req?' required':'', up=f.upper?' class="upper" data-up="1"':'';
@@ -830,28 +953,24 @@ function identResumen(){
   }
   ["extintor","botiquin"].forEach(function(br){
     if(ST.branch[br]!==true) return;
-    var d=ST.ident[br]||{}, parts=[];
-    IDENT_DEFS[br].forEach(function(f){ if((d[f.k]||"").toString().trim()) parts.push(f.l+": "+d[f.k]); });
+    var parts=[];
+    IDENT_DEFS[br].forEach(function(f){ var v=identVal(br,f); if(String(v).trim()) parts.push(f.l+": "+v); });
     if(parts.length) out.push(IDENT_NOMBRE[br]+" — "+parts.join(" · "));
   });
   return out.join("  ||  ");
 }
-/* Identificación del botiquín para la nube: la placa va en un solo campo `placa`. */
-function _botiquinIdent(){
-  if(ST.branch.botiquin!==true) return {};
-  var d=ST.ident.botiquin||{}, out={}; for(var k in d) out[k]=d[k];
-  return out;
-}
+/* Identificación del botiquín para la nube (la placa sale de Datos generales). */
+function _botiquinIdent(){ return identData("botiquin"); }
 /* Valida los datos obligatorios de identificación cuando la unidad existe
    (en el orden del formulario: escaleras → extintor → botiquín). */
 function _validarIdent(){
   if(ST.branch.escalera===true){
-    if(!ST.escaleras.length) return "Registra al menos una escalera (o marca «No»).";
+    if(!ST.escaleras.length) return _f("Registra al menos una escalera (o marca «No»).",'[data-branchq="escalera"]');
     for(var i=0;i<ST.escaleras.length;i++){
-      var s=ST.escaleras[i], lab=" de la Escalera "+(i+1)+".";
-      if(!s.tipo) return "Selecciona el «Tipo de escalera»"+lab;
-      if(!s.pasos) return "Selecciona el «N° de pasos»"+lab;
-      if(!(s.serie||"").trim()) return "Completa el «N° de serie / código»"+lab;
+      var s=ST.escaleras[i], lab=" de la Escalera "+(i+1)+".", sel='[data-esc="'+s.id+'"][data-f="';
+      if(!s.tipo) return _f("Selecciona el «Tipo de escalera»"+lab,sel+'tipo"]');
+      if(!s.pasos) return _f("Selecciona el «N° de pasos»"+lab,sel+'pasos"]');
+      if(!(s.serie||"").trim()) return _f("Completa el «N° de serie / código»"+lab,sel+'serie"]');
     }
   }
   var nom={extintor:"del extintor",botiquin:"del botiquín"}, e="";
@@ -859,7 +978,9 @@ function _validarIdent(){
     if(ST.branch[br]!==true) return false;
     var d=ST.ident[br]||{};
     return IDENT_DEFS[br].some(function(f){
-      if(f.req && !(d[f.k]||"").toString().trim()){ e="Completa «"+f.l+"» en la identificación "+nom[br]+"."; return true; }
+      if(f.shared) return false;   // la placa se valida en Datos generales
+      if(f.req && !(d[f.k]||"").toString().trim()){
+        e=_f("Completa «"+f.l+"» en la identificación "+nom[br]+".",'[data-ident="'+br+'"][data-k="'+f.k+'"]'); return true; }
       return false;
     });
   });
@@ -888,8 +1009,122 @@ function resetPorArea(){
   ST.ident={extintor:{},botiquin:{}}; ST.escaleras=[];
   ST.branch={escalera:null,extintor:null,botiquin:null};
   ST.presence={T1:false,T2:false,T3:false,T4:false}; ST.docs={};
-  ST.personas=[];
+  ST.personas=[]; ST.placa=""; ST.open={}; ST.cargadaDe=0;
 }
+
+/* ===== Repetir la última inspección =====
+   Al guardar en la nube se recuerdan SOLO en este celular (localStorage) los datos que no
+   cambian de un día a otro: área/división, cuadrilla, técnicos (documento y nombres),
+   placa, extintor y escaleras. NUNCA los estados del checklist: se revisan cada vez. */
+var LAST_STORE="seg010_ultima";
+function hoyISO(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function fechaCorta(t){ var d=new Date(t); return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); }
+function guardarUltima(){
+  try{
+    var ex=ST.ident.extintor||{};
+    localStorage.setItem(LAST_STORE,JSON.stringify({v:1,t:Date.now(),
+      area:ST.area,division:ST.division,cuadrilla:ST.cuadrilla,presence:ST.presence,docs:ST.docs,
+      personas:ST.personas,placa:ST.placa,branch:ST.branch,tipo:ST.tipo,
+      ext:{serie:ex.serie||"",capacidad:ex.capacidad||"",tipo:ex.tipo||"",venc:ex.venc||""},
+      escaleras:ST.escaleras.map(function(e){return {tipo:e.tipo,pasos:e.pasos,serie:e.serie,material:e.material};})}));
+  }catch(_){}
+}
+function leerUltima(){
+  try{ var d=JSON.parse(localStorage.getItem(LAST_STORE)||"null");
+    return (d && AREAS_DIV[d.area] && AREAS_DIV[d.area].indexOf(d.division)>=0)?d:null; }catch(_){ return null; }
+}
+function olvidarUltima(){ try{ localStorage.removeItem(LAST_STORE); }catch(_){} render(); }
+function repeatHTML(d){
+  var quien=AREAS_INDIVIDUALES[d.area]
+    ? (d.personas||[]).filter(function(p){return p&&((p.ape||"")+(p.nom||"")).trim();}).length+" persona(s)"
+    : "Cuadrilla "+(d.cuadrilla||"—")+" · "+Object.keys(d.presence||{}).filter(function(k){return d.presence[k];}).length+" técnico(s)";
+  return '<button type="button" class="repeat" data-act="repetir"><b>↻ Repetir datos de la última inspección</b>'+
+    '<span>'+eh(d.area+" ▸ "+d.division)+' · '+eh(quien)+(d.placa?' · placa '+eh(d.placa):'')+' · '+fechaCorta(d.t)+'</span>'+
+    '<span style="color:var(--muted)">Carga cuadrilla, técnicos, placa, extintor y escaleras. Los estados se revisan de nuevo.</span></button>'+
+    '<button type="button" class="autolink" data-act="olvidar" style="color:var(--muted);margin:0 0 10px">✕ Borrar los datos guardados en este celular</button>';
+}
+function cargarUltima(){
+  var d=leerUltima(); if(!d) return;
+  ST.area=d.area; resetPorArea(); ST.division=d.division; actualizarRoles();
+  ST.cuadrilla=d.cuadrilla||""; ST.placa=_fmtPlaca(d.placa||"");
+  if(esIndividual()){
+    ST.personas=(d.personas||[]).filter(function(p){return p&&((p.ape||"")+(p.nom||"")+(p.num||"")).trim();})
+      .map(function(p){return {tipo:p.tipo==="CE"?"CE":"DNI",num:p.num||"",ape:p.ape||"",nom:p.nom||""};});
+  } else {
+    ROLES.forEach(function(r){ if(d.presence&&d.presence[r.id]){ ST.presence[r.id]=true;
+      var x=(d.docs||{})[r.id]||{}; ST.docs[r.id]={tipo:x.tipo==="CE"?"CE":"DNI",num:x.num||"",ape:x.ape||"",nom:x.nom||""}; } });
+  }
+  if(!sinCuadrilla()){
+    var b=d.branch||{};
+    ["escalera","extintor","botiquin"].forEach(function(k){ if(b[k]===true||b[k]===false) ST.branch[k]=b[k]; });
+    if(ST.branch.extintor===true){
+      var e=d.ext||{}, ex={};
+      if(e.serie) ex.serie=String(e.serie).toUpperCase();
+      if(e.venc) ex.venc=String(e.venc);
+      IDENT_DEFS.extintor.forEach(function(f){ if(f.sel && e[f.k] && f.sel.indexOf(e[f.k])>=0) ex[f.k]=e[f.k]; });
+      ST.ident.extintor=ex;
+    }
+    if(ST.branch.escalera===true){
+      ST.escaleras=(d.escaleras||[]).map(function(s){
+        var n=escNueva(), t=ESC_TIPOS[s.tipo];
+        if(t){ n.tipo=s.tipo; if(t.pasos.indexOf(s.pasos)>=0) n.pasos=s.pasos; }
+        n.serie=String(s.serie||"").toUpperCase(); if(ESC_MATERIAL.indexOf(s.material)>=0) n.material=s.material;
+        return n; });
+      if(!ST.escaleras.length) ST.escaleras=[escNueva()];
+    }
+  }
+  if(d.tipo==="Planeada"||d.tipo==="No planeada") ST.tipo=d.tipo;
+  ST.fecha=hoyISO(); ST.hora=nowHM(); ST.cargadaDe=d.t;
+  render();
+  var first=document.querySelector(".blk"); if(first) first.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+/* ===== Observaciones y conclusiones automáticas (editables) =====
+   Se redactan solas con el resultado y se actualizan al marcar; si el técnico escribe
+   en ellas pasan a ser «a mano» y ya no se tocan (con opción de volver a lo automático). */
+function textoObs(){
+  var f=findingsList(), l=[];
+  if(f.length){
+    l.push("Recursos con observación ("+f.length+"):");
+    f.forEach(function(x){ l.push("• "+x.seccion+(x.recurso&&x.recurso!=="—"?" ["+x.recurso+"]":"")+": "+x.item+" — "+x.estado); });
+  }
+  if(ST.branch.extintor===false) l.push("La unidad no cuenta con extintor.");
+  if(ST.branch.botiquin===false) l.push("La unidad no cuenta con botiquín.");
+  if(l.length) return l.join("\n");
+  return metrics().rev?"Sin observaciones: todos los recursos revisados están en buen estado.":"";
+}
+function textoConcl(){
+  var m=metrics(); if(m.pct===null) return "";
+  var sem=semaforo(m.pct), al=botAlertas(), obs=[], bot=[], falta=[];
+  var t="Conformidad "+m.pct+" % ("+sem.estado+"). ";
+  if(m.warn) obs.push(m.warn+" ítem(s) requieren cambio");
+  if(m.no) obs.push(m.no+" ítem(s) faltan");
+  if(al.venc.length) bot.push(al.venc.length+" vencido(s)");
+  if(al.porV.length) bot.push(al.porV.length+" por vencer");
+  if(al.bajo.length) bot.push(al.bajo.length+" con nivel ¼");
+  if(bot.length) obs.push("botiquín: "+bot.join(", "));
+  if(ST.branch.extintor===false) falta.push("extintor");
+  if(ST.branch.botiquin===false) falta.push("botiquín");
+  if(!obs.length && !falta.length) return t+"Todos los recursos revisados están completos y en buen estado. Mantener el control periódico.";
+  if(obs.length) t+=obs.join("; ")+". ";
+  if(falta.length) t+="La unidad no cuenta con "+falta.join(" ni ")+". ";
+  return t+"Acción: reponer o reparar lo observado y reportar a SSOMA las acciones tomadas.";
+}
+function autoHint(w){
+  return (w==="obs"?ST.obsAuto:ST.conclAuto)
+    ? "Se completa solo con el resultado de la inspección. Puedes editarlo."
+    : 'Editado a mano · <button type="button" class="autolink" data-act="autotxt" data-w="'+w+'">↻ Volver al texto automático</button>';
+}
+function syncAutoTexts(forzar){
+  var o=document.getElementById("f_obs"), c=document.getElementById("f_concl");
+  if(ST.obsAuto){ ST.obs=textoObs(); if(o && (forzar||document.activeElement!==o)) o.value=ST.obs; }
+  if(ST.conclAuto){ ST.conclusiones=textoConcl(); if(c && (forzar||document.activeElement!==c)) c.value=ST.conclusiones; }
+}
+function updAutoHints(){
+  var a=document.getElementById("obsHint"), b=document.getElementById("conclHint");
+  if(a) a.innerHTML=autoHint("obs"); if(b) b.innerHTML=autoHint("concl");
+}
+function volverAuto(w){ if(w==="obs") ST.obsAuto=true; else ST.conclAuto=true; syncAutoTexts(true); updAutoHints(); }
 function addPhotos(files){
   Array.prototype.forEach.call(files,function(f){
     var r=new FileReader();
@@ -982,12 +1217,21 @@ function visibleQuestionCount(){
   n+=2;
   return n;
 }
+/* Avance por secciones: bloques de checklist revisados + preguntas Sí/No respondidas. */
+function avance(){
+  var tot=0, ok=0, k;
+  for(k in BLK){ tot++; if(blkCounts(k).done) ok++; }
+  if(!sinCuadrilla()) ["escalera","extintor","botiquin"].forEach(function(b){ tot++; if(ST.branch[b]!==null) ok++; });
+  return {ok:ok,tot:tot};
+}
 function updateMetrics(){
   var m=metrics();
+  syncAutoTexts();
   var g=document.getElementById("gpct");
   g.textContent=m.pct===null?"—":m.pct+"%";
   g.style.color=m.pct===null?"#fff":(m.pct>=90?"#bbf7d0":m.pct>=70?"#fde68a":"#fecaca");
-  document.getElementById("fRev").textContent=m.rev;
+  var av=avance(), fr=document.getElementById("fRev");
+  fr.textContent=av.ok+"/"+av.tot; fr.style.color=(av.tot&&av.ok===av.tot)?"var(--ok)":"";
   var al=botAlertas();
   document.getElementById("fHall").textContent=m.warn+m.no+al.venc.length+al.porV.length+al.bajo.length;
   document.getElementById("counter").innerHTML= esIndividual()
@@ -1035,8 +1279,8 @@ function buildDetalle(){
   }
   ["extintor","botiquin"].forEach(function(br){
     if(ST.branch[br]!==true) return;
-    var d=ST.ident[br]||{}, sec=secNombre(br)+" · identificación", f=[];
-    IDENT_DEFS[br].forEach(function(fd){ var v=(d[fd.k]||"").toString().trim(); if(v) f.push({seccion:sec,recurso:"—",item:fd.l,estado:_valorIdent(v)}); });
+    var sec=secNombre(br)+" · identificación", f=[];
+    IDENT_DEFS[br].forEach(function(fd){ var v=String(identVal(br,fd)).trim(); if(v) f.push({seccion:sec,recurso:"—",item:fd.l,estado:_valorIdent(v)}); });
     if(f.length) pend[br]=f;
   });
   var rows=[];
@@ -1099,54 +1343,96 @@ function openSheet(){
   if(!f.length){ fc.innerHTML='<div class="empty">✓ Sin hallazgos: todos los recursos revisados están en buen estado.</div>'; }
   else{ fc.innerHTML='<div class="find"><table><thead><tr><th>Sección</th><th>Recurso</th><th>Ítem</th><th>Estado</th></tr></thead><tbody>'+
     f.map(function(x){return '<tr><td>'+eh(x.seccion)+'</td><td>'+eh(x.recurso)+'</td><td>'+eh(x.item)+'</td><td>'+eh(x.estado)+'</td></tr>';}).join("")+'</tbody></table></div>'; }
+  /* Aviso inmediato de lo que falta (con atajo para ir directo al campo). */
+  if(!ST.enviado){ var err=validar(); setCloudStatus(err?"Antes de guardar: "+err:"",!!err); mostrarIr(err?VAL_SEL:""); }
   document.getElementById("scrim").classList.add("open");
 }
 function closeSheet(){ document.getElementById("scrim").classList.remove("open"); }
 
 /* ===== Validación (campos obligatorios) ===== */
+/* Cada error guarda en VAL_SEL dónde está el campo, para el botón «Ir a completar». */
+var VAL_SEL="";
+function _f(msg,sel){ VAL_SEL=sel||""; return msg; }
+function blkNombre(k){
+  var b=BLK[k], n=secNombre(b.sec);
+  if(b.sub) n+=" · "+(b.sec==="escalera"?escLabel(b.sub):(b.sub+(nombreDe(b.sub)?" "+nombreDe(b.sub):"")));
+  return n;
+}
+/* Primer pendiente en el orden del formulario: pregunta Sí/No sin responder o bloque sin revisar. */
+function primerPendiente(){
+  var BQ={escalera:"Indica si la cuadrilla cuenta con escaleras (Sí / No).",
+          extintor:"Indica si la unidad cuenta con extintor (Sí / No).",
+          botiquin:"Indica si la unidad cuenta con botiquín (Sí / No)."};
+  var cands=document.querySelectorAll("#app .blk,#app [data-branchq]");
+  for(var i=0;i<cands.length;i++){
+    var x=cands[i], q=x.dataset.branchq, k=x.dataset.blk;
+    if(q && ST.branch[q]===null) return {msg:BQ[q],sel:'[data-branchq="'+q+'"]'};
+    if(k && BLK[k] && !blkCounts(k).done)
+      return {msg:"Falta revisar «"+blkNombre(k)+"»: toca ✓ Todo conforme o ⚠ Hay observaciones.",sel:'.blk[data-blk="'+k+'"]'};
+  }
+  return null;
+}
 function validar(){
-  if(!ST.area) return "Selecciona el Área (1.1).";
-  if(!ST.division) return "Selecciona la División (1.1).";
-  if(!ST.fecha) return "Indica la Fecha (1.2).";
-  if(!ST.hora) return "Indica la Hora (1.3).";
+  VAL_SEL="";
+  if(!ST.area) return _f("Selecciona el Área (1.1).","#f_area");
+  if(!ST.division) return _f("Selecciona la División (1.1).","#f_division");
+  if(!ST.fecha) return _f("Indica la Fecha (1.2).","#f_fecha");
+  if(!ST.hora) return _f("Indica la Hora (1.3).","#f_hora");
   if(esIndividual()){
-    var per=(ST.personas||[]).filter(function(p){return ((p.ape||"")+(p.nom||"")+(p.num||"")).trim();});
-    if(!per.length) return "Registra al menos una persona (1.4).";
-    for(var pi=0;pi<per.length;pi++){
-      var q=per[pi], n2=(q.num||"").trim();
-      if(!(q.ape||"").trim()) return "Falta Apellidos de la persona "+(pi+1)+" (1.4).";
-      if(!(q.nom||"").trim()) return "Falta Nombres de la persona "+(pi+1)+" (1.4).";
-      if((q.tipo||"DNI")==="DNI"){ if(!/^[0-9]{8}$/.test(n2)) return "El DNI de la persona "+(pi+1)+" debe tener 8 dígitos."; }
-      else { if(!/^[A-Za-z0-9]{9,12}$/.test(n2)) return "El Carnet de Extranjería de la persona "+(pi+1)+" debe tener 9 a 12 caracteres."; }
+    var hay=false;
+    for(var pi=0;pi<(ST.personas||[]).length;pi++){
+      var q=ST.personas[pi], n2=(q.num||"").trim(), ps='[data-i="'+pi+'"][data-per="';
+      if(!((q.ape||"")+(q.nom||"")+(q.num||"")).trim()) continue;
+      hay=true;
+      if(!(q.ape||"").trim()) return _f("Falta Apellidos de la persona "+(pi+1)+" (1.4).",ps+'ape"]');
+      if(!(q.nom||"").trim()) return _f("Falta Nombres de la persona "+(pi+1)+" (1.4).",ps+'nom"]');
+      if((q.tipo||"DNI")==="DNI"){ if(!/^[0-9]{8}$/.test(n2)) return _f("El DNI de la persona "+(pi+1)+" debe tener 8 dígitos.",ps+'num"]'); }
+      else { if(!/^[A-Za-z0-9]{9,12}$/.test(n2)) return _f("El Carnet de Extranjería de la persona "+(pi+1)+" debe tener 9 a 12 caracteres.",ps+'num"]'); }
     }
+    if(!hay) return _f("Registra al menos una persona (1.4).",'[data-per="num"][data-i="0"]');
   } else {
-    if(!String(ST.cuadrilla).trim()) return "Indica el N° de cuadrilla (1.4).";
+    if(!String(ST.cuadrilla).trim()) return _f("Indica el N° de cuadrilla (1.4).","#f_cuad");
     var pr=ROLES.filter(function(r){return ST.presence[r.id];});
-    if(!pr.length) return "Marca al menos un técnico presente (1.4).";
+    if(!pr.length) return _f("Marca al menos un técnico presente (1.6).",".roles");
     for(var i=0;i<pr.length;i++){
-      var id=pr[i].id, d=ST.docs[id]||{};
-      if(!(d.ape||"").trim()) return "Falta Apellidos de "+id+".";
-      if(!(d.nom||"").trim()) return "Falta Nombres de "+id+".";
+      var id=pr[i].id, d=ST.docs[id]||{}, ds='[data-id="'+id+'"][data-doc="';
+      if(!(d.ape||"").trim()) return _f("Falta Apellidos de "+id+".",ds+'ape"]');
+      if(!(d.nom||"").trim()) return _f("Falta Nombres de "+id+".",ds+'nom"]');
       var num=(d.num||"").trim();
-      if((d.tipo||"DNI")==="DNI"){ if(!/^[0-9]{8}$/.test(num)) return "El DNI de "+id+" debe tener 8 dígitos."; }
-      else { if(!/^[A-Za-z0-9]{9,12}$/.test(num)) return "El Carnet de Extranjería de "+id+" debe tener 9 a 12 caracteres."; }
+      if((d.tipo||"DNI")==="DNI"){ if(!/^[0-9]{8}$/.test(num)) return _f("El DNI de "+id+" debe tener 8 dígitos.",ds+'num"]'); }
+      else { if(!/^[A-Za-z0-9]{9,12}$/.test(num)) return _f("El Carnet de Extranjería de "+id+" debe tener 9 a 12 caracteres.",ds+'num"]'); }
     }
   }
+  if(!sinCuadrilla() && placaReq() && !String(ST.placa).trim())
+    return _f("Completa la Placa de la movilidad (1.5): la usan el extintor y el botiquín.","#f_placa");
+  var pe=primerPendiente(); if(pe) return _f(pe.msg,pe.sel);
   var _ie=_validarIdent(); if(_ie) return _ie;
-  if(!ST.photos.length) return "Adjunta al menos una foto (9.1).";
-  if(!String(ST.obs).trim()) return "Completa las Observaciones (9.2).";
-  if(!String(ST.conclusiones).trim()) return "Completa las Conclusiones (10.4).";
+  if(!ST.photos.length) return _f("Adjunta al menos una foto (9.1).","#lbl_photos");
+  if(!String(ST.obs).trim()) return _f("Completa las Observaciones (9.2).","#f_obs");
+  if(!String(ST.conclusiones).trim()) return _f("Completa las Conclusiones (10.4).","#f_concl");
   if(ST.modalidad==="Inspección inopinada"){
-    if(!String(ST.resp.nombre).trim()) return "Falta el nombre del responsable externo (10.5).";
-    if(!String(ST.resp.cargo).trim()) return "Falta el cargo del responsable externo (10.5).";
-    if(!String(ST.resp.documento).trim()) return "Falta el documento del responsable externo (10.5).";
+    if(!String(ST.resp.nombre).trim()) return _f("Falta el nombre del responsable externo (10.5).","#r_nom");
+    if(!String(ST.resp.cargo).trim()) return _f("Falta el cargo del responsable externo (10.5).","#r_car");
+    if(!String(ST.resp.documento).trim()) return _f("Falta el documento del responsable externo (10.5).","#r_doc");
   } else if(!responsableAuto().nombre){
     return esIndividual()
-      ? "Completa los datos de la primera persona: es el responsable de la autoinspección."
-      : "Completa los datos de T1: es el responsable de la autoinspección.";
+      ? _f("Completa los datos de la primera persona: es el responsable de la autoinspección.",'[data-per="ape"][data-i="0"]')
+      : _f("Completa los datos de T1: es el responsable de la autoinspección.",".roles");
   }
-  if(!ST.firma) return "Falta la firma del responsable (10.7).";
+  if(!ST.firma) return _f("Falta la firma del responsable (10.7).","#sigCanvas");
   return "";
+}
+/* Cierra el resumen y lleva al campo pendiente, resaltándolo. */
+function irA(sel){
+  var el=sel&&document.querySelector(sel); if(!el) return;
+  closeSheet();
+  el.scrollIntoView({behavior:"smooth",block:"center"});
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) setTimeout(function(){ try{ el.focus({preventScroll:true}); }catch(_){} },450);
+}
+function mostrarIr(sel){
+  var b=document.getElementById("gotoBtn"); if(!b) return;
+  b.style.display=sel?"block":"none"; b.onclick=function(){ irA(sel); };
 }
 
 /* ===== Export / nube ===== */
@@ -1192,7 +1478,7 @@ function buildPayload(){
     responsable_nombre:ra.nombre, responsable_cargo:ra.cargo, responsable_documento:ra.documento,
     hallazgos:hall, observaciones:ST.obs,
     botiquin_vencidos:al.venc.length, botiquin_por_vencer:al.porV.length, botiquin_nivel_bajo:al.bajo.length,
-    extintor_ident:(ST.branch.extintor===true?ST.ident.extintor:{}),
+    extintor_ident:identData("extintor"), placa:(sinCuadrilla()?"":ST.placa),
     escaleras:(ST.branch.escalera===true?ST.escaleras.map(function(s,i){return {n:i+1,tipo:s.tipo,pasos:s.pasos,serie:s.serie,material:s.material};}):[]),
     botiquin_ident:_botiquinIdent(),
     identificacion:identResumen(),
@@ -1225,7 +1511,9 @@ function setCloudStatus(msg,err){var el=document.getElementById("cloudStatus");i
 function submitToCloud(){
   if(!ENDPOINT_URL||ENDPOINT_URL.indexOf("http")!==0){setCloudStatus("Falta configurar la URL del script (ver instrucciones).",true);return;}
   var err=validar();
-  if(err){ setCloudStatus(err,true); return; }
+  if(err){ setCloudStatus(err,true); mostrarIr(VAL_SEL); return; }
+  mostrarIr("");
+  guardarUltima();   // para «Repetir datos de la última inspección» (solo en este celular)
   var payload=buildPayload(), k=payload.dedup_key;
   // Anti-duplicidad: si esta MISMA inspección ya se envió hace <10 min, se bloquea.
   var rest=_bloqueoRestante(k);
@@ -1252,7 +1540,12 @@ document.getElementById("app").addEventListener("click",function(e){
   var b=e.target.closest("[data-act]"); if(!b) return;
   var act=b.dataset.act;
   if(act==="ans") onAns(b.dataset.k,+b.dataset.i,+b.dataset.j);
-  else if(act==="fill") fillAll(b.dataset.k);
+  else if(act==="allok") allOk(b.dataset.k);
+  else if(act==="obs") hayObs(b.dataset.k);
+  else if(act==="cerrar") cerrarBlk(b.dataset.k);
+  else if(act==="repetir") cargarUltima();
+  else if(act==="olvidar") olvidarUltima();
+  else if(act==="autotxt") volverAuto(b.dataset.w);
   else if(act==="role") togglePresence(b.dataset.id);
   else if(act==="branch") setBranch(b.dataset.b, b.dataset.v==="1");
   else if(act==="modal"){ ST.modalidad=b.dataset.v; render(); }
@@ -1269,8 +1562,9 @@ document.getElementById("app").addEventListener("input",function(e){
   if(t.id==="f_fecha") ST.fecha=t.value;
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_cuad") ST.cuadrilla=t.value;
-  else if(t.id==="f_obs") ST.obs=t.value;
-  else if(t.id==="f_concl") ST.conclusiones=t.value;
+  else if(t.id==="f_obs"){ ST.obs=t.value; if(ST.obsAuto){ ST.obsAuto=false; updAutoHints(); } }
+  else if(t.id==="f_concl"){ ST.conclusiones=t.value; if(ST.conclAuto){ ST.conclAuto=false; updAutoHints(); } }
+  else if(t.id==="f_placa"){ var pv=_fmtPlaca(t.value); if(t.value!==pv) t.value=pv; ST.placa=pv; refrescarPlacaRefs(); }
   else if(t.id==="r_nom") ST.resp.nombre=t.value;
   else if(t.id==="r_car") ST.resp.cargo=t.value;
   else if(t.id==="r_doc") ST.resp.documento=t.value;
@@ -1298,7 +1592,7 @@ document.getElementById("app").addEventListener("change",function(e){
     /* En áreas individuales, la división cambia las listas y las secciones visibles
        (ON-Site oculta señalización/generales/escalera/FO/extintor/botiquín): se limpian
        respuestas y ramas para no arrastrar ítems que ya no se muestran. */
-    if(esIndividual()){ ST.ans={}; ST.branch={escalera:null,extintor:null,botiquin:null}; ST.ident={extintor:{},botiquin:{}}; ST.escaleras=[]; }
+    if(esIndividual()){ ST.ans={}; ST.branch={escalera:null,extintor:null,botiquin:null}; ST.ident={extintor:{},botiquin:{}}; ST.escaleras=[]; ST.open={}; ST.placa=""; }
     actualizarRoles(); render(); }
   else if(t.id==="f_hora") ST.hora=t.value;
   else if(t.id==="f_tipo") ST.tipo=t.value;
@@ -1312,7 +1606,7 @@ document.getElementById("closeBtn").onclick=closeSheet;
 document.getElementById("cloudSave").onclick=submitToCloud;
 document.getElementById("expFind").onclick=exportFindings;
 document.getElementById("expSum").onclick=exportSummary;
-ST.hora=nowHM();
+ST.fecha=hoyISO(); ST.hora=nowHM();   // fecha y hora de hoy por defecto (editables)
 render();
 </script>
 </body>
