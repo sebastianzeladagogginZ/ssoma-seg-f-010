@@ -698,13 +698,14 @@ var IDENT_DEFS={
       sel:["PQS ABC","PQS BC","CO₂","Agua presurizada","Espuma (AFFF)","Acetato de potasio (clase K)",
            "Agente limpio (Halotron / HCFC)","Otro (detallar en observaciones)"]},
     {k:"venc",l:"Vence / próxima recarga",date:true}],
-  /* La placa se separa en dos casillas (letras + números) para que TODOS registren igual:
-     evita minúsculas, plaquita pegada sin guion o el guion en distinto lugar. */
-  botiquin:[{k:"placa_let",l:"Placa — letras",ph:"ABC",req:true,upper:true,only:"AZ",max:3},
-    {k:"placa_num",l:"Placa — números",ph:"123",req:true,only:"09",max:4}]
+  /* Placa en UN solo campo, tal como figura en la unidad (letras, números y guion, en
+     MAYÚSC.). Antes se separaba en letras/números, pero muchas placas —sobre todo de
+     Planta Externa (motos/vehículos)— llevan números dentro del segmento de letras y
+     quedaban trancadas en un campo obligatorio. Un campo libre acepta cualquier formato. */
+  botiquin:[{k:"placa",l:"Placa de la movilidad",ph:"Escríbela tal como figura (ej. ABC-123)",req:true,upper:true}]
 };
 var IDENT_TIT={extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
-var IDENT_HINT={botiquin:"Placa de la unidad: escribe las <b>letras</b> en una casilla y los <b>números</b> en la otra (se une como <b>ABC-123</b>)."};
+var IDENT_HINT={botiquin:"Escribe la <b>placa</b> del carro o movilidad tal como aparece (ej. <b>ABC-123</b>). Se guarda en mayúsculas."};
 var IDENT_NOMBRE={extintor:"Extintor",botiquin:"Botiquín"};
 function identFields(branch){
   var arr=IDENT_DEFS[branch]||[], d=(ST.ident&&ST.ident[branch])||{};
@@ -827,13 +828,10 @@ function identResumen(){
   });
   return out.join("  ||  ");
 }
-/* Identificación del botiquín para la nube: conserva las 2 casillas (placa_let/placa_num)
-   y añade la placa unida «ABC-123» para lectura directa aguas abajo. */
+/* Identificación del botiquín para la nube: la placa va en un solo campo `placa`. */
 function _botiquinIdent(){
   if(ST.branch.botiquin!==true) return {};
   var d=ST.ident.botiquin||{}, out={}; for(var k in d) out[k]=d[k];
-  var l=(d.placa_let||"").trim(), n=(d.placa_num||"").trim();
-  if(l||n) out.placa=(l&&n)?(l+"-"+n):(l||n);
   return out;
 }
 /* Valida los datos obligatorios de identificación cuando la unidad existe
