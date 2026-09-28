@@ -690,22 +690,22 @@ function togglePresence(id){
    (serie, capacidad, clase de agente, placa…), no solo su estado. Donde aplica se usa
    lista desplegable para que no se escriba mal. Las escaleras tienen su propio
    registro (pueden ser varias por cuadrilla), más abajo. */
+/* Campo de PLACA VEHICULAR reutilizable — mismas variables en extintor y botiquín:
+   MAYÚSCULAS + guion automático tras el 3er carácter (formato peruano XXX-XXX). NO
+   bloquea caracteres: acepta letras y números en cualquier posición (placas de moto/
+   vehículos con número en el grupo delantero, que antes quedaban trancadas). */
+var PLACA_FIELD={k:"placa",l:"Placa de la movilidad",ph:"Ej. ABC-123",req:true,upper:true,fmt:"placa"};
 var IDENT_DEFS={
-  extintor:[{k:"serie",l:"N° de serie / código",ph:"Serie del extintor",req:true,upper:true},
+  extintor:[PLACA_FIELD,
+    {k:"serie",l:"N° de serie / código",ph:"Serie del extintor",req:true,upper:true},
     {k:"capacidad",l:"Capacidad",req:true,
       sel:["1 kg","2 kg","3 kg","4 kg","5 kg","6 kg","9 kg","12 kg","Otra (detallar en observaciones)"]},
-    {k:"tipo",l:"Tipo / clase de agente",req:true,
-      sel:["PQS ABC","PQS BC","CO₂","Agua presurizada","Espuma (AFFF)","Acetato de potasio (clase K)",
-           "Agente limpio (Halotron / HCFC)","Otro (detallar en observaciones)"]},
+    {k:"tipo",l:"Tipo / clase de agente",req:true,sel:["PQS","CO₂"]},
     {k:"venc",l:"Vence / próxima recarga",date:true}],
-  /* Placa en UN solo campo, tal como figura en la unidad (letras, números y guion, en
-     MAYÚSC.). Antes se separaba en letras/números, pero muchas placas —sobre todo de
-     Planta Externa (motos/vehículos)— llevan números dentro del segmento de letras y
-     quedaban trancadas en un campo obligatorio. Un campo libre acepta cualquier formato. */
-  botiquin:[{k:"placa",l:"Placa de la movilidad",ph:"Escríbela tal como figura (ej. ABC-123)",req:true,upper:true}]
+  botiquin:[PLACA_FIELD]
 };
 var IDENT_TIT={extintor:"Identificación del extintor",botiquin:"Identificación del botiquín"};
-var IDENT_HINT={botiquin:"Escribe la <b>placa</b> del carro o movilidad tal como aparece (ej. <b>ABC-123</b>). Se guarda en mayúsculas."};
+var IDENT_HINT={botiquin:"Escribe la <b>placa</b> del carro o movilidad; el <b>guion</b> se coloca solo y todo queda en <b>MAYÚSCULAS</b> (ej. ABC-123)."};
 var IDENT_NOMBRE={extintor:"Extintor",botiquin:"Botiquín"};
 function identFields(branch){
   var arr=IDENT_DEFS[branch]||[], d=(ST.ident&&ST.ident[branch])||{};
@@ -719,20 +719,28 @@ function identFields(branch){
         f.sel.map(function(o){return '<option'+((d[f.k]||"")===o?' selected':'')+'>'+o+'</option>';}).join("")+'</select>'; }
     else if(f.date){ h+='<input type="date" data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'"'+rq+'>'; }
     else {
-      var only=f.only?' data-only="'+f.only+'"':'', im=(f.only==="09")?' inputmode="numeric"':'', ml=f.max?' maxlength="'+f.max+'"':'';
-      h+='<input type="text"'+up+only+im+ml+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'"'+rq+'>';
+      var only=f.only?' data-only="'+f.only+'"':'', im=(f.only==="09")?' inputmode="numeric"':'', ml=f.max?' maxlength="'+f.max+'"':'', fmt=f.fmt?' data-fmt="'+f.fmt+'"':'';
+      h+='<input type="text"'+up+only+im+ml+fmt+' data-ident="'+branch+'" data-k="'+f.k+'" value="'+v+'" placeholder="'+eh(f.ph||"")+'"'+rq+'>';
     }
     h+='</div>';
   });
   return h+'</div></div>';
 }
+/* Formatea una placa peruana mientras se escribe: MAYÚSCULAS, solo A-Z/0-9 y un guion
+   tras el 3er carácter (XXX-XXX). NO bloquea: acepta letras y números en cualquier
+   posición (el guion es "pegajoso" con >3 caracteres; con ≤3 no se muestra aún). */
+function _fmtPlaca(v){
+  var s=String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  return s.length>3 ? s.slice(0,3)+"-"+s.slice(3) : s;
+}
 function _setIdent(t){
   var br=t.dataset.ident; if(!ST.ident[br]) ST.ident[br]={};
   var val=t.value, only=t.dataset.only;
-  if(only==="AZ") val=val.replace(/[^A-Za-z]/g,"").toUpperCase();       // placa: solo letras, MAYÚSC.
-  else if(only==="09") val=val.replace(/[^0-9]/g,"");                    // placa: solo dígitos
+  if(t.dataset.fmt==="placa") val=_fmtPlaca(val);                        // placa: MAYÚSC. + guion auto
+  else if(only==="AZ") val=val.replace(/[^A-Za-z]/g,"").toUpperCase();
+  else if(only==="09") val=val.replace(/[^0-9]/g,"");
   else if(t.dataset.up) val=val.toUpperCase();
-  if(t.value!==val) t.value=val;                                        // refleja la limpieza en la casilla
+  if(t.value!==val) t.value=val;                                        // refleja el formato en la casilla
   ST.ident[br][t.dataset.k]=val;
 }
 
