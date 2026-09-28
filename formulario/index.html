@@ -142,6 +142,9 @@
   .blkhint{font-size:11.5px;color:var(--muted);padding:8px 0 2px}
   .blkclose{display:block;width:100%;border:none;background:#f1f5f9;color:var(--brand);font-weight:700;font-size:12.5px;
     border-radius:9px;padding:11px;margin:6px 0 4px;cursor:pointer}
+  .pext{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+  .pext .pv{font-size:19px;font-weight:800;letter-spacing:1px;color:var(--brand);min-width:96px}
+  .seg2 button.ok.on{border-color:var(--ok);background:var(--okbg);color:var(--ok)}
   .placaref{font-size:13px;padding:4px 2px 8px}
   .placaref b{letter-spacing:.5px}
   .placaref.falta{color:var(--bad);font-weight:700}
@@ -801,7 +804,9 @@ function togglePresence(id){
 var PLACA_FIELD={k:"placa",l:"Placa de la movilidad",shared:true};
 var IDENT_DEFS={
   extintor:[PLACA_FIELD,
-    {k:"serie",l:"N° de serie / código",ph:"Serie del extintor",req:true,upper:true},
+    /* El extintor se identifica por la PLACA que lleva anexada: sale sola de Datos
+       generales y el técnico confirma «Conforme» o escribe la que realmente tiene. */
+    {k:"placaExt",l:"Placa anexada al extintor",plate:true,req:true},
     {k:"capacidad",l:"Capacidad",req:true,
       sel:["1 kg","2 kg","3 kg","4 kg","5 kg","6 kg","9 kg","12 kg","Otra (detallar en observaciones)"]},
     {k:"tipo",l:"Tipo / clase de agente",req:true,sel:["PQS","CO₂"]},
@@ -818,24 +823,55 @@ function placaRefInner(){
     ? '<div class="placaref">🚐 Placa de la movilidad: <b>'+eh(ST.placa)+'</b> <span class="hint">(de Datos generales)</span></div>'
     : '<div class="placaref falta">⚠ Falta la placa de la movilidad en Datos generales (1.5).</div>';
 }
-function refrescarPlacaRefs(){ var s=document.querySelectorAll(".placaslot"); for(var i=0;i<s.length;i++) s[i].innerHTML=placaRefInner(); }
+function pextHint(){ return ST.placa?'¿El extintor tiene anexada esta misma placa de la movilidad?':'⚠ Primero escribe la placa en Datos generales (1.5).'; }
+function refrescarPlacaRefs(){
+  var s=document.querySelectorAll(".placaslot"), i;
+  for(i=0;i<s.length;i++) s[i].innerHTML=placaRefInner();
+  s=document.querySelectorAll(".placa-movil"); for(i=0;i<s.length;i++) s[i].textContent=ST.placa||"—";
+  s=document.querySelectorAll(".pext-hint"); for(i=0;i<s.length;i++) s[i].textContent=pextHint();
+}
+/* Placa anexada al extintor: «ok» = la misma de la movilidad · «otra» = la escrita a mano. */
+function extPlaca(){ var d=ST.ident.extintor||{}; return d.placaOk==="ok"?(ST.placa||""):d.placaOk==="otra"?(d.placaExt||""):""; }
+function extPlacaDistinta(){ var d=ST.ident.extintor||{}, p=extPlaca(); return d.placaOk==="otra" && !!p && !!ST.placa && p!==ST.placa; }
+function placaExtHTML(f){
+  var d=ST.ident.extintor||{}, ok=d.placaOk;
+  var h='<div class="field" data-pextq="1" style="grid-column:1/-1"><label>'+f.l+' <span class="req">*</span></label>'+
+    '<div class="pext"><span class="pv placa-movil">'+(ST.placa?eh(ST.placa):'—')+'</span>'+
+    '<div class="seg2" style="flex:1 1 220px">'+
+      '<button type="button" class="ok'+(ok==="ok"?' on':'')+'" data-act="pext" data-v="ok">✓ Conforme</button>'+
+      '<button type="button" class="'+(ok==="otra"?'on':'')+'" data-act="pext" data-v="otra">✎ Es otra placa</button></div></div>';
+  if(ok==="otra") h+='<input type="text" class="upper" data-pext="1" value="'+eh(d.placaExt||"")+'" placeholder="Placa que tiene el extintor (ej. ABC-123)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px" required>';
+  return h+'<div class="hint pext-hint">'+pextHint()+'</div></div>';
+}
 /* Valor de un campo de identificación (la placa compartida sale de Datos generales). */
-function identVal(br,f){ return f.shared?(ST.placa||""):(((ST.ident||{})[br]||{})[f.k]||""); }
-/* Identificación de la unidad para la nube (incluye la placa compartida). */
+function identVal(br,f){
+  if(f.shared) return ST.placa||"";
+  if(f.plate){
+    var p=extPlaca(); if(!p) return "";
+    return p+((ST.ident[br]||{}).placaOk==="ok"?" (conforme)":extPlacaDistinta()?" (distinta a la movilidad "+ST.placa+")":"");
+  }
+  return (((ST.ident||{})[br]||{})[f.k]||"");
+}
+/* Identificación de la unidad para la nube (incluye la placa compartida y la del extintor). */
 function identData(br){
   if(ST.branch[br]!==true) return {};
-  var d=ST.ident[br]||{}, o={}; for(var k in d) o[k]=d[k];
+  var d=ST.ident[br]||{}, o={};
+  for(var k in d){ if(k!=="placaOk" && k!=="placaExt") o[k]=d[k]; }
   if(ST.placa && IDENT_DEFS[br].some(function(f){return f.shared;})) o.placa=ST.placa;
+  if(IDENT_DEFS[br].some(function(f){return f.plate;})){
+    o.placa_extintor=extPlaca(); o.placa_extintor_coincide=(!!o.placa_extintor && o.placa_extintor===ST.placa); }
   return o;
 }
 function identFields(branch){
   var defs=IDENT_DEFS[branch]||[], arr=defs.filter(function(f){return !f.shared;}), d=(ST.ident&&ST.ident[branch])||{};
   var h='<div class="subblock"><h3>'+IDENT_TIT[branch]+'</h3>';
-  if(defs.some(function(f){return f.shared;})) h+='<div class="placaslot">'+placaRefInner()+'</div>';
+  if(defs.some(function(f){return f.shared;}) && !defs.some(function(f){return f.plate;}))
+    h+='<div class="placaslot">'+placaRefInner()+'</div>';
   if(!arr.length) return h+'</div>';
   h+='<div class="hint" style="margin:-2px 2px 6px">'+(IDENT_HINT[branch]||"Datos para validar exactamente qué unidad se inspeccionó.")+'</div>'+
     '<div'+(arr.length>1?' class="grid2"':'')+'>';
   arr.forEach(function(f){
+    if(f.plate){ h+=placaExtHTML(f); return; }
     var v=eh(d[f.k]||""), rq=f.req?' required':'', up=f.upper?' class="upper" data-up="1"':'';
     h+='<div class="field"><label>'+f.l+(f.req?' <span class="req">*</span>':'')+'</label>';
     if(f.sel){ h+='<select data-ident="'+branch+'" data-k="'+f.k+'"'+rq+'><option value="">— Seleccionar —</option>'+
@@ -979,6 +1015,11 @@ function _validarIdent(){
     var d=ST.ident[br]||{};
     return IDENT_DEFS[br].some(function(f){
       if(f.shared) return false;   // la placa se valida en Datos generales
+      if(f.plate){                 // placa anexada al extintor: confirmar o escribir la correcta
+        if(!d.placaOk){ e=_f("Confirma la placa anexada al extintor: ✓ Conforme o ✎ Es otra placa.",'[data-pextq]'); return true; }
+        if(d.placaOk==="otra" && !String(d.placaExt||"").trim()){ e=_f("Escribe la placa que tiene anexada el extintor.",'[data-pext]'); return true; }
+        return false;
+      }
       if(f.req && !(d[f.k]||"").toString().trim()){
         e=_f("Completa «"+f.l+"» en la identificación "+nom[br]+".",'[data-ident="'+br+'"][data-k="'+f.k+'"]'); return true; }
       return false;
@@ -1025,7 +1066,7 @@ function guardarUltima(){
     localStorage.setItem(LAST_STORE,JSON.stringify({v:1,t:Date.now(),
       area:ST.area,division:ST.division,cuadrilla:ST.cuadrilla,presence:ST.presence,docs:ST.docs,
       personas:ST.personas,placa:ST.placa,branch:ST.branch,tipo:ST.tipo,
-      ext:{serie:ex.serie||"",capacidad:ex.capacidad||"",tipo:ex.tipo||"",venc:ex.venc||""},
+      ext:{placaExt:ex.placaExt||"",capacidad:ex.capacidad||"",tipo:ex.tipo||"",venc:ex.venc||""},
       escaleras:ST.escaleras.map(function(e){return {tipo:e.tipo,pasos:e.pasos,serie:e.serie,material:e.material};})}));
   }catch(_){}
 }
@@ -1059,7 +1100,7 @@ function cargarUltima(){
     ["escalera","extintor","botiquin"].forEach(function(k){ if(b[k]===true||b[k]===false) ST.branch[k]=b[k]; });
     if(ST.branch.extintor===true){
       var e=d.ext||{}, ex={};
-      if(e.serie) ex.serie=String(e.serie).toUpperCase();
+      if(e.placaExt) ex.placaExt=_fmtPlaca(e.placaExt);   // se precarga si toca «Es otra placa»; la confirmación se hace cada vez
       if(e.venc) ex.venc=String(e.venc);
       IDENT_DEFS.extintor.forEach(function(f){ if(f.sel && e[f.k] && f.sel.indexOf(e[f.k])>=0) ex[f.k]=e[f.k]; });
       ST.ident.extintor=ex;
@@ -1088,6 +1129,8 @@ function textoObs(){
     l.push("Recursos con observación ("+f.length+"):");
     f.forEach(function(x){ l.push("• "+x.seccion+(x.recurso&&x.recurso!=="—"?" ["+x.recurso+"]":"")+": "+x.item+" — "+x.estado); });
   }
+  if(ST.branch.extintor===true && extPlacaDistinta())
+    l.push("El extintor tiene anexada la placa "+extPlaca()+", distinta a la de la movilidad ("+ST.placa+").");
   if(ST.branch.extintor===false) l.push("La unidad no cuenta con extintor.");
   if(ST.branch.botiquin===false) l.push("La unidad no cuenta con botiquín.");
   if(l.length) return l.join("\n");
@@ -1546,6 +1589,11 @@ document.getElementById("app").addEventListener("click",function(e){
   else if(act==="repetir") cargarUltima();
   else if(act==="olvidar") olvidarUltima();
   else if(act==="autotxt") volverAuto(b.dataset.w);
+  else if(act==="pext"){   // placa anexada al extintor: «Conforme» o «Es otra placa»
+    if(!ST.ident.extintor) ST.ident.extintor={};
+    ST.ident.extintor.placaOk=b.dataset.v; render();
+    if(b.dataset.v==="otra"){ var pe=document.querySelector("[data-pext]"); if(pe && !pe.value) try{ pe.focus({preventScroll:true}); }catch(_){} }
+  }
   else if(act==="role") togglePresence(b.dataset.id);
   else if(act==="branch") setBranch(b.dataset.b, b.dataset.v==="1");
   else if(act==="modal"){ ST.modalidad=b.dataset.v; render(); }
@@ -1564,7 +1612,10 @@ document.getElementById("app").addEventListener("input",function(e){
   else if(t.id==="f_cuad") ST.cuadrilla=t.value;
   else if(t.id==="f_obs"){ ST.obs=t.value; if(ST.obsAuto){ ST.obsAuto=false; updAutoHints(); } }
   else if(t.id==="f_concl"){ ST.conclusiones=t.value; if(ST.conclAuto){ ST.conclAuto=false; updAutoHints(); } }
-  else if(t.id==="f_placa"){ var pv=_fmtPlaca(t.value); if(t.value!==pv) t.value=pv; ST.placa=pv; refrescarPlacaRefs(); }
+  else if(t.id==="f_placa"){ var pv=_fmtPlaca(t.value); if(t.value!==pv) t.value=pv; ST.placa=pv; refrescarPlacaRefs(); updateMetrics(); }
+  else if(t.dataset && t.dataset.pext){   // placa escrita a mano para el extintor
+    var pv2=_fmtPlaca(t.value); if(t.value!==pv2) t.value=pv2;
+    if(!ST.ident.extintor) ST.ident.extintor={}; ST.ident.extintor.placaExt=pv2; updateMetrics(); }
   else if(t.id==="r_nom") ST.resp.nombre=t.value;
   else if(t.id==="r_car") ST.resp.cargo=t.value;
   else if(t.id==="r_doc") ST.resp.documento=t.value;
