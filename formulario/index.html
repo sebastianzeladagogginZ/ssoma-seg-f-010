@@ -247,7 +247,7 @@ function esIndividual(){ return !!AREAS_INDIVIDUALES[ST.area]; }
 function personaNueva(){ return {tipo:"DNI",num:"",ape:"",nom:""}; }
 var EPP=["Fotocheck","Chaleco de seguridad","Uniforme · Polo","Uniforme · Pantalón","Calzado de seguridad",
   "Lentes de seguridad transparentes","Lentes de seguridad negros","Casco de seguridad","Tafilete","Barbiquejo",
-  "Tapa nuca","Guantes de poliuretano","Guantes de cuero","Guantes dieléctricos","Cinturón con 2 estrobos",
+  "Tapa nuca","Guantes de poliuretano","Cinturón con 2 estrobos",
   "Conector de anclaje","Linterna para casco","Tapones para oídos","Arnés con línea de vida y absorbedor"];
 var TOOLS=["Martillo de 10 OZ","Celular","Alicate Universal","Alicate de Corte","Juego de desarmadores","Cinturón Porta Herramientas"];
 /* ── Inventario propio de EPP y herramientas por «Área ▸ División» (perfiles de red) ── */
@@ -307,7 +307,7 @@ function sinCuadrilla(){ return !!SIN_CUADRILLA[ST.area+" ▸ "+ST.division]; }
    en cuadrilla/otros conserva los números originales (incluido el 5.2). */
 var _secN=0;
 function secN(f){ return sinCuadrilla()?(++_secN):f; }
-var SIGNAL=["Conos de seguridad","Barras retráctiles","Banderines de escalera","Tacos de seguridad"];
+var SIGNAL=["Conos de seguridad","Cadenas de seguridad","Banderines de escalera","Tacos de seguridad"];
 /* Las escaleras (y su cadena) se inspeccionan en la sección «Escaleras», una por una;
    por eso ya no figuran aquí (evita preguntar lo mismo dos veces). */
 var GEN=["Wincha pasa cable","Extensión eléctrica (mín. 15 m)","Cinta aislante",
