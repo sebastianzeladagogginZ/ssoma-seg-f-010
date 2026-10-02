@@ -464,7 +464,7 @@
           <select id="fCuadrilla"><option value="">Todas las cuadrillas</option></select>
           <select id="fSeccion"><option value="">Todas las secciones</option></select>
           <select id="fItem"><option value="">Todos los ítems</option></select>
-          <select id="fLev"><option value="">Todo el levantamiento</option><option value="abiertas">Abiertas (pend. + proceso)</option><option value="pendiente">Pendiente</option><option value="en_proceso">En revisión</option><option value="levantado">Levantado</option><option value="rechazado">Rechazado SSOMA</option></select>
+          <select id="fLev"><option value="">Todo el levantamiento</option><option value="abiertas">Abiertas (pend. + proceso)</option><option value="pendiente">Pendiente</option><option value="en_proceso">En revisión</option><option value="levantado">Levantado</option><option value="rechazado">Rechazado SSOMA</option><option value="descartado">Archivado</option></select>
           <span class="count-tag" id="obsCount"></span>
         </div>
         <div class="tbl-wrap">
@@ -700,7 +700,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V38";
+var PANEL_VERSION = "V39";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -814,7 +814,8 @@ var EST_LEV = {
   pendiente:{label:"Pendiente",cls:"na",dot:"#94a3b8"},
   en_proceso:{label:"En revisión",cls:"info",dot:"#0284c7"},
   levantado:{label:"Levantado",cls:"ok",dot:"#16a34a"},
-  rechazado:{label:"Rechazado SSOMA",cls:"bad",dot:"#dc2626"}
+  rechazado:{label:"Rechazado SSOMA",cls:"bad",dot:"#dc2626"},
+  descartado:{label:"Archivado",cls:"na",dot:"#cbd5e1"}
 };
 
 /* ============================================================
@@ -1882,7 +1883,7 @@ function coberturaDetalleHTML(f){
 /* ============================================================
    HELPERS DE GRÁFICOS (SVG puro, sin dependencias)
    ============================================================ */
-var COL={"Requiere cambio":"#d97706","No tiene":"#dc2626","levantado":"#16a34a","en_proceso":"#0284c7","pendiente":"#94a3b8","rechazado":"#dc2626"};
+var COL={"Requiere cambio":"#d97706","No tiene":"#dc2626","levantado":"#16a34a","en_proceso":"#0284c7","pendiente":"#94a3b8","rechazado":"#dc2626","descartado":"#cbd5e1"};
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 // Solo permite enlaces http(s) reales (bloquea javascript:, data:, etc.).
 function safeUrl(u){ u=String(u||"").trim(); return /^https?:\/\//i.test(u)?u:""; }
@@ -2000,7 +2001,8 @@ function renderResumen(){
     [{label:"Levantado",value:lev,color:COL.levantado},
      {label:"En revisión",value:d.filter(function(o){return o.levantamiento==="en_proceso";}).length,color:COL.en_proceso},
      {label:"Pendiente",value:d.filter(function(o){return o.levantamiento==="pendiente";}).length,color:COL.pendiente},
-     {label:"Rechazado",value:rech,color:COL.rechazado}],
+     {label:"Rechazado",value:rech,color:COL.rechazado},
+     {label:"Archivado",value:d.filter(function(o){return o.levantamiento==="descartado";}).length,color:COL.descartado}],
     avance+"%","levantado");
   document.getElementById("avanceSub").textContent=lev+" de "+d.length+" cerradas";
 }
@@ -2543,6 +2545,8 @@ function renderObservaciones(){
     if(f.cuadrilla && String(o.cuadrilla==null?"":o.cuadrilla).trim()!==f.cuadrilla) return false;
     if(f.seccion && o.seccion!==f.seccion) return false;
     if(f.item && o.item!==f.item) return false;
+    // Archivadas (descartado): fuera del flujo activo; solo se listan con el filtro "Archivado".
+    if(o.levantamiento==="descartado" && f.lev!=="descartado") return false;
     if(f.lev){
       if(f.lev==="abiertas"){ if(o.levantamiento!=="pendiente" && o.levantamiento!=="en_proceso") return false; }
       else if(o.levantamiento!==f.lev) return false;
@@ -2630,6 +2634,7 @@ document.getElementById("fLev").onchange=function(){ APP.filtros.lev=this.value;
 function hayGestionJefe(o){ return !!o.evidencia_lev || !!(o.mensaje_jefe && String(o.mensaje_jefe).trim()); }
 // ¿Esta observación puede seleccionarse para una acción masiva del rol actual?
 function esSeleccionableMasivo(o){
+  if(o.levantamiento==="descartado") return false;   // archivadas: fuera del flujo, no accionables en masivo
   var isSSOMA=APP.user && APP.user.area==="*";
   var puedeAprobar=isSSOMA && !(APP.user && APP.user.puede_aprobar===false);
   if(puedeAprobar) return hayGestionJefe(o) && o.levantamiento==="en_proceso";  // SSOMA: hay evidencia o justificación por revisar
