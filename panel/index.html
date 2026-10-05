@@ -812,7 +812,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V41";
+var PANEL_VERSION = "V42";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1746,9 +1746,16 @@ function personaPorNombre(nombre, padron){
   return hits.length===1?hits[0]:null;
 }
 // Documentos del personal inspeccionado en un registro del histórico.
+// Si el DNI tipeado en la inspección no está en el padrón pero el NOMBRE sí calza con
+// alguien del padrón, es un error de tipeo del DNI → cuenta para esa persona.
 function dnisDeInspeccion(r, padron){
-  if(r.dnis && r.dnis.length) return { dnis:r.dnis.map(padDni), aprox:false };
-  var p=personaPorNombre(r.responsable, padron);
+  var p;
+  if(r.dnis && r.dnis.length){
+    var ds=r.dnis.map(padDni), enPadron=padron.some(function(x){ return ds.indexOf(padDni(x.dni))>=0; });
+    if(!enPadron && (p=personaPorNombre(r.responsable, padron))) return { dnis:[padDni(p.dni)], aprox:false };
+    return { dnis:ds, aprox:false };
+  }
+  p=personaPorNombre(r.responsable, padron);
   return { dnis:p?[padDni(p.dni)]:[], aprox:true };
 }
 // Cobertura de UNA semana para UN área: personas del padrón con ≥1 inspección.
