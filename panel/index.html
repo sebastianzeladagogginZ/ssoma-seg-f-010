@@ -812,7 +812,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V42";
+var PANEL_VERSION = "V43";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1705,7 +1705,19 @@ var PADRON_INDIVIDUAL={
     {dni:"45136221",nombre:"PUMARRUMI CORMAN EBER"},
     {dni:"75131658",nombre:"RAMOS VILLANUEVA JOHN ANGEL"},
     {dni:"74219379",nombre:"RIVERA RODRIGUEZ CARLOS MANUEL"},
-    {dni:"71765976",nombre:"SOSA ALVA FABIAN BRUNO"}
+    {dni:"71765976",nombre:"SOSA ALVA FABIAN BRUNO"},
+    // Altas 2026-10-05 (personal inspeccionado en SEG-F-010 desde agosto)
+    {dni:"70507679",nombre:"VALDERRAMA LOCK LUIS ENRIQUE"},
+    {dni:"70895127",nombre:"VIRHUEZ CARRIÓN JHOEL ABELARDO"},
+    {dni:"70972897",nombre:"ALCAZAR VILCA DIEGO ABELARDO"},
+    {dni:"71727030",nombre:"CABRERA SILVA DIEGO ABEL"},
+    {dni:"71962696",nombre:"GUZMAN CAMACHO ELEAZAR MOISES"},
+    {dni:"72077927",nombre:"ROJAS YACTAYO RICARDO ANTONIO"},
+    {dni:"73485235",nombre:"PACARI SARMIENTO JOSE NELSON"},
+    {dni:"73865894",nombre:"CARLOS FALCON EDSON RODRIGO"},
+    {dni:"75110209",nombre:"SULCA SALVADOR YURI ERNAN"},
+    {dni:"75495654",nombre:"ANGULO PILARES MARCIAL JESUS"},
+    {dni:"75577082",nombre:"ÑIQUEN ORTEGA ANDERSON"}
   ],
   "INSPECCIÓN Y DISEÑO":[
     {dni:"46195003",nombre:"TORIBIO POMA ANTHONY NELSON"},
@@ -1713,7 +1725,8 @@ var PADRON_INDIVIDUAL={
     {dni:"70814374",nombre:"DE LA CRUZ COLLANTES KEVIN JOSEPH"},
     {dni:"72213911",nombre:"LANDA LLAMOCCA LEOPOLDO RENE"},
     {dni:"16140603",nombre:"RODRIGUEZ OSORIO ANTONIO EDUARDO"},
-    {dni:"73277588",nombre:"CALDERÓN DIONISIO ANDRÉ VISARIONOVICH"}
+    {dni:"73277588",nombre:"CALDERÓN DIONISIO ANDRÉ VISARIONOVICH"},
+    {dni:"44588261",nombre:"OJEDA SANCHEZ JOSE LUIS"}            // alta 2026-10-05
   ]
 };
 function padronDe(areaBig){ return PADRON_INDIVIDUAL[areaBig]||null; }
