@@ -9,6 +9,9 @@
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="dns-prefetch" href="https://script.google.com">
 <link rel="dns-prefetch" href="https://script.googleusercontent.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <title>Panel SSOMA · Levantamiento de Inspecciones · ON Infraestructura</title>
 <style>
   :root{
@@ -21,6 +24,8 @@
     --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.06);
     --shadow-lg:0 12px 40px rgba(15,23,42,.16);
     --r:16px;
+    --gut:clamp(14px,2.2vw,30px);      /* margen lateral fluido (se adapta a la pantalla) */
+    --maxw:1480px;                     /* ancho máximo del contenido en pantallas grandes */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
@@ -101,11 +106,13 @@
   .logout:hover{color:#fff}
 
   main{min-width:0;padding:0 0 60px}
-  .topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line);padding:16px 30px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .topbar .title h1{font-size:19px;margin:0;letter-spacing:-.3px}
-  .topbar .title p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
-  .topbar .spacer{flex:1}
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.86);backdrop-filter:blur(12px) saturate(1.4);
+    border-bottom:1px solid var(--line);padding:12px max(var(--gut),calc((100% - var(--maxw))/2 + var(--gut)));
+    display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap}
+  .topbar .title{flex:1 1 260px;min-width:0}
+  .topbar .title h1{font-size:clamp(17px,1.45vw,20px);margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .title p{margin:2px 0 0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .spacer{display:none}
   .area-pill{display:inline-flex;align-items:center;gap:8px;background:var(--infobg);color:#075985;
     border:1px solid #bae6fd;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700}
   .area-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--brand2)}
@@ -114,19 +121,24 @@
     box-shadow:0 6px 16px rgba(22,163,74,.32);transition:transform .12s}
   .topbar-epp:hover{transform:translateY(-1px)}
   .topbar-epp svg{width:17px;height:17px}
-  .area-select{padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;background:#fff;color:var(--ink)}
+  .area-select{padding:8px 30px 8px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;color:var(--ink);max-width:240px;cursor:pointer;
+    appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;transition:border-color .15s,box-shadow .15s}
+  .area-select:hover{border-color:#bae6fd}
+  .area-select:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(2,132,199,.12)}
 
-  .content{padding:24px 30px;max-width:1320px}
+  .content{padding:clamp(16px,2vw,24px) var(--gut);max-width:var(--maxw);margin:0 auto}
   .view{display:none}
   .view.active{display:block;animation:fade .25s ease}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
   /* ===== KPI cards ===== */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:14px;margin-bottom:22px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,172px),1fr));gap:clamp(10px,1.2vw,14px);margin-bottom:22px}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
   .kpi .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:12px}
   .kpi .ic svg{width:20px;height:20px}
-  .kpi .v{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .kpi .v{font-size:clamp(24px,2.2vw,30px);font-weight:800;letter-spacing:-1px;line-height:1}
+  .kpi .v small{font-size:.58em;font-weight:700;color:var(--soft);letter-spacing:-.3px}
+  .kpi-sub{font-size:11px;color:var(--soft);margin-top:3px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .kpi .l{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600}
   .kpi .trend{position:absolute;top:16px;right:16px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
   .kpi.clk{cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}
@@ -292,7 +304,6 @@
     #app{grid-template-columns:1fr}
     aside{position:fixed;z-index:110;left:-260px;width:248px;transition:left .25s}
     aside.open{left:0}
-    .content,.topbar{padding-left:18px;padding-right:18px}
     .menu-toggle{display:inline-flex!important}
   }
   /* scrim del menú lateral en móvil */
@@ -314,6 +325,114 @@
     table.data td::before{content:attr(data-label);font-size:10.5px;font-weight:800;color:var(--muted);
       text-transform:uppercase;letter-spacing:.4px;text-align:left;flex:none}
     table.data td:empty{display:none}
+  }
+
+  /* ===== Botón secundario pequeño (reintentar, guardar…) ===== */
+  .mini-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:#334155;
+    font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:border-color .12s,background .12s}
+  .mini-btn:hover{border-color:#bae6fd;background:#f0f9ff}
+  .mini-btn:disabled{opacity:.6;cursor:default}
+  .kpi .trend{white-space:nowrap}
+  .legend i{font-style:normal}
+
+  /* ===== Gráfico de barras (HTML/CSS: ocupa todo el ancho y se adapta a la pantalla) ===== */
+  .bchart-wrap{overflow-x:auto;overflow-y:hidden;margin:0 -4px;padding:0 4px 2px}
+  .bchart{display:flex;align-items:stretch;gap:clamp(4px,.9vw,12px);height:clamp(170px,24vh,230px);min-width:calc(var(--n,8) * 30px)}
+  .bc-col{flex:1 1 0;min-width:24px;max-width:92px;display:flex;flex-direction:column;border-radius:10px;padding:0 3px 4px;outline:none;transition:background .15s}
+  .bc-plot{position:relative;flex:1 1 auto;min-height:0}
+  .bc-bar{position:absolute;left:0;right:0;bottom:0;margin:0 auto;width:min(100%,60px);height:calc((100% - 24px) * var(--v) / 100);min-height:3px;
+    background-color:var(--c);border-radius:7px 7px 3px 3px;font-style:normal;transition:filter .15s,box-shadow .15s}
+  .bc-val{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font-size:12px;font-weight:800;color:#334155;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .bc-lbl{text-align:center;font-size:10.5px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;line-height:1.2}
+  .bc-lbl em{display:block;font-style:normal;font-size:9px;font-weight:700;color:#b45309;letter-spacing:.02em}
+  .bc-col.en-curso .bc-bar{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.5) 0 4px,transparent 4px 8px)}
+  .bar-click{cursor:pointer}
+  .bar-click:hover{background:var(--bg2)}
+  .bar-click:hover .bc-bar{filter:brightness(1.07)}
+  .bar-click.sel{background:var(--infobg)}
+  .bar-click.sel .bc-bar{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand)}
+  .bar-click.sel .bc-lbl{color:var(--brand);font-weight:800}
+  .lchart{width:100%;overflow:hidden}
+  .lchart svg{display:block;max-width:100%}
+
+  /* ===== Accesibilidad: foco visible con teclado y menos movimiento si el usuario lo pide ===== */
+  :focus-visible{outline:2px solid var(--brand3);outline-offset:2px}
+  .nav-item:focus-visible{outline-color:#7dd3fc}
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  }
+
+  /* ===== RESPONSIVE: la interfaz se adapta al tamaño de pantalla en uso =====
+     · ≥1181 px        → menú lateral completo.
+     · 861–1180 px     → menú en "riel" de íconos (laptops chicas / tablets horizontales): más espacio para datos.
+     · ≤860 px         → menú deslizable (botón ☰) + "Formato EPP" como ícono en la barra superior.
+     · pantallas bajas → espaciado compacto (laptops de 768 px de alto).
+     · pantallas anchas→ contenido centrado con ancho máximo cómodo de lectura. */
+  @media(min-width:861px){ .topbar-epp{display:none} }     /* ya está en el menú lateral → sin duplicar */
+  @media(max-width:860px){
+    .topbar-epp{font-size:0;gap:0;padding:9px 10px}
+    .topbar .title{flex-basis:160px}
+    .area-select{max-width:none;flex:1 1 0;min-width:0}
+  }
+  @media(max-width:640px){
+    .topbar{padding-top:9px;padding-bottom:9px;gap:8px}
+    .topbar .title p{display:none}
+    .topbar .title{flex-basis:calc(100% - 60px)}
+    .area-select{font-size:12.5px;padding:8px 26px 8px 10px;background-position:right 8px center}
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .kpi{padding:13px 13px 12px}
+    .kpi .ic{width:30px;height:30px;border-radius:9px;margin-bottom:8px}
+    .kpi .ic svg{width:16px;height:16px}
+    .kpi .v{font-size:23px}
+    .kpi .l{font-size:11.5px;line-height:1.3}
+    .kpi-sub{white-space:normal}
+    .kpi .trend{position:static;display:inline-block;margin-top:7px;font-size:10.5px}
+    .kpi.clk::after{display:none}
+    .card .ch{padding:14px 14px 0;flex-wrap:wrap}
+    .card .ch .sub{margin-left:0;width:100%}
+    .card .cb{padding:12px 14px 16px}
+    .bchart{height:180px}
+    .bc-val{font-size:10.5px}
+    .bc-lbl{font-size:9.5px}
+  }
+  @media(max-height:780px) and (min-width:861px){
+    aside{padding:12px 12px;gap:2px}
+    .side-brand{padding:4px 8px 12px;margin-bottom:6px}
+    .nav-item{padding:9px 12px}
+    .epp-btn{padding:10px}
+    .side-user{margin-top:6px;padding:8px 10px}
+    #verBadge{padding-top:6px!important}
+    .topbar{padding-top:9px;padding-bottom:9px}
+    .kpi{padding:13px 16px}
+    .kpi .ic{width:32px;height:32px;margin-bottom:9px}
+    .kpi .ic svg{width:17px;height:17px}
+  }
+  @media(min-width:861px) and (max-width:1180px){
+    #app{grid-template-columns:76px 1fr}
+    aside{padding:14px 10px}
+    .side-brand{justify-content:center;padding:4px 0 14px}
+    .side-brand>div:last-child{display:none}
+    .nav-item{font-size:0;gap:0;justify-content:center;padding:12px 0}
+    .nav-item svg{width:20px;height:20px}
+    .epp-btn{font-size:0;gap:0;padding:11px 0}
+    .side-user{flex-direction:column;gap:8px;padding:10px 4px}
+    .side-user>div:nth-child(2){display:none}
+    .logout{margin:0}
+    #verBadge{font-size:9.5px!important;padding-left:0!important;padding-right:0!important}
+  }
+  @media(min-width:1700px){
+    :root{--maxw:1560px}
+    .row2{grid-template-columns:1.5fr 1fr}
+  }
+
+  /* ===== Impresión / PDF del navegador: solo el contenido ===== */
+  @media print{
+    aside,.menu-toggle,.refresh-btn,.topbar-epp,.area-select,#bulkBar,.toast,.menu-scrim{display:none!important}
+    #app{display:block!important}
+    body{background:#fff}
+    .topbar{position:static;backdrop-filter:none;background:#fff;padding:0 0 10px}
+    .content{max-width:none;padding:0}
+    .card,.kpi,.cob-list,.hist-breakdown,.hist-week{box-shadow:none!important;break-inside:avoid}
   }
 </style>
 </head>
@@ -506,10 +625,6 @@
       <!-- ===== HISTÓRICO ===== -->
       <section class="view" id="view-historico">
         <style>
-          #view-historico .hist-kpis{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-          #view-historico .hist-kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;min-width:150px;box-shadow:var(--shadow)}
-          #view-historico .hk-num{display:block;font-size:26px;font-weight:800;color:var(--brand);line-height:1}
-          #view-historico .hk-lbl{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
           #view-historico .hist-month{margin-bottom:22px}
           #view-historico .hm-head{display:flex;align-items:baseline;gap:10px;border-bottom:2px solid var(--brand);padding-bottom:6px;margin-bottom:12px}
           #view-historico .hm-head h3{margin:0;font-size:16px;color:var(--brand);text-transform:capitalize}
@@ -522,14 +637,10 @@
           #view-historico .pdf-link:hover{text-decoration:underline}
           #view-historico .muted-sm{color:var(--soft)}
           #view-historico .hist-obs{display:inline-block;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;color:var(--muted);cursor:help}
-          #view-historico .hist-week{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;box-shadow:var(--shadow);margin-bottom:6px}
-          #view-historico .hist-subt{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
+          #view-historico .hist-week{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 16px 10px;box-shadow:var(--shadow);margin-bottom:6px}
+          #view-historico .hist-subt{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
           #view-historico .hist-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
-          /* Barras de semana clicables + panel de detalle de la semana */
-          #view-historico .hist-week .bar-click{cursor:pointer}
-          #view-historico .hist-week .bar-click rect:not(.bar-hit){transition:opacity .15s ease}
-          #view-historico .hist-week .bar-click:hover rect:not(.bar-hit){opacity:.82}
-          #view-historico .hist-week .bar-click.sel rect:not(.bar-hit){stroke:var(--brand);stroke-width:2.5}
+          /* Panel de detalle de la semana (al tocar una barra) */
           #view-historico .week-detail{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);margin:10px 0 6px}
           #view-historico .wd-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--brand);padding-bottom:6px;margin-bottom:12px}
           #view-historico .wd-head h3{margin:0;font-size:16px;color:var(--brand)}
@@ -559,24 +670,21 @@
         <div id="histContent"></div>
       </section>
 
-      <!-- ===== COBERTURA POR CUADRILLA ===== -->
+      <!-- ===== COBERTURA SEMANAL (cuadrillas + personas) ===== -->
       <section class="view" id="view-cobertura">
         <style>
-          #view-cobertura .cob-kpis{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
-          #view-cobertura .cob-kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;min-width:150px;box-shadow:var(--shadow)}
-          #view-cobertura .ck-num{display:block;font-size:26px;font-weight:800;color:var(--brand);line-height:1}
-          #view-cobertura .ck-lbl{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
-          #view-cobertura .cob-subt{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
+          #view-cobertura .cob-kpis{margin-bottom:16px}
+          #view-cobertura .cob-subt{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
           #view-cobertura .cob-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
-          #view-cobertura .cob-week{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;box-shadow:var(--shadow);margin-bottom:6px}
-          #view-cobertura .cob-week .bar-click{cursor:pointer}
-          #view-cobertura .cob-week .bar-click rect:not(.bar-hit){transition:opacity .15s ease}
-          #view-cobertura .cob-week .bar-click:hover rect:not(.bar-hit){opacity:.82}
-          #view-cobertura .cob-week .bar-click.sel rect:not(.bar-hit){stroke:var(--brand);stroke-width:2.5}
+          #view-cobertura .cob-curso{font-style:normal;font-size:10.5px;letter-spacing:.03em;background:#fef3c7;color:#92400e;border-radius:99px;padding:2px 9px}
+          #view-cobertura .cob-legend{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+          #view-cobertura .sw-curso{background:repeating-linear-gradient(135deg,#94a3b8 0 3px,#e2e8f0 3px 6px)}
+          #view-cobertura .cb-unit{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#0369a1;background:#e0f2fe;border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:1px}
+          #view-cobertura .cb-unit-p{color:#6d28d9;background:#ede9fe}
           #view-cobertura .cob-list{display:flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow)}
           #view-cobertura .cb-item{border-radius:11px}
           #view-cobertura .cb-item.open{background:var(--bg2)}
-          #view-cobertura .cb-row{width:100%;display:grid;grid-template-columns:minmax(130px,1.4fr) minmax(80px,2fr) 52px 54px 18px;align-items:center;gap:14px;background:none;border:0;cursor:pointer;padding:12px 14px;text-align:left;border-radius:11px;transition:background .15s ease}
+          #view-cobertura .cb-row{width:100%;display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(80px,2fr) 54px 74px 18px;align-items:center;gap:14px;background:none;border:0;cursor:pointer;padding:12px 14px;text-align:left;border-radius:11px;transition:background .15s ease}
           #view-cobertura .cb-row:hover{background:var(--infobg)}
           #view-cobertura .cb-item.open .cb-row:hover{background:transparent}
           #view-cobertura .cb-name{display:flex;flex-direction:column;min-width:0;line-height:1.25}
@@ -585,13 +693,15 @@
           #view-cobertura .cb-bar{height:9px;background:var(--bg);border-radius:99px;overflow:hidden}
           #view-cobertura .cb-bar i{display:block;height:100%;border-radius:99px;min-width:6px}
           #view-cobertura .cb-pct{font-size:16px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
-          #view-cobertura .cb-frac{font-size:13px;font-weight:700;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+          #view-cobertura .cb-frac{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15;font-variant-numeric:tabular-nums}
+          #view-cobertura .cb-frac b{font-size:13.5px;font-weight:800;color:#334155}
+          #view-cobertura .cb-frac small{font-size:10px;font-weight:600;color:var(--soft)}
           #view-cobertura .cb-chev{display:inline-flex;width:18px;height:18px;color:var(--soft);transition:transform .2s ease}
           #view-cobertura .cb-chev svg{width:18px;height:18px;display:block}
           #view-cobertura .cb-item.open .cb-chev{transform:rotate(180deg);color:var(--brand2)}
           #view-cobertura .cb-detail{padding:6px 14px 14px}
           #view-cobertura .cb-det-grid{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
-          #view-cobertura .cb-stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:88px}
+          #view-cobertura .cb-stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:88px}
           #view-cobertura .cb-stat b{display:block;font-size:20px;font-weight:800;color:var(--ink);line-height:1}
           #view-cobertura .cb-stat span{display:block;font-size:10.5px;color:var(--muted);margin-top:3px}
           #view-cobertura .cb-stat.cb-ok b{color:#16a34a}
@@ -617,8 +727,10 @@
           #view-cobertura .cb-chip-bad{background:#fee2e2;color:#991b1b}
           #view-cobertura .cb-chip-warn{background:#fef3c7;color:#92400e}
           @media(max-width:640px){
-            #view-cobertura .cb-row{grid-template-columns:1fr 48px 50px 18px}
+            #view-cobertura .cb-row{grid-template-columns:1fr 46px 66px 18px;gap:10px;padding:12px 10px}
             #view-cobertura .cb-bar{display:none}
+            #view-cobertura .cb-person .cb-pn{white-space:normal}
+            #view-cobertura .cb-name b,#view-cobertura .cb-name span{white-space:normal}
           }
         </style>
         <div id="cobContent"></div>
@@ -700,7 +812,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V40";
+var PANEL_VERSION = "V41";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -953,7 +1065,12 @@ function iniciarSesion(user){
   // botón "Actualizar" + refresco periódico (solo con datos reales)
   var rb=document.getElementById("refreshBtn");
   if(tieneEndpoint()){
-    rb.style.display=""; rb.onclick=function(){ cargarDatos(true); };
+    rb.style.display=""; rb.onclick=function(){
+      var _v=(document.querySelector(".nav-item.active")||{dataset:{}}).dataset.view;
+      if(_v==="historico"||_v==="cobertura"){ APP.historico=null; if(_v==="historico") cargarHistorico(); else cargarCobertura(); }   // trae inspecciones nuevas
+      else if(_v==="ats"){ var _sy=window.pageYOffset||0; cargarAts(function(){ try{ window.scrollTo(0,_sy); }catch(e){} }, true); }
+      else cargarDatos(true);
+    };
     if(APP.pollTimer) clearInterval(APP.pollTimer);
     APP.pollTimer=setInterval(function(){                                   // auto-refresco cada 1 min
       if(document.hidden) return;
@@ -1140,6 +1257,9 @@ function poblarAreaSelect(){
       l2.value=APP.fDiv;
     } else { l2.style.display="none"; APP.fDiv=""; }
   }
+  // Con selectores visibles, la píldora de alcance repite lo mismo → se oculta (topbar en una sola línea).
+  var pill=document.querySelector(".topbar .area-pill");
+  if(pill) pill.style.display=((l1&&l1.style.display!=="none")||(l2&&l2.style.display!=="none"))?"none":"";
 }
 
 /* ============================================================
@@ -1150,7 +1270,7 @@ var TITLES={resumen:["Resumen","Estado general del levantamiento de observacione
   evidencias:["Evidencias","Carpetas fechadas en la nube"],
   analisis:["Análisis","Inteligencia de datos sobre los hallazgos"],
   historico:["Histórico de inspecciones","Todas las inspecciones realizadas · por mes y área"],
-  cobertura:["Cobertura por cuadrilla","Cuadrillas con inspección esta semana (sáb→vie) vs. total por división"],
+  cobertura:["Cobertura semanal","Inspecciones SEG-F-010 por semana (sáb→vie): cuadrillas y personas inspeccionadas vs. total"],
   ats:["ATS · Charla de 5 min","Llenado diario de ATS y charlas de 5 minutos en campo"]};
 function navTo(v){
   document.querySelectorAll(".nav-item").forEach(function(x){x.classList.toggle("active", x.dataset.view===v);});
@@ -1179,7 +1299,11 @@ function cerrarMenu(){
   document.getElementById("menuScrim").classList.remove("open");
   document.getElementById("menuToggle").setAttribute("aria-expanded","false");
 }
-document.querySelectorAll(".nav-item").forEach(function(b){ b.onclick=function(){ navTo(b.dataset.view); }; });
+document.querySelectorAll(".nav-item").forEach(function(b){
+  b.onclick=function(){ navTo(b.dataset.view); };
+  if(!b.title) b.title=b.textContent.trim();                 // tooltip (útil en el menú compacto de íconos)
+});
+["eppSide","eppTop"].forEach(function(id){ var e=document.getElementById(id); if(e){ e.title="Descargar formato de entrega de EPP"; e.setAttribute("aria-label","Formato de entrega de EPP"); } });
 document.getElementById("menuToggle").onclick=function(){
   var abierto=document.getElementById("aside").classList.contains("open");
   if(abierto) cerrarMenu(); else abrirMenu();
@@ -1318,67 +1442,54 @@ function cargarHistorico(){
 function histFiltrado(){
   var arr=(APP.historico||[]).slice();
   var fa=norm(APP.fArea), fd=norm(APP.fDiv);
-  var hoyLun=lunesDe(fechaISO(new Date()));
+  var hoySab=sabadoDe(fechaISO(new Date()));
   return arr.filter(function(r){
-    var m=lunesDe(r.fecha); if(m && hoyLun && m>hoyLun) return false;  // fecha futura → fuera
+    var m=sabadoDe(r.fecha); if(m && hoySab && m>hoySab) return false;  // fecha futura → fuera
     if(fd) return norm(r.area)===fd;
     if(fa) return norm(parentArea(r.area))===fa;
     return true;
   });
 }
 
-/* ── Desglose SEMANAL: nº de inspecciones por semana (lun–dom) ──
-   Agrupa por lunes de cada semana, rellena semanas sin datos con 0 y
-   muestra la ventana más reciente (hasta 12 semanas con registros). */
+/* ── Desglose SEMANAL: nº de inspecciones por semana (sáb→vie) ──
+   MISMA semana que la Cobertura semanal y el reporte semanal de SSOMA
+   (sábado a viernes), para que ambos gráficos cuadren barra a barra.
+   Rellena semanas sin datos con 0 y muestra hasta 12 semanas. */
 var MES3=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-function lunesDe(fecha){
-  var p=String(fecha||"").split("-"); if(p.length<3) return null;
-  var d=new Date(+p[0],+p[1]-1,+p[2]); if(isNaN(d.getTime())) return null;
-  var wd=(d.getDay()+6)%7;                 // 0=lunes … 6=domingo
-  d.setDate(d.getDate()-wd); d.setHours(0,0,0,0); return d;
-}
-function rangoSemana(lun){
-  var dom=new Date(lun); dom.setDate(lun.getDate()+6);
-  return pad(lun.getDate())+" "+MES3[lun.getMonth()]+" – "+pad(dom.getDate())+" "+MES3[dom.getMonth()];
-}
+function iconCal(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';}
+function iconAvg(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15h12"/><path d="M7 9l4 3 4-5 4 3"/></svg>';}
 function histPorSemana(arr){
-  var hoyLun=lunesDe(fechaISO(new Date()));   // lunes de la semana actual (reloj real del equipo)
-  var map={}, items={}, min=null;
-  arr.forEach(function(r){ var m=lunesDe(r.fecha); if(!m) return;
-    if(hoyLun && m>hoyLun) return;             // ignora fechas futuras (registros de prueba/erróneos)
-    var k=fechaISO(m);
-    map[k]=(map[k]||0)+1; (items[k]=items[k]||[]).push(r); if(!min||m<min) min=m; });
-  if(!min) return [];
-  // Ventana anclada a HOY: termina en la semana actual y retrocede hasta el 1er dato (máx. 12 semanas).
-  var semanas=[], cur=new Date(hoyLun), guard=0;
-  while(cur>=min && guard++<60){
-    var k=fechaISO(cur);
-    semanas.unshift({ lun:new Date(cur), value:map[k]||0, items:items[k]||[] });
-    cur.setDate(cur.getDate()-7);
-  }
-  return semanas.slice(-12);               // ventana: últimas 12 semanas hasta hoy
+  // Misma agrupación sáb→vie que la cobertura (cobPorSemana): ventana anclada a HOY, máx. 12 semanas.
+  var sem=cobPorSemana(arr);
+  if(!arr.length) return [];
+  return sem.map(function(s){ return { sab:s.sab, value:s.items.length, items:s.items }; });
 }
 
 function renderHistorico(){
   var cont=document.getElementById("histContent"); if(!cont) return;
   var arr=histFiltrado();
   var semanas=histPorSemana(arr);
-  var totVentana=semanas.reduce(function(a,s){ return a+s.value; },0);
-  var promSem=semanas.length?Math.round(totVentana/semanas.length*10)/10:0;
-  var ultReg=0; for(var wi=semanas.length-1;wi>=0;wi--){ if(semanas[wi].value>0){ ultReg=semanas[wi].value; break; } }
-  var h='<div class="hist-kpis">'+
-    '<div class="hist-kpi"><span class="hk-num">'+arr.length+'</span><span class="hk-lbl">Inspecciones en esta vista</span></div>'+
-    '<div class="hist-kpi"><span class="hk-num">'+ultReg+'</span><span class="hk-lbl">Última semana con registros</span></div>'+
-    '<div class="hist-kpi"><span class="hk-num">'+promSem+'</span><span class="hk-lbl">Promedio por semana</span></div>'+
-    '<div class="hist-kpi"><span class="hk-num">'+(APP.historicoTotalGlobal||0)+'</span><span class="hk-lbl">Histórico global (toda la empresa)</span></div>'+
+  // La última semana de la ventana es la EN CURSO (incompleta): el promedio usa solo semanas cerradas.
+  var cerradas=semanas.length>1?semanas.slice(0,-1):semanas;
+  var totCerr=cerradas.reduce(function(a,s){ return a+s.value; },0);
+  var promSem=cerradas.length?Math.round(totCerr/cerradas.length*10)/10:0;
+  var sAct=semanas[semanas.length-1], sAnt=semanas.length>1?semanas[semanas.length-2]:null;
+  var vieAct=null; if(sAct){ vieAct=new Date(sAct.sab); vieAct.setDate(vieAct.getDate()+6); }
+  var hk=function(bg,fg,ic,v,l,sub){ return '<div class="kpi"><div class="ic" style="background:'+bg+';color:'+fg+'">'+ic+'</div><div class="v tnum">'+v+'</div><div class="l">'+l+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>'; };
+  var h='<div class="kpis hist-kpis">'+
+    hk("#e0f2fe","#0369a1",iconClip(),arr.length,"Inspecciones en esta vista","Según el filtro de área/división")+
+    (sAnt?hk("#dcfce7","#15803d",iconCheck(),sAnt.value,"Semana anterior","Semana "+esc(rangoSemanaSab(sAnt.sab))):"")+
+    (sAct?hk("#fef3c7","#b45309",iconCal(),sAct.value,"Semana en curso","Cierra vie "+pad(vieAct.getDate())+" "+MES3[vieAct.getMonth()]):"")+
+    hk("#ede9fe","#6d28d9",iconAvg(),promSem,"Promedio por semana","Semanas cerradas ("+cerradas.length+")")+
+    hk("#f1f5f9","#334155",iconLayers(),(APP.historicoTotalGlobal||0),"Histórico global","Toda la empresa")+
   '</div>';
   if(!arr.length){ cont.innerHTML=h+'<div class="load-note" style="justify-content:flex-start">Aún no hay inspecciones registradas en este alcance.</div>'; return; }
 
   // Inspecciones por semana (barras) — respeta el filtro de Área/División activo.
   if(semanas.length){
-    h+='<div class="hist-subt">Inspecciones por semana <span>últimas '+semanas.length+' semana(s) · toca una barra para ver el detalle</span></div>';
-    h+='<div class="hist-week">'+barChart(semanas.map(function(s){
-      return { label:"Semana "+rangoSemana(s.lun), short:pad(s.lun.getDate())+"/"+pad(s.lun.getMonth()+1), value:s.value };
+    h+='<div class="hist-subt">Inspecciones por semana <span>sábado → viernes · últimas '+semanas.length+' semana(s) · toca una barra para ver el detalle</span></div>';
+    h+='<div class="hist-week">'+barChart(semanas.map(function(s,i){
+      return { label:"Semana "+rangoSemanaSab(s.sab), short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:s.value, enCurso:(i===semanas.length-1) };
     }),{clickable:true})+'</div>';
     h+='<div id="weekDetail" class="week-detail" hidden></div>';
   }
@@ -1464,7 +1575,7 @@ function detalleAreaHTML(list){
 // Detalle de una semana: cantidad + tabla con todas las inspecciones de esa semana (lun–dom).
 function detalleSemanaHTML(s){
   var items=(s.items||[]).slice().sort(function(x,y){ return (x.n||0)-(y.n||0); });
-  var h='<div class="wd-head"><h3>Semana '+esc(rangoSemana(s.lun))+'</h3>'+
+  var h='<div class="wd-head"><h3>Semana '+esc(rangoSemanaSab(s.sab))+'</h3>'+
         '<span class="hm-count">'+items.length+(items.length===1?' inspección':' inspecciones')+'</span></div>';
   if(!items.length) return h+'<div class="load-note" style="justify-content:flex-start">Sin inspecciones registradas en esta semana.</div>';
   h+='<div class="tbl-wrap"><table class="data hist-tbl"><thead><tr><th>N° inspección</th><th>Fecha</th><th>Área</th><th>Cuadrilla</th><th>Responsable del llenado</th><th>Observaciones</th><th>Documento SEG-F-010</th></tr></thead><tbody>';
@@ -1564,20 +1675,18 @@ function coberturaDeSemana(weekItems){
     var dentro=Math.min(distintas,d.total);            // tope al total (maximo 100%)
     var faltan=Math.max(d.total-dentro,0);             // cantidad que falta (numero, no lista)
     var pct=d.total?Math.round(dentro/d.total*100):0;
-    return { comp:d.comp, total:d.total, dentro:dentro, distintas:distintas, faltan:faltan, pct:pct };
+    return { tipo:"cuadrilla", comp:d.comp, total:d.total, dentro:dentro, distintas:distintas, faltan:faltan, pct:pct };
   });
-}
-function cobGlobal(filas){
-  var tm=0,tc=0; filas.forEach(function(f){ tm+=f.total; tc+=f.dentro; });
-  return { total:tm, dentro:tc, pct:tm?Math.round(tc/tm*100):0 };
 }
 
 /* ============================================================
-   COBERTURA INDIVIDUAL (por persona) — NETWORKING e INSPECCIÓN Y DISEÑO.
-   Estas áreas NO trabajan por cuadrilla: el control es por persona. El
-   numerador sale de los DNIs que la app de ATS envía (r.dnis); el denominador
-   es el PADRÓN (lista fija de la gente del área). Una persona con ≥1 ATS/charla
-   en la semana cuenta como cubierta (sin importar cuántos subió).
+   COBERTURA POR PERSONA — NETWORKING e INSPECCIÓN Y DISEÑO.
+   Estas áreas NO trabajan por cuadrilla: la unidad que se inspecciona es la
+   PERSONA. Numerador: personas del PADRÓN con ≥1 INSPECCIÓN SEG-F-010 en la
+   semana (documentos del personal registrado en la inspección → r.dnis, que
+   entrega el backend en action=historico). Denominador: el padrón del área.
+   Es la MISMA medida que la de cuadrillas (inspecciones), solo cambia la unidad.
+   Respaldo si el backend aún no entrega r.dnis: cruce del responsable por nombre.
    ============================================================ */
 var PADRON_INDIVIDUAL={
   "NETWORKING":[
@@ -1618,26 +1727,66 @@ function areaIndividualEnAlcance(areaBig){
   return vis;
 }
 function areasIndividualesEnAlcance(){ return Object.keys(PADRON_INDIVIDUAL).filter(areaIndividualEnAlcance); }
-// Registros ATS válidos (no anulados/archivados) de las áreas individuales en alcance.
-function atsIndividuales(indivAreas){
-  return (APP.ats||[]).filter(function(r){
-    var k=estadoInfo(r.estado).key; if(k==="Anulado"||k==="Archivado") return false;
-    return indivAreas.some(function(ab){ return norm(parentArea(r.area))===norm(ab); });
-  });
+// Clave del padrón para un área grande (comparación sin tildes/mayúsculas).
+function areaIndividualDe(area){
+  var pa=norm(parentArea(area)), k=null;
+  Object.keys(PADRON_INDIVIDUAL).forEach(function(ab){ if(norm(ab)===pa) k=ab; });
+  return k;
 }
-// Cobertura de UNA semana para UN área: personas del padrón con ≥1 registro.
+// Palabras de un nombre (sin tildes, ≥3 letras) para el cruce de respaldo por nombre.
+function _tokNombre(s){ return norm(s).replace(/[^a-z\s]/g," ").split(/\s+/).filter(function(t){ return t.length>=3; }); }
+// Persona del padrón cuyo nombre calza (≥2 palabras en común, incluido el 1er apellido). Única o null.
+function personaPorNombre(nombre, padron){
+  var tk=_tokNombre(nombre); if(tk.length<2) return null;
+  var set={}; tk.forEach(function(t){ set[t]=1; });
+  var hits=padron.filter(function(p){
+    var pt=_tokNombre(p.nombre); if(!pt.length || !set[pt[0]]) return false;
+    return pt.filter(function(t){ return set[t]; }).length>=2;
+  });
+  return hits.length===1?hits[0]:null;
+}
+// Documentos del personal inspeccionado en un registro del histórico.
+function dnisDeInspeccion(r, padron){
+  if(r.dnis && r.dnis.length) return { dnis:r.dnis.map(padDni), aprox:false };
+  var p=personaPorNombre(r.responsable, padron);
+  return { dnis:p?[padDni(p.dni)]:[], aprox:true };
+}
+// Cobertura de UNA semana para UN área: personas del padrón con ≥1 inspección.
 function coberturaIndividual(areaBig, weekItems){
-  var padron=padronDe(areaBig)||[], total=padron.length, set={};
+  var padron=padronDe(areaBig)||[], total=padron.length, set={}, aprox=false;
   (weekItems||[]).forEach(function(r){
     if(norm(parentArea(r.area))!==norm(areaBig)) return;
-    var ds=(r.dnis && r.dnis.length)?r.dnis:(r.dni?[padDni(r.dni)]:[]);
-    ds.forEach(function(d){ d=padDni(d); if(/^\d{8}$/.test(d)) set[d]=1; });
+    var x=dnisDeInspeccion(r,padron); if(x.aprox) aprox=true;
+    x.dnis.forEach(function(d){ if(d) set[d]=1; });
   });
   var padSet={}; padron.forEach(function(p){ padSet[padDni(p.dni)]=1; });
   var dentro=padron.filter(function(p){ return set[padDni(p.dni)]; }).length;
   var extras=Object.keys(set).filter(function(d){ return !padSet[d]; });
   var faltan=Math.max(total-dentro,0), pct=total?Math.round(dentro/total*100):0;
-  return { areaBig:areaBig, total:total, dentro:dentro, faltan:faltan, pct:pct, padron:padron, coveredSet:set, extras:extras };
+  return { tipo:"persona", comp:areaBig, areaBig:areaBig, total:total, dentro:dentro, faltan:faltan, pct:pct,
+           padron:padron, coveredSet:set, extras:extras, aprox:aprox };
+}
+
+// Inspecciones del histórico que alimentan la cobertura (respetan alcance y filtro).
+// Las áreas por persona se miden completas (el padrón es del área, no de la división).
+function cobItems(){
+  return (APP.historico||[]).filter(function(r){
+    var ab=areaIndividualDe(r.area);
+    return ab ? areaIndividualEnAlcance(ab) : divEnAlcanceCob(r.area);
+  });
+}
+// Una fila por unidad de control: divisiones (cuadrillas) + áreas por persona.
+function filasCobertura(weekItems){
+  var filas=coberturaDeSemana(weekItems);
+  areasIndividualesEnAlcance().forEach(function(ab){ filas.push(coberturaIndividual(ab,weekItems)); });
+  return filas;
+}
+// Totales de la semana: cuadrillas + personas = unidades inspeccionables.
+function resumenCob(filas){
+  var g={cT:0,cD:0,pT:0,pD:0};
+  filas.forEach(function(f){ if(f.tipo==="persona"){ g.pT+=f.total; g.pD+=f.dentro; } else { g.cT+=f.total; g.cD+=f.dentro; } });
+  g.total=g.cT+g.pT; g.dentro=g.cD+g.pD; g.pct=g.total?Math.round(g.dentro/g.total*100):0;
+  return g;
 }
 
 /* ---- Edición del total de cuadrillas de ON Negocios (solo esa división) ---- */
@@ -1676,17 +1825,8 @@ function cargarMetasCuadrillas(){
     if(d && d.metas && Object.keys(d.metas).length){ APP.cuadrillasMeta=d.metas; renderCobertura(); }
   }).catch(function(){});
 }
-// Asegura los registros de ATS cargados (los usa la cobertura individual).
-function asegurarAtsParaCobertura(){
-  if(APP.atsCargado || APP._atsCargando || !tieneEndpoint()) return;
-  if(!(CONFIG.ATS_ENDPOINT_URL && CONFIG.ATS_ENDPOINT_URL.indexOf("http")===0)) return;
-  APP._atsCargando=true;
-  cargarAts(function(){ APP._atsCargando=false; renderCobertura(); });
-}
-
 function cargarCobertura(){
   cargarMetasCuadrillas();          // total de cuadrillas del backend (ON Negocios editable)
-  asegurarAtsParaCobertura();       // registros ATS → cobertura individual
   if(!tieneEndpoint()){ APP.historico=APP.historico||historicoDemo(); APP.historicoTotalGlobal=APP.historico.length; renderCobertura(); return; }
   if(APP.historico){ renderCobertura(); return; }
   var cont=document.getElementById("cobContent");
@@ -1704,6 +1844,18 @@ function cargarCobertura(){
   });
 }
 
+/* ============================================================
+   COBERTURA SEMANAL — UNA sola medida para todo el panel:
+   unidades inspeccionadas (SEG-F-010) en la semana sáb→vie ÷ total.
+   · Planta Externa / Mantenimiento → la unidad es la CUADRILLA.
+   · Networking / Inspección y Diseño → la unidad es la PERSONA (padrón).
+   Un solo selector de semana, un solo gráfico y una sola lista de detalle.
+   ============================================================ */
+function iconCobUser(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';}
+function iconCobTarget(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>';}
+function bgPct(p){ return p>=100?"#dcfce7":(p>=50?"#fef3c7":"#fee2e2"); }
+function plural(n,s,p){ return n+" "+(n===1?s:p); }
+
 function renderCobertura(){
   var cont=document.getElementById("cobContent"); if(!cont) return;
   var hayCrew=Object.keys(metaCuadrillas()).some(divEnAlcanceCob);
@@ -1712,75 +1864,88 @@ function renderCobertura(){
     cont.innerHTML='<div class="load-note" style="justify-content:flex-start">Esta vista aplica a las áreas que trabajan por cuadrilla (Planta Externa y Mantenimiento) o por persona (Networking, Inspección y Diseño). El alcance seleccionado no incluye ninguna.</div>';
     return;
   }
-  var h="", crewIdx=-1, indIdx=-1;
+  APP.openSecs=APP.openSecs||{};
+  var semanas=cobPorSemana(cobItems());
+  if(APP.cobSemanaIdx==null || APP.cobSemanaIdx>=semanas.length) APP.cobSemanaIdx=semanas.length-1;
+  var idx=APP.cobSemanaIdx, ultimo=semanas.length-1;
+  var sem=semanas[idx]||{sab:sabadoDe(fechaISO(new Date())),items:[]};
+  var enCurso=(idx===ultimo);                     // la ventana está anclada a hoy → la última es la semana en curso
+  var filas=filasCobertura(sem.items).sort(function(a,b){ return a.pct-b.pct || b.total-a.total || String(a.comp).localeCompare(String(b.comp)); });
+  var g=resumenCob(filas);
+  var prev=idx>0?resumenCob(filasCobertura(semanas[idx-1].items)):null;
+  var vie=new Date(sem.sab); vie.setDate(vie.getDate()+6);
 
-  // ---- Cobertura por CUADRILLA (Planta Externa / Mantenimiento) ----
-  if(hayCrew){
-    var arr=histFiltrado();
-    var semanas=cobPorSemana(arr);
-    if(APP.cobSemanaIdx==null || APP.cobSemanaIdx>=semanas.length) APP.cobSemanaIdx=semanas.length-1;
-    crewIdx=APP.cobSemanaIdx;
-    var sem=semanas[crewIdx]||{sab:sabadoDe(fechaISO(new Date())),items:[]};
-    var filas=coberturaDeSemana(sem.items).sort(function(a,b){ return a.pct-b.pct || b.total-a.total || a.comp.localeCompare(b.comp); });
-    var g=cobGlobal(filas);
-    if(indivAreas.length) h+='<div class="cob-subt" style="margin:4px 2px 12px">Cobertura por cuadrilla <span>Planta Externa · Mantenimiento</span></div>';
-    h+='<div class="cob-kpis">'+
-      '<div class="cob-kpi"><span class="ck-num" style="color:'+colorPct(g.pct)+'">'+g.pct+'%</span><span class="ck-lbl">Cobertura de la semana</span></div>'+
-      '<div class="cob-kpi"><span class="ck-num">'+g.dentro+' / '+g.total+'</span><span class="ck-lbl">Cuadrillas con inspección</span></div>'+
-      '<div class="cob-kpi"><span class="ck-num">'+(g.total-g.dentro)+'</span><span class="ck-lbl">Cuadrillas sin inspección</span></div>'+
-      '<div class="cob-kpi"><span class="ck-num">'+semanas.length+'</span><span class="ck-lbl">Semanas con historial</span></div>'+
-    '</div>';
-    h+='<div class="cob-subt">Cobertura por semana <span>sábado→viernes · toca una barra para ver esa semana</span></div>';
-    h+='<div class="cob-week" id="cobCrewWeek">'+barChart(semanas.map(function(s){
-         var gg=cobGlobal(coberturaDeSemana(s.items));
-         return { label:"Semana "+rangoSemanaSab(s.sab)+" · "+gg.pct+"%", short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:gg.pct, color:colorPct(gg.pct) };
-       }),{clickable:true,max:100})+'</div>';
-    h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>cuadrillas con ≥1 inspección ÷ total · toca una fila para ver el detalle</span></div>';
-    h+='<div class="cob-list">';
-    filas.forEach(function(f){
-      var pa=parentArea(f.comp), dv=divName(f.comp), col=colorPct(f.pct);
-      h+='<div class="cb-item">'+
-         '<button class="cb-row" type="button" aria-expanded="false">'+
-           '<div class="cb-name"><b>'+esc(dv)+'</b><span>'+esc(pa)+'</span></div>'+
-           '<div class="cb-bar" aria-hidden="true"><i style="width:'+f.pct+'%;background:'+col+'"></i></div>'+
-           '<div class="cb-pct" style="color:'+col+'">'+f.pct+'%</div>'+
-           '<div class="cb-frac">'+f.dentro+'/'+f.total+'</div>'+
-           '<span class="cb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
-         '</button>'+
-         '<div class="cb-detail" hidden>'+coberturaDetalleHTML(f)+'</div>'+
-       '</div>';
-    });
-    h+='</div>';
+  // ---- KPIs de la semana seleccionada ----
+  var trend="";
+  if(prev){
+    if(enCurso) trend='<div class="trend" style="background:var(--bg2);color:var(--muted)">Sem. anterior '+prev.pct+'%</div>';
+    else { var dl=g.pct-prev.pct; trend='<div class="trend" title="Variación vs. la semana anterior ('+prev.pct+'%)" style="background:'+(dl>=0?"#dcfce7":"#fee2e2")+';color:'+(dl>=0?"#166534":"#991b1b")+'">'+(dl>=0?"▲ +":"▼ −")+Math.abs(dl)+' pts</div>'; }
   }
+  var h='<div class="kpis cob-kpis">'+
+    '<div class="kpi"><div class="ic" style="background:'+bgPct(g.pct)+';color:'+colorPct(g.pct)+'">'+iconCobTarget()+'</div>'+
+      '<div class="v tnum" style="color:'+colorPct(g.pct)+'">'+g.pct+'%</div><div class="l">Cobertura de la semana</div>'+
+      '<div class="kpi-sub">'+(enCurso?'En curso · cierra vie '+pad(vie.getDate())+' '+MES3[vie.getMonth()]:'Semana '+esc(rangoSemanaSab(sem.sab)))+'</div>'+trend+'</div>';
+  if(hayCrew) h+='<div class="kpi"><div class="ic" style="background:#e0f2fe;color:#0369a1">'+iconTeam()+'</div>'+
+      '<div class="v tnum">'+g.cD+'<small> / '+g.cT+'</small></div><div class="l">Cuadrillas inspeccionadas</div>'+
+      '<div class="kpi-sub">Planta Externa · Mantenimiento</div></div>';
+  if(indivAreas.length) h+='<div class="kpi"><div class="ic" style="background:#ede9fe;color:#6d28d9">'+iconCobUser()+'</div>'+
+      '<div class="v tnum">'+g.pD+'<small> / '+g.pT+'</small></div><div class="l">Personas inspeccionadas</div>'+
+      '<div class="kpi-sub">'+indivAreas.map(function(a){ return a==="INSPECCIÓN Y DISEÑO"?"Inspección y Diseño":(a.charAt(0)+a.slice(1).toLowerCase()); }).join(" · ")+'</div></div>';
+  var fC=g.cT-g.cD, fP=g.pT-g.pD, partes=[];
+  if(hayCrew) partes.push(plural(fC,"cuadrilla","cuadrillas"));
+  if(indivAreas.length) partes.push(plural(fP,"persona","personas"));
+  h+='<div class="kpi"><div class="ic" style="background:'+((fC+fP)?"#fee2e2":"#dcfce7")+';color:'+((fC+fP)?"#b91c1c":"#15803d")+'">'+iconWarn()+'</div>'+
+      '<div class="v tnum">'+(fC+fP)+'</div><div class="l">Sin inspección en la semana</div>'+
+      '<div class="kpi-sub">'+partes.join(" · ")+'</div></div>';
+  h+='</div>';
 
-  // ---- Cobertura INDIVIDUAL (Networking / Inspección y Diseño) ----
-  if(indivAreas.length){
-    var ind=buildCoberturaIndHTML(indivAreas);
-    h+=ind.html; indIdx=ind.idx;
-  }
+  // ---- Un solo gráfico semanal ----
+  h+='<div class="card cob-card"><div class="ch"><h3>Cobertura por semana</h3><span class="sub">sábado → viernes · toca una barra para ver esa semana</span></div>'+
+     '<div class="cb" id="cobWeek">'+barChart(semanas.map(function(s,i){
+       var gg=resumenCob(filasCobertura(s.items));
+       return { label:"Semana "+rangoSemanaSab(s.sab), short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:gg.pct, color:colorPct(gg.pct), enCurso:(i===ultimo) };
+     }),{clickable:true,max:100,suffix:"%"})+
+     '<div class="legend cob-legend"><i><span class="sw" style="background:#16a34a"></span>100% · completa</i><i><span class="sw" style="background:#d97706"></span>50–99%</i><i><span class="sw" style="background:#dc2626"></span>menos de 50%</i><i><span class="sw sw-curso"></span>semana en curso</i></div>'+
+     '</div></div>';
 
+  // ---- Una sola lista de detalle (cuadrillas + personas) ----
+  h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+(enCurso?' <em class="cob-curso">en curso</em>':'')+
+     ' <span>unidades con ≥1 inspección ÷ total · toca una fila para ver el detalle</span></div>';
+  h+='<div class="cob-list">';
+  filas.forEach(function(f){
+    var col=colorPct(f.pct), esP=(f.tipo==="persona"), k="cob:"+f.comp, op=!!APP.openSecs[k];
+    var nom=esP?(f.areaBig==="INSPECCIÓN Y DISEÑO"?"Inspección y Diseño":(f.areaBig.charAt(0)+f.areaBig.slice(1).toLowerCase())):divName(f.comp);
+    var sub=esP?'<span class="cb-unit cb-unit-p">Por persona</span>Padrón del área':'<span class="cb-unit">Por cuadrilla</span>'+esc(parentArea(f.comp));
+    h+='<div class="cb-item'+(op?' open':'')+'" data-k="'+esc(k)+'">'+
+       '<button class="cb-row" type="button" aria-expanded="'+(op?'true':'false')+'">'+
+         '<div class="cb-name"><b>'+esc(nom)+'</b><span>'+sub+'</span></div>'+
+         '<div class="cb-bar" aria-hidden="true"><i style="width:'+f.pct+'%;background:'+col+'"></i></div>'+
+         '<div class="cb-pct" style="color:'+col+'">'+f.pct+'%</div>'+
+         '<div class="cb-frac"><b>'+f.dentro+'/'+f.total+'</b><small>'+(esP?'personas':'cuadrillas')+'</small></div>'+
+         '<span class="cb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
+       '</button>'+
+       '<div class="cb-detail"'+(op?'':' hidden')+'>'+(esP?coberturaIndDetalleHTML(f,enCurso):coberturaDetalleHTML(f,enCurso))+'</div>'+
+     '</div>';
+  });
+  h+='</div>';
   cont.innerHTML=h;
 
-  // Barras de semana (cuadrilla) — su propio índice de semana.
+  // Barras de semana → cambia la semana de TODA la vista (KPIs + detalle).
   (function(){
-    var cw=cont.querySelector("#cobCrewWeek"); if(!cw) return;
+    var cw=cont.querySelector("#cobWeek"); if(!cw) return;
     var bars=cw.querySelectorAll(".bar-click");
     bars.forEach(function(b){ b.onclick=function(){ APP.cobSemanaIdx=+b.getAttribute("data-i"); renderCobertura(); }; });
-    if(bars[crewIdx]) bars[crewIdx].classList.add("sel");
+    if(bars[idx]) bars[idx].classList.add("sel");
   })();
-  // Barras de semana (individual) — índice de semana independiente.
-  (function(){
-    var iw=cont.querySelector("#cobIndWeek"); if(!iw) return;
-    var bars=iw.querySelectorAll(".bar-click");
-    bars.forEach(function(b){ b.onclick=function(){ APP.cobIndSemanaIdx=+b.getAttribute("data-i"); renderCobertura(); }; });
-    if(bars[indIdx]) bars[indIdx].classList.add("sel");
-  })();
-  // Expandir/colapsar filas (colapsa solo dentro de su propia lista).
+  // Expandir/colapsar filas (una abierta a la vez; recuerda la elección al cambiar de semana).
   cont.querySelectorAll(".cb-row").forEach(function(row){
     row.onclick=function(){
-      var item=row.parentNode, det=item.querySelector(".cb-detail"), abrir=det.hidden, lista=item.parentNode;
-      lista.querySelectorAll(".cb-item").forEach(function(it){ it.classList.remove("open"); it.querySelector(".cb-detail").hidden=true; it.querySelector(".cb-row").setAttribute("aria-expanded","false"); });
-      if(abrir){ det.hidden=false; item.classList.add("open"); row.setAttribute("aria-expanded","true"); }
+      var item=row.parentNode, det=item.querySelector(".cb-detail"), abrir=det.hidden;
+      cont.querySelectorAll(".cb-item").forEach(function(it){
+        it.classList.remove("open"); it.querySelector(".cb-detail").hidden=true; it.querySelector(".cb-row").setAttribute("aria-expanded","false");
+        APP.openSecs[it.getAttribute("data-k")]=false;
+      });
+      if(abrir){ det.hidden=false; item.classList.add("open"); row.setAttribute("aria-expanded","true"); APP.openSecs[item.getAttribute("data-k")]=true; }
     };
   });
   // Editor del total de cuadrillas de ON Negocios (dentro del detalle de esa división).
@@ -1788,60 +1953,10 @@ function renderCobertura(){
   if(saveBtn) saveBtn.onclick=guardarCuadrillasON;
 }
 
-// Bloque de cobertura individual (por persona). Devuelve {html, idx de semana}.
-function buildCoberturaIndHTML(indivAreas){
-  var head='<div class="cob-subt" style="margin-top:26px;border-top:1px solid var(--line);padding-top:24px">Cobertura individual · por persona <span>Networking · Inspección y Diseño — sale por DNI del ATS</span></div>';
-  if(!APP.atsCargado){
-    return { html: head+'<div class="load-note"><span class="spinner"></span> Cargando registros de ATS / Charla…</div>', idx:-1 };
-  }
-  if(APP.atsError){
-    return { html: head+'<div class="load-note" style="color:#991b1b">No se pudo conectar con la app de campo para la cobertura individual.</div>', idx:-1 };
-  }
-  var atsItems=atsIndividuales(indivAreas);
-  var semanas=cobPorSemana(atsItems);
-  if(APP.cobIndSemanaIdx==null || APP.cobIndSemanaIdx>=semanas.length) APP.cobIndSemanaIdx=semanas.length-1;
-  var idx=APP.cobIndSemanaIdx;
-  var sem=semanas[idx]||{sab:sabadoDe(fechaISO(new Date())),items:[]};
-  var filas=indivAreas.map(function(ab){ return coberturaIndividual(ab,sem.items); })
-                      .sort(function(a,b){ return a.pct-b.pct || b.total-a.total; });
-  var totG=0,denG=0; filas.forEach(function(f){ totG+=f.dentro; denG+=f.total; });
-  var pctG=denG?Math.round(totG/denG*100):0;
-
-  var h=head;
-  h+='<div class="cob-kpis">'+
-     '<div class="cob-kpi"><span class="ck-num" style="color:'+colorPct(pctG)+'">'+pctG+'%</span><span class="ck-lbl">Participación de la semana</span></div>'+
-     '<div class="cob-kpi"><span class="ck-num">'+totG+' / '+denG+'</span><span class="ck-lbl">Personas que registraron</span></div>'+
-     '<div class="cob-kpi"><span class="ck-num">'+(denG-totG)+'</span><span class="ck-lbl">Personas sin registro</span></div>'+
-     '<div class="cob-kpi"><span class="ck-num">'+semanas.length+'</span><span class="ck-lbl">Semanas con historial</span></div>'+
-     '</div>';
-  h+='<div class="cob-subt">Participación por semana <span>sábado→viernes · toca una barra para ver esa semana</span></div>';
-  h+='<div class="cob-week" id="cobIndWeek">'+barChart(semanas.map(function(s){
-       var t=0,d=0; indivAreas.forEach(function(ab){ var x=coberturaIndividual(ab,s.items); t+=x.dentro; d+=x.total; });
-       var pc=d?Math.round(t/d*100):0;
-       return { label:"Semana "+rangoSemanaSab(s.sab)+" · "+pc+"%", short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:pc, color:colorPct(pc) };
-     }),{clickable:true,max:100})+'</div>';
-  h+='<div class="cob-subt">Detalle · Semana '+esc(rangoSemanaSab(sem.sab))+' <span>personas con ≥1 ATS/charla ÷ total del padrón · toca una fila</span></div>';
-  h+='<div class="cob-list">';
-  filas.forEach(function(f){
-    var col=colorPct(f.pct);
-    h+='<div class="cb-item">'+
-       '<button class="cb-row" type="button" aria-expanded="false">'+
-         '<div class="cb-name"><b>'+esc(f.areaBig)+'</b><span>'+f.dentro+' de '+f.total+' personas con registro</span></div>'+
-         '<div class="cb-bar" aria-hidden="true"><i style="width:'+f.pct+'%;background:'+col+'"></i></div>'+
-         '<div class="cb-pct" style="color:'+col+'">'+f.pct+'%</div>'+
-         '<div class="cb-frac">'+f.dentro+'/'+f.total+'</div>'+
-         '<span class="cb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
-       '</button>'+
-       '<div class="cb-detail" hidden>'+coberturaIndDetalleHTML(f)+'</div>'+
-     '</div>';
-  });
-  h+='</div>';
-  return { html:h, idx:idx };
-}
-function coberturaIndDetalleHTML(f){
+function coberturaIndDetalleHTML(f,enCurso){
   var h='<div class="cb-det-grid">'+
-    '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>registraron</span></div>'+
-    '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin registro</span></div>'+
+    '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>inspeccionadas</span></div>'+
+    '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin inspección</span></div>'+
     '<div class="cb-stat"><b>'+f.total+'</b><span>total del padrón</span></div>'+
   '</div>';
   var lista=f.padron.slice().sort(function(a,b){
@@ -1849,18 +1964,24 @@ function coberturaIndDetalleHTML(f){
     return ca-cb || String(a.nombre||"").localeCompare(String(b.nombre||""));
   }).map(function(p){
     var ok=!!f.coveredSet[padDni(p.dni)];
-    return '<div class="cb-person'+(ok?' ok':'')+'"><span class="cb-dot">'+(ok?'✓':'○')+'</span><span class="cb-pn">'+esc(p.nombre||p.dni)+'</span></div>';
+    return '<div class="cb-person'+(ok?' ok':'')+'" title="'+(ok?'Con inspección esta semana':'Sin inspección esta semana')+'"><span class="cb-dot">'+(ok?'✓':'○')+'</span><span class="cb-pn">'+esc(p.nombre||p.dni)+'</span></div>';
   }).join("");
   h+='<div class="cb-people">'+lista+'</div>';
   if(f.extras && f.extras.length){
-    h+='<div class="cb-miss"><span class="cb-note">+ '+f.extras.length+' DNI'+(f.extras.length===1?'':'s')+' fuera del padrón registr'+(f.extras.length===1?'ó':'aron')+' esta semana (no suma al %).</span></div>';
+    h+='<div class="cb-miss"><span class="cb-note">+ '+plural(f.extras.length,"persona","personas")+' fuera del padrón '+(f.extras.length===1?'fue inspeccionada':'fueron inspeccionadas')+' esta semana (no suma al %).</span></div>';
+  }
+  if(f.aprox){
+    h+='<div class="cb-miss"><span class="cb-note">ⓘ Cruce aproximado por el <b>nombre del responsable</b> de la inspección: el servidor aún no entrega los DNI del personal inspeccionado.</span></div>';
+  }
+  if(enCurso && f.faltan>0){
+    h+='<div class="cb-miss"><span class="cb-note">Semana en curso: aún hay tiempo hasta el viernes para completar las inspecciones.</span></div>';
   }
   return h;
 }
 
-function coberturaDetalleHTML(f){
+function coberturaDetalleHTML(f,enCurso){
   var h='<div class="cb-det-grid">'+
-    '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>con inspección</span></div>'+
+    '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>inspeccionadas</span></div>'+
     '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin inspección</span></div>'+
     '<div class="cb-stat"><b>'+f.total+'</b><span>total cuadrillas</span></div>'+
   '</div>';
@@ -1875,10 +1996,10 @@ function coberturaDetalleHTML(f){
      '</div>';
   }
   if(f.faltan>0){
-    h+='<div class="cb-miss"><span class="cb-miss-lbl">Faltan '+f.faltan+' de '+f.total+' cuadrilla'+(f.total===1?'':'s')+' por registrar su inspección esta semana.</span>'+
+    h+='<div class="cb-miss"><span class="cb-miss-lbl">Faltan '+f.faltan+' de '+f.total+' cuadrilla'+(f.total===1?'':'s')+' por registrar su inspección '+(enCurso?'(semana en curso: hasta el viernes)':'en esa semana')+'.</span>'+
        '<span class="cb-note">Por ahora solo se controla la <b>cantidad</b> por división; aún no se identifica qué cuadrilla específica falta.</span></div>';
   } else {
-    h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Se registró inspección de todas las cuadrillas de la división esta semana.</span></div>';
+    h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Se registró inspección de todas las cuadrillas de la división en la semana.</span></div>';
   }
   return h;
 }
@@ -1909,21 +2030,22 @@ function donut(segs,centerLabel,centerSub){
     '<div class="legend" style="flex-direction:column;gap:8px">'+leg+'</div></div>';
 }
 
+// Barras verticales en HTML/CSS: ocupan todo el ancho disponible y se adaptan a cualquier pantalla.
+// data: [{label, short, value, color, enCurso}] · opts: {clickable, max, suffix}
+// Cada columna completa es la zona de click (aunque la barra sea pequeña o cero).
 function barChart(data,opts){
-  opts=opts||{}; var clk=!!opts.clickable;
+  opts=opts||{}; var clk=!!opts.clickable, suf=opts.suffix||"";
+  if(!data.length) return emptyChart("Sin datos");
   var max=opts.max||Math.max.apply(null,data.map(function(d){return d.value;}).concat([1]));
-  var bw=Math.max(30,Math.min(70,Math.floor(560/data.length))), gap=14, h=180, w=data.length*(bw+gap)+10;
-  var bars=data.map(function(d,i){
-    var bh=Math.round(d.value/max*(h-44)), x=i*(bw+gap)+5, y=h-bh-22;
-    var col=d.color||"#0284c7";
-    // Zona de click de altura completa: permite tocar la columna aunque la barra sea pequeña o cero.
-    var hit=clk?'<rect class="bar-hit" x="'+x+'" y="0" width="'+bw+'" height="'+(h-16)+'" fill="transparent"/>':'';
-    return '<g'+(clk?' class="bar-click" data-i="'+i+'"':'')+'>'+hit+
-      '<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+bh+'" rx="6" fill="'+col+'"><title>'+esc(d.label)+': '+d.value+'</title></rect>'+
-      '<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">'+d.value+'</text>'+
-      '<text x="'+(x+bw/2)+'" y="'+(h-6)+'" text-anchor="middle" font-size="10.5" fill="#64748b">'+esc(d.short||d.label)+'</text></g>';
+  var cols=data.map(function(d,i){
+    var v=Math.max(0,Math.min(100,Math.round(d.value/max*1000)/10));
+    var tip=(d.label||"")+": "+d.value+suf+(d.enCurso?" (semana en curso)":"");
+    return '<div class="bc-col'+(clk?' bar-click':'')+(d.enCurso?' en-curso':'')+'"'+
+        (clk?' data-i="'+i+'" role="button" tabindex="0"':'')+' title="'+esc(tip)+'">'+
+      '<div class="bc-plot"><i class="bc-bar" style="--v:'+v+';--c:'+(d.color||"#0284c7")+'"><span class="bc-val">'+d.value+suf+'</span></i></div>'+
+      '<span class="bc-lbl">'+esc(d.short||d.label)+(d.enCurso?'<em>en curso</em>':'')+'</span></div>';
   }).join("");
-  return '<div style="overflow-x:auto"><svg width="'+Math.max(w,300)+'" height="'+h+'" viewBox="0 0 '+Math.max(w,300)+' '+h+'">'+bars+'</svg></div>';
+  return '<div class="bchart-wrap"><div class="bchart" style="--n:'+data.length+'">'+cols+'</div></div>';
 }
 
 function hBars(data){
@@ -1939,20 +2061,62 @@ function hBars(data){
   }).join("")+'</div>';
 }
 
+// Línea de tendencia que se re-dibuja al ancho real de su contenedor (ResizeObserver):
+// el texto conserva su tamaño y el trazo aprovecha todo el espacio en cualquier pantalla.
+var _LC={n:0,data:{}};
 function lineChart(points){ // points: [{x,y}]
   if(!points.length) return emptyChart("Sin datos");
-  var w=560,h=190,pad=28,maxY=Math.max.apply(null,points.map(function(p){return p.y;}).concat([1]));
-  var n=points.length, dx=(w-pad*2)/Math.max(1,n-1);
-  var coords=points.map(function(p,i){ return {x:pad+i*dx, y:h-22-(p.y/maxY)*(h-46), v:p.y, lbl:p.x}; });
-  var line=coords.map(function(c,i){return (i?"L":"M")+c.x+" "+c.y;}).join(" ");
-  var area=line+" L"+coords[n-1].x+" "+(h-22)+" L"+coords[0].x+" "+(h-22)+" Z";
-  var dots=coords.map(function(c){return '<circle cx="'+c.x+'" cy="'+c.y+'" r="3.5" fill="#fff" stroke="#0284c7" stroke-width="2"><title>'+esc(c.lbl)+': '+c.v+'</title></circle>';}).join("");
-  var labels=coords.map(function(c,i){ return (i%Math.ceil(n/8===0?1:n/8)===0)?'<text x="'+c.x+'" y="'+(h-6)+'" text-anchor="middle" font-size="10" fill="#94a3b8">'+esc(c.lbl)+'</text>':""; }).join("");
-  var grid=[0,.25,.5,.75,1].map(function(g){var y=h-22-g*(h-46);return '<line x1="'+pad+'" y1="'+y+'" x2="'+(w-pad)+'" y2="'+y+'" stroke="#f1f5f9"/>'+'<text x="'+(pad-6)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#cbd5e1">'+Math.round(maxY*g)+'</text>';}).join("");
-  return '<div style="overflow-x:auto"><svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+grid+
-    '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".22"/><stop offset="1" stop-color="#0284c7" stop-opacity="0"/></linearGradient></defs>'+
-    '<path d="'+area+'" fill="url(#ag)"/><path d="'+line+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round"/>'+dots+labels+'</svg></div>';
+  var id="lc"+(++_LC.n); _LC.data[id]=points;
+  return '<div class="lchart" data-lc="'+id+'">'+lineChartSVG(points,560)+'</div>';
 }
+function lineChartSVG(points,w){
+  w=Math.max(300,Math.round(w)); var h=200,padL=34,padR=14;
+  var maxY=Math.max.apply(null,points.map(function(p){return p.y;}).concat([1]));
+  var n=points.length, dx=(w-padL-padR)/Math.max(1,n-1);
+  var coords=points.map(function(p,i){ return {x:(n===1?w/2:padL+i*dx), y:h-24-(p.y/maxY)*(h-48), v:p.y, lbl:p.x}; });
+  var line=coords.map(function(c,i){return (i?"L":"M")+c.x.toFixed(1)+" "+c.y.toFixed(1);}).join(" ");
+  var area=line+" L"+coords[n-1].x.toFixed(1)+" "+(h-24)+" L"+coords[0].x.toFixed(1)+" "+(h-24)+" Z";
+  var step=Math.max(1,Math.ceil(n/Math.max(2,Math.floor(w/64))));
+  var dots=coords.map(function(c){return '<circle cx="'+c.x.toFixed(1)+'" cy="'+c.y.toFixed(1)+'" r="'+(n>40?2.5:3.5)+'" fill="#fff" stroke="#0284c7" stroke-width="2"><title>'+esc(c.lbl)+': '+c.v+'</title></circle>';}).join("");
+  var labels=coords.map(function(c,i){ return (i%step===0||i===n-1)?'<text x="'+c.x.toFixed(1)+'" y="'+(h-6)+'" text-anchor="middle" font-size="10.5" fill="#94a3b8">'+esc(c.lbl)+'</text>':""; }).join("");
+  var grid=[0,.25,.5,.75,1].map(function(g){var y=h-24-g*(h-48);return '<line x1="'+padL+'" y1="'+y+'" x2="'+(w-padR)+'" y2="'+y+'" stroke="#eef2f6"/>'+'<text x="'+(padL-7)+'" y="'+(y+3)+'" text-anchor="end" font-size="9.5" fill="#94a3b8">'+Math.round(maxY*g)+'</text>';}).join("");
+  var gid="ag"+Math.random().toString(36).slice(2,7);
+  return '<svg class="lc-svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" role="img">'+grid+
+    '<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".22"/><stop offset="1" stop-color="#0284c7" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+area+'" fill="url(#'+gid+')"/><path d="'+line+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+labels+'</svg>';
+}
+// Ajusta cada línea de tendencia al ancho de su tarjeta (al pintarse y al cambiar el tamaño de la ventana).
+(function(){
+  if(!window.ResizeObserver || !window.MutationObserver) return;
+  var ro=new ResizeObserver(function(entries){
+    entries.forEach(function(en){
+      var el=en.target, w=Math.floor(en.contentRect.width), pts=_LC.data[el.getAttribute("data-lc")];
+      if(!pts || w<50 || Math.abs(w-(+el.getAttribute("data-w")||0))<6) return;
+      el.setAttribute("data-w",w); el.innerHTML=lineChartSVG(pts,w);
+    });
+  });
+  function enganchar(){
+    var vivos={};
+    document.querySelectorAll(".lchart[data-lc]").forEach(function(el){
+      vivos[el.getAttribute("data-lc")]=1;
+      if(!el._ro){ el._ro=1; ro.observe(el); }
+    });
+    if(_LC.n%40===0) Object.keys(_LC.data).forEach(function(k){ if(!vivos[k]) delete _LC.data[k]; });   // limpia gráficos que ya no están en pantalla
+    // Barras con desplazamiento lateral (pantallas angostas): mostrar la semana elegida o la más reciente.
+    document.querySelectorAll(".bchart-wrap:not([data-sc])").forEach(function(w){
+      if(!w.offsetWidth) return;                         // vista oculta: se ajusta cuando se vuelva a pintar
+      w.setAttribute("data-sc","1");
+      if(w.scrollWidth<=w.clientWidth+2) return;
+      var t=w.querySelector(".bar-click.sel")||w.querySelector(".bc-col:last-child");
+      if(t) w.scrollLeft=Math.max(0,t.offsetLeft+t.offsetWidth-w.clientWidth+8);
+    });
+  }
+  new MutationObserver(function(){ enganchar(); }).observe(document.documentElement,{childList:true,subtree:true});
+})();
+document.addEventListener("keydown",function(e){
+  var t=e.target; if(!t || !t.classList || !t.classList.contains("bar-click")) return;
+  if(e.key==="Enter"||e.key===" "){ e.preventDefault(); t.click(); }
+});
 function emptyChart(msg){ return '<div class="empty-state" style="padding:34px"><div class="em">📭</div>'+msg+'</div>'; }
 
 /* ============================================================
