@@ -812,7 +812,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V44";
+var PANEL_VERSION = "V45";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1029,14 +1029,21 @@ document.getElementById("loginForm").addEventListener("submit",function(e){
   var loginIntentos=0, LOGIN_MAX=3;
   (function enviarLogin(){
     loginIntentos++;
+    // Sin caché local (primer ingreso en este navegador) → el servidor devuelve las
+    // observaciones junto con el login: un viaje menos (~1,5–2,5 s). Con caché no hace
+    // falta: el panel pinta al instante desde ella y revalida en segundo plano.
     fetch(CONFIG.ENDPOINT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action:"login",area:area,dni:p})})
+      body:JSON.stringify({action:"login",area:area,dni:p,incluir_obs:!hayCacheObsLocal()})})
       .then(function(r){return r.text();})
       .then(function(txt){
         if(!txt || txt.charAt(0)!=="{") throw new Error("respuesta transitoria no-JSON");   // → reintento
         var res=JSON.parse(txt);
         fin();
-        if(res && res.ok && res.token){ APP.token=res.token; iniciarSesion(res.user); }
+        if(res && res.ok && res.token){
+          APP.token=res.token; guardarSesion(res.token,res.user);
+          if(res.observaciones) APP._obsPrefetch={obs:res.observaciones, rev:res.rev};
+          iniciarSesion(res.user);
+        }
         else if(res && res.error==="credenciales"){ err.textContent="DNI incorrecto para el área seleccionada."; }
         else if(res && res.error==="muchos_intentos"){ err.textContent="Demasiados intentos fallidos para esta área. Espera unos minutos e inténtalo de nuevo."; }
         else { err.textContent="No se pudo verificar el acceso. Reintenta."; }
@@ -1080,7 +1087,7 @@ function iniciarSesion(user){
         cargarAts(function(){ try{ window.scrollTo(0,_sy); }catch(e){} }, true);
       } else if(_v==="historico" || _v==="cobertura"){                      // usan APP.historico; el poll no trae dato nuevo → no repintar (no colapsar)
       } else {
-        cargarDatos(true);                                                  // observaciones/resumen/etc.: repinta solo si cambió
+        refrescoLiviano();                                                  // pregunta primero si hay cambios; descarga solo si cambió
       }
     }, 60000);
   }
@@ -1097,8 +1104,33 @@ function configurarFiltrosArea(){
 document.getElementById("logoutBtn").onclick=function(){
   if(APP.pollTimer) clearInterval(APP.pollTimer);
   try{ localStorage.removeItem(obsCacheKey()); }catch(e){}   // no dejar PII en caché local al salir
+  borrarSesion();                                            // "Salir" olvida la sesión recordada
   location.reload();
 };
+
+// ── Sesión recordada: no volver a pedir el DNI al recargar ───────────────────
+// El servidor emite tokens de 6 h; aquí se recuerdan 5 h 45 min (vencen antes que en
+// el servidor). "Salir" la borra. Si aun así el servidor responde "sesion_invalida"
+// (venció o se perdió), sesionExpirada() vuelve al login con aviso, sin pantallas rotas.
+var SESION_KEY="panelSesion", SESION_MS=(5*60+45)*60*1000;
+function guardarSesion(token,user){ try{ localStorage.setItem(SESION_KEY, JSON.stringify({t:token,u:user,exp:Date.now()+SESION_MS})); }catch(e){} }
+function leerSesion(){
+  try{ var o=JSON.parse(localStorage.getItem(SESION_KEY)||"null"); if(o && o.t && o.u && o.exp>Date.now()) return o; localStorage.removeItem(SESION_KEY); }catch(e){}
+  return null;
+}
+function borrarSesion(){ try{ localStorage.removeItem(SESION_KEY); }catch(e){} }
+function sesionExpirada(){
+  if(APP._expirando) return; APP._expirando=true;
+  if(APP.pollTimer) clearInterval(APP.pollTimer);
+  borrarSesion();   // se conserva la caché de observaciones: al volver a entrar pinta al instante
+  try{ sessionStorage.setItem("panelAviso","Tu sesión expiró. Vuelve a ingresar con tu DNI."); }catch(e){}
+  location.reload();
+}
+// ¿Hay observaciones guardadas en este navegador (de cualquier alcance)?
+function hayCacheObsLocal(){
+  try{ for(var i=0;i<localStorage.length;i++){ if(String(localStorage.key(i)).indexOf("panelObsCache::")===0) return true; } }catch(e){}
+  return false;
+}
 
 // Mostrar / ocultar el DNI en el login
 document.getElementById("pwdEye").onclick=function(){
@@ -1126,6 +1158,13 @@ function _obsSig(l){ var h=0,i,j,o,t; for(i=0;i<l.length;i++){ o=l[i]; t=(o.id||
 function cargarDatos(silent){
   if(!tieneEndpoint()){ APP.demo=true; APP.error=false; APP.datos=generarDemo(); refrescar(); return; }
   APP.demo=false;
+  // Las observaciones ya llegaron junto con el login (primer ingreso): se usan tal cual.
+  if(!silent && APP._obsPrefetch){
+    var pf=APP._obsPrefetch; APP._obsPrefetch=null;
+    APP.datos=(pf.obs||[]).map(normalizarObs); APP._obsSig=_obsSig(APP.datos); APP._obsRev=pf.rev;
+    APP.cargando=false; APP.error=false; APP.pintadoDeCache=false;
+    guardarCacheLocal(); refrescar(); return;
+  }
   if(silent){ setRefreshSpinning(true); }
   else {
     // Pinta al instante los últimos datos locales (si los hay) mientras revalida.
@@ -1135,10 +1174,11 @@ function cargarDatos(silent){
   }
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=observaciones"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(data){
+    if(data && data.error==="sesion_invalida"){ sesionExpirada(); return; }
     if(data && data.ok===false) throw new Error(data.error||"backend");
     var _nuevos=(data.observaciones||[]).map(normalizarObs);
     var _sig=_obsSig(_nuevos), _cambio=(APP._obsSig!==undefined && _sig!==APP._obsSig);
-    APP.datos=_nuevos; APP._obsSig=_sig;
+    APP.datos=_nuevos; APP._obsSig=_sig; APP._obsRev=data.rev;   // rev: versión de los datos (backend V28+)
     APP.cargando=false; APP.error=false; APP.pintadoDeCache=false; setRefreshSpinning(false);
     guardarCacheLocal();
     // Auto-actualiza cuando hay datos nuevos (o en carga explícita). Estas vistas no
@@ -1154,6 +1194,20 @@ function cargarDatos(silent){
     // PRODUCCIÓN: NUNCA mostrar datos demo. Estado de error explícito con reintento.
     APP.error=true; APP.datos=[]; renderErrorConexion();
   });
+}
+// Auto-refresco LIVIANO: cada minuto pregunta solo la "versión" de los datos (~0,3 s en
+// el servidor, sin leer filas) y descarga las observaciones completas únicamente si
+// cambió. Cada 5 minutos recarga completo igual (cubre ediciones manuales en la hoja).
+// Con un backend anterior (sin "rev") cae al modo de siempre: recarga completa.
+function refrescoLiviano(){
+  APP._pollN=(APP._pollN||0)+1;
+  if(!APP._obsRev || APP._pollN%5===0){ cargarDatos(true); return; }
+  var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=obs_rev&token="+encodeURIComponent(APP.token||"");
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    if(d && d.error==="sesion_invalida"){ sesionExpirada(); return; }
+    if(!d || d.ok===false || d.rev===undefined){ cargarDatos(true); return; }
+    if(d.rev!==APP._obsRev) cargarDatos(true);
+  }).catch(function(){ /* sin red: se reintenta en el próximo minuto */ });
 }
 // Estado de levantamiento saneado (evita que un valor raro del Sheet rompa toda la vista).
 function nivelValido(v){ v=String(v||"").trim().toLowerCase(); return EST_LEV[v]?v:"pendiente"; }
@@ -1425,6 +1479,7 @@ function cargarHistorico(){
   if(cont && !APP.historico) cont.innerHTML='<div class="load-note"><span class="spinner"></span> Cargando histórico de inspecciones…</div>';
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=historico"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(data){
+    if(data && data.error==="sesion_invalida"){ sesionExpirada(); return; }
     if(data && data.ok===false) throw new Error(data.error||"backend");
     APP.historico=(data.inspecciones||[]);
     APP.historicoTotalGlobal=(data.total_global!=null?data.total_global:APP.historico.length);
@@ -1852,6 +1907,7 @@ function cargarCobertura(){
   if(cont) cont.innerHTML='<div class="load-note"><span class="spinner"></span> Cargando inspecciones…</div>';
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=historico"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(data){
+    if(data && data.error==="sesion_invalida"){ sesionExpirada(); return; }
     if(data && data.ok===false) throw new Error(data.error||"backend");
     APP.historico=(data.inspecciones||[]);
     APP.historicoTotalGlobal=(data.total_global!=null?data.total_global:APP.historico.length);
@@ -2873,12 +2929,56 @@ function bulkRun(items, worker, verbo, btnId, onDone){
   progreso(); next();
 }
 
+// Acciones EN LOTE: manda los ids en bloques de 25 → 1 viaje por bloque en vez de 1 por
+// observación (aprobar 20: de ~1 min a unos segundos). Resuelve {ok:{id:1}, err:{id:msg},
+// sinSoporte}. sinSoporte=true si el backend desplegado aún no conoce la acción (versión
+// anterior): el llamador usa entonces el modo uno-por-uno de siempre, sin romper nada.
+var LOTE_TAM=25;
+function enviarLotes(items, armar, idsOk, onAvance){
+  var res={ok:{},err:{},sinSoporte:false}, i=0;
+  return new Promise(function(resolve){
+    (function sig(){
+      if(i>=items.length) return resolve(res);
+      var bloque=items.slice(i,i+LOTE_TAM), primero=(i===0); i+=bloque.length;
+      apiPost(armar(bloque.map(function(o){return o.id;})), 300000).then(function(r){
+        if(primero && r && r.ok===false && /^accion_no_reconocida/.test(String(r.error||""))){ res.sinSoporte=true; return resolve(res); }
+        if(!r || r.ok===false){ var m=errTxt(r); bloque.forEach(function(o){ res.err[o.id]=m; }); }
+        else {
+          var buenos={}; (idsOk(r)||[]).forEach(function(id){ buenos[id]=1; });
+          var malos={}; (r.errores||[]).forEach(function(e){ if(e && e.id) malos[e.id]=e.error; });
+          bloque.forEach(function(o){ if(buenos[o.id]) res.ok[o.id]=1; else res.err[o.id]=errTxt({error:malos[o.id]}); });
+        }
+        if(onAvance) onAvance(Math.min(i,items.length), items.length);
+        sig();
+      });
+    })();
+  });
+}
+// Bloquea la barra masiva mientras corre un lote y muestra el avance en el botón.
+function barraMasivaOcupada(on, btnId, texto){
+  var bar=document.getElementById("bulkBar");
+  Array.prototype.forEach.call(bar?bar.querySelectorAll("button"):[],function(b){ b.disabled=!!on; });
+  var btn=btnId?document.getElementById(btnId):null; if(btn && texto) btn.textContent=texto;
+}
+
 /* ---- SSOMA: aprobar en lote ---- */
 function aprobarMasivo(){
   var obs=obsMasivo().filter(function(o){ return o.levantamiento==="en_proceso"; });
   if(!obs.length){ toast("No hay observaciones 'En revisión' seleccionadas.","bad"); return; }
   if(!confirm("Vas a aprobar y validar "+obs.length+" levantamiento(s) como SSOMA.\n\n¿Continuar?")) return;
   if(APP.demo || !tieneEndpoint()){ obs.forEach(function(o){ o.levantamiento="levantado"; o.soma_rechazo=false; }); finAprobMasivo(obs.length,obs.length,[]); return; }
+  barraMasivaOcupada(true,"bbApprove","Aprobando "+obs.length+"…");
+  enviarLotes(obs, function(ids){ return {action:"aprobar_lote", ids:ids}; }, function(r){ return r.aprobadas; },
+    function(h,t){ barraMasivaOcupada(true,"bbApprove","Aprobando "+h+"/"+t+"…"); })
+  .then(function(r){
+    barraMasivaOcupada(false);
+    if(r.sinSoporte) return aprobarUnoPorUno(obs);   // backend anterior → modo de siempre
+    var ok=0, errs=[];
+    obs.forEach(function(o){ if(r.ok[o.id]){ ok++; o.levantamiento="levantado"; o.soma_rechazo=false; } else errs.push((o.item||o.id)+": "+r.err[o.id]); });
+    finAprobMasivo(ok,obs.length,errs);
+  });
+}
+function aprobarUnoPorUno(obs){
   bulkRun(obs, function(o){
     return enviarAccion("aprobar_levantamiento",o).then(function(res){ if(res&&res.ok===false) throw errTxt(res); o.levantamiento="levantado"; o.soma_rechazo=false; });
   }, "Aprobando", "bbApprove", finAprobMasivo);
@@ -2903,9 +3003,21 @@ function rechazarMasivo(){
     okTxt:"Rechazar "+obs.length, okColor:"#dc2626",
     onOk:function(texto){
       if(APP.demo || !tieneEndpoint()){ obs.forEach(function(o){ o.levantamiento="rechazado"; o.soma_rechazo=true; o.evidencia_lev=false; o.evidencia_url=""; o.mensaje_ssoma=texto; }); finRechMasivo(obs.length,obs.length,[]); return; }
-      bulkRun(obs, function(o){
-        return enviarAccion("rechazar_levantamiento",o,{texto:texto}).then(function(res){ if(res&&res.ok===false) throw errTxt(res); o.levantamiento="rechazado"; o.soma_rechazo=true; o.evidencia_lev=false; o.evidencia_url=""; o.mensaje_ssoma=texto; });
-      }, "Rechazando", "bbReject", finRechMasivo);
+      var marcar=function(o){ o.levantamiento="rechazado"; o.soma_rechazo=true; o.evidencia_lev=false; o.evidencia_url=""; o.mensaje_ssoma=texto; };
+      barraMasivaOcupada(true,"bbReject","Rechazando "+obs.length+"…");
+      enviarLotes(obs, function(ids){ return {action:"rechazar_lote", ids:ids, texto:texto}; }, function(r){ return r.rechazadas; },
+        function(h,t){ barraMasivaOcupada(true,"bbReject","Rechazando "+h+"/"+t+"…"); })
+      .then(function(r){
+        barraMasivaOcupada(false);
+        if(r.sinSoporte){   // backend anterior → modo de siempre (uno por uno)
+          return bulkRun(obs, function(o){
+            return enviarAccion("rechazar_levantamiento",o,{texto:texto}).then(function(res){ if(res&&res.ok===false) throw errTxt(res); marcar(o); });
+          }, "Rechazando", "bbReject", finRechMasivo);
+        }
+        var ok=0, errs=[];
+        obs.forEach(function(o){ if(r.ok[o.id]){ ok++; marcar(o); } else errs.push((o.item||o.id)+": "+r.err[o.id]); });
+        finRechMasivo(ok,obs.length,errs);
+      });
     }
   });
 }
@@ -2935,24 +3047,64 @@ function subirEvidenciaMasiva(obs, files, comentario){
     obs.forEach(function(o){ if(files&&files.length) o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; if(comentario) o.mensaje_jefe=comentario; });
     finLevantaMasivo(obs.length,obs.length,[]); return;
   }
-  // Lee los archivos UNA vez y reusa el base64 en cada observación (evita releer N veces).
+  // Lee los archivos UNA vez. Con el backend V28+ cada archivo viaja UNA sola vez por
+  // bloque de observaciones (antes se re-subía N veces): el servidor crea una copia por
+  // observación. Si el backend desplegado no conoce los lotes, usa el modo de siempre.
   leerTodos(files, function(err, payloads){
     if(err){ toast("No se pudo leer la evidencia: "+err,"bad"); return; }
-    bulkRun(obs, function(o){
-      var chain=Promise.resolve();
-      payloads.forEach(function(p,idx){
-        chain=chain.then(function(){
-          var body={action:"subir_evidencia_levantamiento",id:o.id,area:o.area,fecha:o.fecha,nombre:p.nombre,mime:p.mime,contenido:p.contenido};
-          if(comentario && idx===0) body.mensaje_jefe=comentario;   // el comentario va una sola vez por observación
-          return apiPost(body).then(function(res){ if(res&&res.ok===false) throw errTxt(res); });
-        });
+    var fallo={};   // id → primer error (no se reintenta esa observación con los demás archivos)
+    var anotar=function(r){ Object.keys(r.err).forEach(function(id){ if(!fallo[id]) fallo[id]=r.err[id]; }); return r; };
+    var cadena=Promise.resolve({sinSoporte:false});
+    payloads.forEach(function(p,idx){
+      cadena=cadena.then(function(prev){
+        if(prev.sinSoporte) return prev;
+        var pend=obs.filter(function(o){ return !fallo[o.id]; });
+        if(!pend.length) return prev;
+        return enviarLotes(pend, function(ids){
+          var b={action:"subir_evidencia_lote",ids:ids,nombre:p.nombre,mime:p.mime,contenido:p.contenido};
+          if(comentario && idx===0) b.mensaje_jefe=comentario;   // el comentario va una sola vez por observación
+          return b;
+        }, function(r){ return (r.subidas||[]).map(function(x){ return x.id; }); },
+        function(h,t){ barraMasivaOcupada(true,"bbLift","Enviando "+(payloads.length>1?(idx+1)+"/"+payloads.length+" · ":"")+h+"/"+t+"…"); })
+        .then(anotar);
       });
-      if(!payloads.length && comentario){
-        chain=chain.then(function(){ return enviarAccion("guardar_mensaje",o,{rol:"jefe",texto:comentario}).then(function(res){ if(res&&res.ok===false) throw errTxt(res); }); });
-      }
-      return chain.then(function(){ if(payloads.length){ o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; } if(comentario) o.mensaje_jefe=comentario; });
-    }, "Enviando", "bbLift", finLevantaMasivo);
+    });
+    if(!payloads.length && comentario){
+      cadena=cadena.then(function(){
+        return enviarLotes(obs, function(ids){ return {action:"mensaje_lote",ids:ids,texto:comentario}; }, function(r){ return r.guardadas; }).then(anotar);
+      });
+    }
+    barraMasivaOcupada(true,"bbLift","Enviando…");
+    cadena.then(function(r){
+      barraMasivaOcupada(false);
+      if(r && r.sinSoporte) return subirEvidenciaUnoPorUno(obs, payloads, comentario);
+      var ok=0, errs=[];
+      obs.forEach(function(o){
+        if(fallo[o.id]){ errs.push((o.item||o.id)+": "+fallo[o.id]); return; }
+        ok++;
+        if(payloads.length){ o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; }
+        if(comentario){ o.mensaje_jefe=comentario; if(!payloads.length && (o.levantamiento==="pendiente"||o.levantamiento==="rechazado")) o.levantamiento="en_proceso"; }
+      });
+      finLevantaMasivo(ok,obs.length,errs);
+    });
   });
+}
+// Modo de siempre (uno por uno): solo si el backend desplegado no conoce los lotes.
+function subirEvidenciaUnoPorUno(obs, payloads, comentario){
+  bulkRun(obs, function(o){
+    var chain=Promise.resolve();
+    payloads.forEach(function(p,idx){
+      chain=chain.then(function(){
+        var body={action:"subir_evidencia_levantamiento",id:o.id,area:o.area,fecha:o.fecha,nombre:p.nombre,mime:p.mime,contenido:p.contenido};
+        if(comentario && idx===0) body.mensaje_jefe=comentario;   // el comentario va una sola vez por observación
+        return apiPost(body).then(function(res){ if(res&&res.ok===false) throw errTxt(res); });
+      });
+    });
+    if(!payloads.length && comentario){
+      chain=chain.then(function(){ return enviarAccion("guardar_mensaje",o,{rol:"jefe",texto:comentario}).then(function(res){ if(res&&res.ok===false) throw errTxt(res); }); });
+    }
+    return chain.then(function(){ if(payloads.length){ o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; } if(comentario) o.mensaje_jefe=comentario; });
+  }, "Enviando", "bbLift", finLevantaMasivo);
 }
 function finLevantaMasivo(ok,total,errs){
   APP.sel={};
@@ -3142,17 +3294,29 @@ function errTxt(res){
   if(e==="obs_inexistente") return "La observación ya no existe en la base de datos.";
   if(e==="archivo_demasiado_grande") return "El archivo supera el máximo permitido (10 MB).";
   if(e==="contenido_vacio"||e==="contenido_invalido") return "El archivo llegó vacío o dañado.";
+  if(e==="estado_invalido") return "Ya no está 'En revisión' (alguien más la gestionó).";
+  if(e==="sin_evidencia")   return "No tiene evidencia ni justificación del jefe.";
+  if(e==="ya_aprobada")     return "Ya fue aprobada por SSOMA.";
+  if(e==="ocupado")         return "El servidor está ocupado. Reintenta en unos segundos.";
+  if(e==="lote_invalido")   return "Selección no válida (máximo 50 por envío).";
+  if(e==="error_drive")     return "No se pudo guardar el archivo en Drive. Reintenta.";
+  if(e==="red")             return "Sin conexión con el servidor. Reintenta.";
   return "No se pudo completar la acción. Reintenta.";
 }
 // POST al backend leyendo la RESPUESTA real (ya no mode:'no-cors'). Adjunta el token.
-function apiPost(body){
+// timeoutMs: 45 s por defecto; las acciones EN LOTE usan más (procesan muchas a la vez).
+function apiPost(body, timeoutMs){
   body=body||{}; if(APP.token) body.token=APP.token;
   var ctrl=("AbortController" in window)?new AbortController():null;
-  var to=ctrl?setTimeout(function(){ ctrl.abort(); },45000):null;   // recupera el drawer si la red se cuelga
+  var to=ctrl?setTimeout(function(){ ctrl.abort(); },timeoutMs||45000):null;   // recupera el drawer si la red se cuelga
   var fin=function(res){ if(to){ clearTimeout(to); to=null; } return res; };
   return fetch(CONFIG.ENDPOINT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body),signal:ctrl?ctrl.signal:undefined})
     .then(function(r){return r.json();})
-    .then(fin,function(){ return fin({ok:false,error:"red"}); });
+    .then(function(res){
+      // Sesión vencida: el llamador muestra "Tu sesión expiró…" y enseguida se vuelve al login.
+      if(res && res.error==="sesion_invalida") setTimeout(sesionExpirada,1500);
+      return fin(res);
+    },function(){ return fin({ok:false,error:"red"}); });
 }
 // Bloquea el drawer mientras hay una acción en curso (evita dobles envíos).
 function drawerBusy(on){
@@ -3468,6 +3632,22 @@ function iconBan(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 // Barra flotante de acciones masivas (levantamiento en masivo) — se rellena en actualizarBarraMasiva().
 (function(){ if(!document.getElementById("bulkBar")){ var b=document.createElement("div"); b.id="bulkBar"; document.body.appendChild(b); } })();
 rosterReady = cargarAreas();
+(function(){
+  // Aviso pendiente (p. ej. "Tu sesión expiró") tras volver al login.
+  var aviso=null; try{ aviso=sessionStorage.getItem("panelAviso"); sessionStorage.removeItem("panelAviso"); }catch(e){}
+  if(aviso){ var le=document.getElementById("lerr"); if(le) le.textContent=aviso; }
+  if(!tieneEndpoint()) return;
+  // Sesión recordada → entra directo: pinta al instante desde la caché local y revalida.
+  var s=leerSesion();
+  if(s){ APP.token=s.t; iniciarSesion(s.u); return; }
+  // Si el login queda abierto un rato, despierta al servidor al enfocar el DNI
+  // (una instancia "fría" de Apps Script puede tardar varios segundos extra).
+  var lp=document.getElementById("lpass"), ult=Date.now();
+  if(lp) lp.addEventListener("focus",function(){
+    if(Date.now()-ult<180000) return; ult=Date.now();
+    fetch(CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=ping").catch(function(){});
+  });
+})();
 </script>
 </body>
 </html>
