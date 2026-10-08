@@ -812,7 +812,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V45";
+var PANEL_VERSION = "V46";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1038,6 +1038,8 @@ document.getElementById("loginForm").addEventListener("submit",function(e){
       .then(function(txt){
         if(!txt || txt.charAt(0)!=="{") throw new Error("respuesta transitoria no-JSON");   // → reintento
         var res=JSON.parse(txt);
+        // "sin_accion": Google degradó la redirección y el pedido llegó vacío → reintento
+        if(res && res.error==="sin_accion") throw new Error("redirección degradada");
         fin();
         if(res && res.ok && res.token){
           APP.token=res.token; guardarSesion(res.token,res.user);
@@ -1205,6 +1207,7 @@ function refrescoLiviano(){
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=obs_rev&token="+encodeURIComponent(APP.token||"");
   fetch(url).then(function(r){return r.json();}).then(function(d){
     if(d && d.error==="sesion_invalida"){ sesionExpirada(); return; }
+    if(d && d.error==="sin_accion") return;   // tropiezo de Google: se reintenta en el próximo minuto
     if(!d || d.ok===false || d.rev===undefined){ cargarDatos(true); return; }
     if(d.rev!==APP._obsRev) cargarDatos(true);
   }).catch(function(){ /* sin red: se reintenta en el próximo minuto */ });
