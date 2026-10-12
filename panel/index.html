@@ -812,7 +812,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V46";
+var PANEL_VERSION = "V47";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1745,37 +1745,47 @@ function coberturaDeSemana(weekItems){
    entrega el backend en action=historico). Denominador: el padrón del área.
    Es la MISMA medida que la de cuadrillas (inspecciones), solo cambia la unidad.
    Respaldo si el backend aún no entrega r.dnis: cruce del responsable por nombre.
+   NETWORKING se mide por SUBDIVISIÓN: cada persona lleva su `div` (ON-Site o
+   Instalaciones) y el panel muestra una fila por cada una. Una persona cuenta
+   como inspeccionada aunque la inspección se haya registrado en la otra
+   subdivisión (lo que se mide es que la persona fue inspeccionada).
    ============================================================ */
+var NET_ONSITE="ON-Site - Corporativo", NET_INST="Instalaciones - Corporativo";
 var PADRON_INDIVIDUAL={
   "NETWORKING":[
-    {dni:"70910661",nombre:"TACO BARRETO LUIS FERNANDO"},
-    {dni:"41421543",nombre:"QUISPE MEDINA JUAN MANUEL"},
-    {dni:"74885450",nombre:"PETSA WISUM ELI"},
-    {dni:"72028088",nombre:"CARRIZALES RAMIREZ RUSSELL NOE"},
-    {dni:"75344537",nombre:"CABANILLAS ALAMO DANIEL ENRIQUE"},
-    {dni:"73050277",nombre:"CASTRO ARANGO JOSE ABEL"},
-    {dni:"71618777",nombre:"CORREA CORONADO CESAR IVAN"},
-    {dni:"73265633",nombre:"FERNANDEZ RODRIGUEZ ALEJANDRO JESUS"},
-    {dni:"47160041",nombre:"GAMARRA PALOMINO FREDY RICARDO"},
-    {dni:"47787404",nombre:"GARCIA ARMIJO MIGUEL ANGEL"},
-    {dni:"71402835",nombre:"HUAMAN QUISPE CHRISTIAN LEONARDO"},
-    {dni:"72126999",nombre:"HURTADO VALLE VICTOR GABRIEL"},
-    {dni:"45136221",nombre:"PUMARRUMI CORMAN EBER"},
-    {dni:"75131658",nombre:"RAMOS VILLANUEVA JOHN ANGEL"},
-    {dni:"74219379",nombre:"RIVERA RODRIGUEZ CARLOS MANUEL"},
-    {dni:"71765976",nombre:"SOSA ALVA FABIAN BRUNO"},
-    // Altas 2026-10-05 (personal inspeccionado en SEG-F-010 desde agosto)
-    {dni:"70507679",nombre:"VALDERRAMA LOCK LUIS ENRIQUE"},
-    {dni:"70895127",nombre:"VIRHUEZ CARRIÓN JHOEL ABELARDO"},
-    {dni:"70972897",nombre:"ALCAZAR VILCA DIEGO ABELARDO"},
-    {dni:"71727030",nombre:"CABRERA SILVA DIEGO ABEL"},
-    {dni:"71962696",nombre:"GUZMAN CAMACHO ELEAZAR MOISES"},
-    {dni:"72077927",nombre:"ROJAS YACTAYO RICARDO ANTONIO"},
-    {dni:"73485235",nombre:"PACARI SARMIENTO JOSE NELSON"},
-    {dni:"73865894",nombre:"CARLOS FALCON EDSON RODRIGO"},
-    {dni:"75110209",nombre:"SULCA SALVADOR YURI ERNAN"},
-    {dni:"75495654",nombre:"ANGULO PILARES MARCIAL JESUS"},
-    {dni:"75577082",nombre:"ÑIQUEN ORTEGA ANDERSON"}
+    // ── ON-Site - Corporativo ──
+    {dni:"70910661",nombre:"TACO BARRETO LUIS FERNANDO",div:NET_ONSITE},
+    {dni:"41421543",nombre:"QUISPE MEDINA JUAN MANUEL",div:NET_ONSITE},
+    {dni:"74885450",nombre:"PETSA WISUM ELI",div:NET_ONSITE},
+    {dni:"72028088",nombre:"CARRIZALES RAMIREZ RUSSELL NOE",div:NET_ONSITE},
+    {dni:"75344537",nombre:"CABANILLAS ALAMO DANIEL ENRIQUE",div:NET_ONSITE},
+    {dni:"73050277",nombre:"CASTRO ARANGO JOSE ABEL",div:NET_ONSITE},
+    {dni:"71618777",nombre:"CORREA CORONADO CESAR IVAN",div:NET_ONSITE},
+    {dni:"73265633",nombre:"FERNANDEZ RODRIGUEZ ALEJANDRO JESUS",div:NET_ONSITE},
+    {dni:"47160041",nombre:"GAMARRA PALOMINO FREDY RICARDO",div:NET_ONSITE},
+    {dni:"47787404",nombre:"GARCIA ARMIJO MIGUEL ANGEL",div:NET_ONSITE},
+    {dni:"71402835",nombre:"HUAMAN QUISPE CHRISTIAN LEONARDO",div:NET_ONSITE},
+    {dni:"72126999",nombre:"HURTADO VALLE VICTOR GABRIEL",div:NET_ONSITE},
+    {dni:"45136221",nombre:"PUMARRUMI CORMAN EBER",div:NET_ONSITE},
+    {dni:"75131658",nombre:"RAMOS VILLANUEVA JOHN ANGEL",div:NET_ONSITE},
+    {dni:"74219379",nombre:"RIVERA RODRIGUEZ CARLOS MANUEL",div:NET_ONSITE},
+    {dni:"71765976",nombre:"SOSA ALVA FABIAN BRUNO",div:NET_ONSITE},
+    {dni:"45321581",nombre:"BRAVO VARGAS JAVIER ELLIOT",div:NET_ONSITE},          // alta 2026-10-12
+    {dni:"60753590",nombre:"MAYON RIMACHE GONZALO FRANCO",div:NET_ONSITE},        // alta 2026-10-12
+    // ── Instalaciones - Corporativo ──
+    {dni:"70507697",nombre:"VALDERRAMA LOCK LUIS ENRIQUE",div:NET_INST},          // DNI corregido 2026-10-12 (antes 70507679)
+    {dni:"70895127",nombre:"VIRHUEZ CARRIÓN JHOEL ABELARDO",div:NET_INST},
+    {dni:"70972897",nombre:"ALCAZAR VILCA DIEGO ABELARDO",div:NET_INST},
+    {dni:"71727030",nombre:"CABRERA SILVA DIEGO ABEL",div:NET_INST},
+    {dni:"71962696",nombre:"GUZMAN CAMACHO ELEAZAR MOISES",div:NET_INST},
+    {dni:"72077927",nombre:"ROJAS YACTAYO RICARDO ANTONIO",div:NET_INST},
+    {dni:"73485235",nombre:"PACARI SARMIENTO JOSE NELSON",div:NET_INST},
+    {dni:"73865894",nombre:"CARLOS FALCON EDSON RODRIGO",div:NET_INST},
+    {dni:"75110209",nombre:"SULCA SALVADOR YURI ERNAN",div:NET_INST},
+    {dni:"75495654",nombre:"ANGULO PILARES MARCIAL JESUS",div:NET_INST},
+    {dni:"75577082",nombre:"ÑIQUEN ORTEGA ANDERSON",div:NET_INST},
+    {dni:"76029857",nombre:"MINAYA RIVERA BRIAN ALEXANDER",div:NET_INST},         // alta 2026-10-12
+    {dni:"72811243",nombre:"RODRIGUEZ JIMENEZ JOSE MIGUEL",div:NET_INST}          // alta 2026-10-12
   ],
   "INSPECCIÓN Y DISEÑO":[
     {dni:"46195003",nombre:"TORIBIO POMA ANTHONY NELSON"},
@@ -1796,7 +1806,26 @@ function areaIndividualEnAlcance(areaBig){
   var vis=false; (APP.userAreas||[]).forEach(function(a){ if(norm(parentArea(a))===norm(areaBig)) vis=true; });
   return vis;
 }
-function areasIndividualesEnAlcance(){ return Object.keys(PADRON_INDIVIDUAL).filter(areaIndividualEnAlcance); }
+// Unidades de control por persona: una por subdivisión si el padrón trae `div`
+// (NETWORKING ▸ ON-Site / Instalaciones); si no, el área completa (I&D).
+// Cada unidad respeta el alcance: un jefe de Instalaciones solo ve Instalaciones.
+function unidadesIndividualesEnAlcance(){
+  var out=[];
+  Object.keys(PADRON_INDIVIDUAL).forEach(function(ab){
+    var pad=PADRON_INDIVIDUAL[ab], divs=[], sinDiv=[];
+    pad.forEach(function(p){ if(p.div){ if(divs.indexOf(p.div)<0) divs.push(p.div); } else sinDiv.push(p); });
+    divs.forEach(function(d){
+      var comp=ab+SEP+d;
+      if(divEnAlcanceCob(comp)) out.push({ areaBig:ab, div:d, comp:comp, padron:pad.filter(function(p){ return p.div===d; }) });
+    });
+    if(sinDiv.length && areaIndividualEnAlcance(ab)) out.push({ areaBig:ab, div:"", comp:ab, padron:sinDiv });
+  });
+  return out;
+}
+function areasIndividualesEnAlcance(){
+  var vistas=[]; unidadesIndividualesEnAlcance().forEach(function(u){ if(vistas.indexOf(u.areaBig)<0) vistas.push(u.areaBig); });
+  return vistas;
+}
 // Clave del padrón para un área grande (comparación sin tildes/mayúsculas).
 function areaIndividualDe(area){
   var pa=norm(parentArea(area)), k=null;
@@ -1828,24 +1857,28 @@ function dnisDeInspeccion(r, padron){
   p=personaPorNombre(r.responsable, padron);
   return { dnis:p?[padDni(p.dni)]:[], aprox:true };
 }
-// Cobertura de UNA semana para UN área: personas del padrón con ≥1 inspección.
-function coberturaIndividual(areaBig, weekItems){
-  var padron=padronDe(areaBig)||[], total=padron.length, set={}, aprox=false;
+// Cobertura de UNA semana para UNA unidad (área completa o subdivisión):
+// personas de su padrón con ≥1 inspección en CUALQUIER división del área.
+// Los inspeccionados fuera del padrón del área se anotan en la unidad de su división.
+function coberturaIndividual(u, weekItems){
+  var areaBig=u.areaBig, padArea=padronDe(areaBig)||[], padron=u.padron, total=padron.length, set={}, aprox=false;
+  var padAreaSet={}; padArea.forEach(function(p){ padAreaSet[padDni(p.dni)]=1; });
+  var extras={};
   (weekItems||[]).forEach(function(r){
     if(norm(parentArea(r.area))!==norm(areaBig)) return;
-    var x=dnisDeInspeccion(r,padron); if(x.aprox) aprox=true;
-    x.dnis.forEach(function(d){ if(d) set[d]=1; });
+    var x=dnisDeInspeccion(r,padArea); if(x.aprox) aprox=true;
+    var deEsta=!u.div || norm(divName(r.area))===norm(u.div);
+    x.dnis.forEach(function(d){ if(!d) return; set[d]=1; if(deEsta && !padAreaSet[d]) extras[d]=1; });
   });
-  var padSet={}; padron.forEach(function(p){ padSet[padDni(p.dni)]=1; });
   var dentro=padron.filter(function(p){ return set[padDni(p.dni)]; }).length;
-  var extras=Object.keys(set).filter(function(d){ return !padSet[d]; });
   var faltan=Math.max(total-dentro,0), pct=total?Math.round(dentro/total*100):0;
-  return { tipo:"persona", comp:areaBig, areaBig:areaBig, total:total, dentro:dentro, faltan:faltan, pct:pct,
-           padron:padron, coveredSet:set, extras:extras, aprox:aprox };
+  return { tipo:"persona", comp:u.comp, areaBig:areaBig, div:u.div, total:total, dentro:dentro, faltan:faltan, pct:pct,
+           padron:padron, coveredSet:set, extras:Object.keys(extras), aprox:aprox };
 }
 
 // Inspecciones del histórico que alimentan la cobertura (respetan alcance y filtro).
-// Las áreas por persona se miden completas (el padrón es del área, no de la división).
+// Las áreas por persona traen TODAS sus inspecciones (aunque se filtre una subdivisión):
+// una persona de ON-Site inspeccionada bajo Instalaciones igual cuenta como inspeccionada.
 function cobItems(){
   return (APP.historico||[]).filter(function(r){
     var ab=areaIndividualDe(r.area);
@@ -1855,7 +1888,7 @@ function cobItems(){
 // Una fila por unidad de control: divisiones (cuadrillas) + áreas por persona.
 function filasCobertura(weekItems){
   var filas=coberturaDeSemana(weekItems);
-  areasIndividualesEnAlcance().forEach(function(ab){ filas.push(coberturaIndividual(ab,weekItems)); });
+  unidadesIndividualesEnAlcance().forEach(function(u){ filas.push(coberturaIndividual(u,weekItems)); });
   return filas;
 }
 // Totales de la semana: cuadrillas + personas = unidades inspeccionables.
@@ -1992,8 +2025,9 @@ function renderCobertura(){
   h+='<div class="cob-list">';
   filas.forEach(function(f){
     var col=colorPct(f.pct), esP=(f.tipo==="persona"), k="cob:"+f.comp, op=!!APP.openSecs[k];
-    var nom=esP?(f.areaBig==="INSPECCIÓN Y DISEÑO"?"Inspección y Diseño":(f.areaBig.charAt(0)+f.areaBig.slice(1).toLowerCase())):divName(f.comp);
-    var sub=esP?'<span class="cb-unit cb-unit-p">Por persona</span>Padrón del área':'<span class="cb-unit">Por cuadrilla</span>'+esc(parentArea(f.comp));
+    var nomArea=esP?(f.areaBig==="INSPECCIÓN Y DISEÑO"?"Inspección y Diseño":(f.areaBig.charAt(0)+f.areaBig.slice(1).toLowerCase())):"";
+    var nom=esP?(f.div||nomArea):divName(f.comp);
+    var sub=esP?'<span class="cb-unit cb-unit-p">Por persona</span>'+(f.div?esc(f.areaBig):'Padrón del área'):'<span class="cb-unit">Por cuadrilla</span>'+esc(parentArea(f.comp));
     h+='<div class="cb-item'+(op?' open':'')+'" data-k="'+esc(k)+'">'+
        '<button class="cb-row" type="button" aria-expanded="'+(op?'true':'false')+'">'+
          '<div class="cb-name"><b>'+esc(nom)+'</b><span>'+sub+'</span></div>'+
