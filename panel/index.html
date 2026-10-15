@@ -812,7 +812,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V47";
+var PANEL_VERSION = "V48";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1711,6 +1711,19 @@ function cobPorSemana(arr){
   return semanas.slice(-12);
 }
 
+/* Lista de cuadrillas por división (CU 1, CU 2…). Por defecto cada división tiene
+   CU 1 … CU total (total = hoja «Cuadrillas»): así se ve QUÉ cuadrilla no inspeccionó.
+   Un número fuera de esa lista (0, 31, 1705…) se muestra aparte y NO suma al %.
+   Excepción — divisiones ROTATIVAS: el N° cambia de semana a semana (cuadrillas que
+   se prestan entre divisiones o que se habilitan por semana), así que no hay una lista
+   fija: se muestran las que registraron y cuántas faltan (tope = total).
+   Se decidió con el historial de ATS ago–oct 2026. */
+var CUADRILLAS_ROTATIVAS=["PLANTA EXTERNA ▸ ON Negocios","MANTENIMIENTO ▸ Mangas Críticas","MANTENIMIENTO ▸ Mantenimiento - Ultra"];
+function esDivRotativa(comp){ return CUADRILLAS_ROTATIVAS.some(function(k){ return norm(k)===norm(comp); }); }
+// "06" → "6" (el formulario guarda el N° tal cual se tipeó).
+function numCuadrilla(v){ var s=String(v==null?"":v).trim(); return /^\d+$/.test(s)?String(parseInt(s,10)):s; }
+function porNumero(a,b){ return (+a)-(+b) || String(a).localeCompare(String(b)); }
+
 // Cobertura de UNA semana → una fila por división en alcance.
 function coberturaDeSemana(weekItems){
   var meta=metaCuadrillas(), porDiv={};
@@ -1720,20 +1733,25 @@ function coberturaDeSemana(weekItems){
   });
   (weekItems||[]).forEach(function(r){
     var d=porDiv[norm(r.area||"")]; if(!d) return;     // sin meta / fuera de alcance
-    var num=String(r.cuadrilla==null?"":r.cuadrilla).trim();
+    var num=numCuadrilla(r.cuadrilla);
     if(num==="") return;
     d.nums[num]=1;                                      // dedup: misma cuadrilla no suma 2 veces
   });
   return Object.keys(porDiv).map(function(k){
-    var d=porDiv[k];
-    // Solo se controla la CANTIDAD por división: contamos cuántas cuadrillas
-    // distintas registraron >=1 inspeccion, sin asumir numeracion 1..total (no
-    // existe esa base). Asi no se senala "que cuadrilla" falta, solo cuantas.
-    var distintas=Object.keys(d.nums).length;          // cuadrillas distintas que inspeccionaron
-    var dentro=Math.min(distintas,d.total);            // tope al total (maximo 100%)
-    var faltan=Math.max(d.total-dentro,0);             // cantidad que falta (numero, no lista)
+    var d=porDiv[k], reg=Object.keys(d.nums).sort(porNumero), lista, fuera=[], dentro;
+    if(esDivRotativa(d.comp)){
+      // Sin lista fija: cuentan las cuadrillas distintas que registraron (tope al total).
+      lista=reg.map(function(n){ return { num:n, ok:true }; });
+      dentro=Math.min(reg.length,d.total);
+    } else {
+      lista=[]; for(var i=1;i<=d.total;i++) lista.push({ num:String(i), ok:!!d.nums[String(i)] });
+      fuera=reg.filter(function(n){ return !(/^\d+$/.test(n) && +n>=1 && +n<=d.total); });
+      dentro=lista.filter(function(c){ return c.ok; }).length;
+    }
+    var faltan=Math.max(d.total-dentro,0);
     var pct=d.total?Math.round(dentro/d.total*100):0;
-    return { tipo:"cuadrilla", comp:d.comp, total:d.total, dentro:dentro, distintas:distintas, faltan:faltan, pct:pct };
+    return { tipo:"cuadrilla", comp:d.comp, total:d.total, dentro:dentro, faltan:faltan, pct:pct,
+             lista:lista, fuera:fuera, rotativa:esDivRotativa(d.comp) };
   });
 }
 
@@ -2107,9 +2125,19 @@ function coberturaDetalleHTML(f,enCurso){
        '<span class="cb-note">Ajusta el total disponible de <b>ON Negocios</b>; su cobertura se recalcula en toda la plataforma.</span>'+
      '</div>';
   }
+  // Chips CU 1, CU 2… (✓ con inspección en la semana · ○ sin inspección), como el padrón por persona.
+  if(f.lista && f.lista.length){
+    h+='<div class="cb-people">'+f.lista.map(function(c){
+      return '<div class="cb-person'+(c.ok?' ok':'')+'" title="'+(c.ok?'Con inspección esta semana':'Sin inspección esta semana')+'"><span class="cb-dot">'+(c.ok?'✓':'○')+'</span><span class="cb-pn">CU '+esc(c.num)+'</span></div>';
+    }).join("")+'</div>';
+  }
+  if(f.fuera && f.fuera.length){
+    h+='<div class="cb-miss"><span class="cb-note">⚠ '+f.fuera.map(function(n){ return '<b>N° '+esc(n)+'</b>'; }).join(", ")+
+       (f.fuera.length===1?' registró inspección pero no está':' registraron inspección pero no están')+' en la lista de la división'+(f.total?' (CU 1–'+f.total+')':'')+': no suma al %. Puede ser un error de tipeo del N° de cuadrilla.</span></div>';
+  }
   if(f.faltan>0){
     h+='<div class="cb-miss"><span class="cb-miss-lbl">Faltan '+f.faltan+' de '+f.total+' cuadrilla'+(f.total===1?'':'s')+' por registrar su inspección '+(enCurso?'(semana en curso: hasta el viernes)':'en esa semana')+'.</span>'+
-       '<span class="cb-note">Por ahora solo se controla la <b>cantidad</b> por división; aún no se identifica qué cuadrilla específica falta.</span></div>';
+       (f.rotativa?'<span class="cb-note">En esta división el N° de cuadrilla cambia de semana a semana (rotan o se habilitan por semana): se muestran las que registraron y cuántas faltan.</span>':'')+'</div>';
   } else {
     h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Se registró inspección de todas las cuadrillas de la división en la semana.</span></div>';
   }
