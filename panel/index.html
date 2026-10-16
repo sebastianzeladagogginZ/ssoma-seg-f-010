@@ -495,10 +495,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
       Evidencias
     </button>
-    <button class="nav-item" data-view="analisis">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-7"/></svg>
-      Análisis
-    </button>
     <button class="nav-item" data-view="historico">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 3"/></svg>
       Histórico
@@ -601,25 +597,6 @@
           (<code>Evidencias Levantamiento / AAAA-MM-DD / Área</code>). Si una evidencia es rechazada por SSOMA vía Gmail, se elimina sola.
         </p>
         <div class="folders" id="folders"></div>
-      </section>
-
-      <!-- ===== ANALISIS ===== -->
-      <section class="view" id="view-analisis">
-        <div class="row2" style="margin-bottom:16px">
-          <div class="card">
-            <div class="ch"><h3>Ítems más observados</h3><span class="sub">Top 10</span></div>
-            <div class="cb" id="topItems"></div>
-          </div>
-          <div class="card">
-            <div class="ch"><h3>Observaciones por cuadrilla</h3></div>
-            <div class="cb" id="cuadChart"></div>
-          </div>
-        </div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="ch"><h3>Mapa de calor · Sección × Estado</h3><span class="sub">Concentración de hallazgos</span></div>
-          <div class="cb" id="heatmap"></div>
-        </div>
-        <div class="row3" id="areaCompare" style="display:none"></div>
       </section>
 
       <!-- ===== HISTÓRICO ===== -->
@@ -812,7 +789,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V49";
+var PANEL_VERSION = "V50";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1325,7 +1302,6 @@ function poblarAreaSelect(){
 var TITLES={resumen:["Resumen","Estado general del levantamiento de observaciones"],
   observaciones:["Observaciones","Hallazgos que requieren cambio o no tiene"],
   evidencias:["Evidencias","Carpetas fechadas en la nube"],
-  analisis:["Análisis","Inteligencia de datos sobre los hallazgos"],
   historico:["Histórico de inspecciones","Todas las inspecciones realizadas · por mes y área"],
   cobertura:["Cobertura semanal","Inspecciones SEG-F-010 por semana (sáb→vie): cuadrillas y personas inspeccionadas vs. total"],
   ats:["ATS · Charla de 5 min","Llenado diario de ATS y charlas de 5 minutos en campo"]};
@@ -1340,7 +1316,6 @@ function navTo(v){
   if(v==="resumen") renderResumen();
   else if(v==="observaciones") renderObservaciones();
   else if(v==="evidencias") renderEvidencias();
-  else if(v==="analisis") renderAnalisis();
   else if(v==="historico") cargarHistorico();
   else if(v==="cobertura") cargarCobertura();
   else if(v==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
@@ -1444,7 +1419,6 @@ function refrescar(){
   if(active==="resumen") renderResumen();
   else if(active==="observaciones") renderObservaciones();
   else if(active==="evidencias") renderEvidencias();
-  else if(active==="analisis") renderAnalisis();
   else if(active==="historico"){ if(APP.historico) renderHistorico(); else cargarHistorico(); }
   else if(active==="cobertura"){ if(APP.historico) renderCobertura(); else cargarCobertura(); }
   else if(active==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
@@ -3592,75 +3566,6 @@ function renderEvidenciasDetalle(fecha){
     el.onclick=function(e){ if(e.target.closest("a.ev-open")) return; abrirDrawer(el.dataset.id); };
     el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); abrirDrawer(el.dataset.id); } };
   });
-}
-
-/* ============================================================
-   VISTA: ANÁLISIS
-   ============================================================ */
-function renderAnalisis(){
-  var d=datosArea();
-  // top ítems
-  var porItem={};
-  d.forEach(function(o){ porItem[o.item]=(porItem[o.item]||0)+1; });
-  var top=Object.keys(porItem).map(function(k){return {label:k,value:porItem[k]};})
-    .sort(function(a,b){return b.value-a.value;}).slice(0,10);
-  document.getElementById("topItems").innerHTML=top.length?hBars(top):emptyChart("Sin datos");
-
-  // por cuadrilla — barras HORIZONTALES apiladas en vertical (mismo formato que "Ítems más
-  // observados"): llena la tarjeta a proporción y evita columnas achatadas/scroll horizontal.
-  // Se agrupa por (ÁREA ▸ División, cuadrilla): un mismo N° puede repetirse entre divisiones,
-  // así que cada cuadrilla se cuenta DENTRO de su división y esta se muestra como subtítulo.
-  var porCuad={};
-  d.forEach(function(o){
-    var c=(o.cuadrilla==null?"":String(o.cuadrilla)).trim();
-    if(!c) return;                               // omite registros sin cuadrilla (áreas individuales)
-    var k=(o.area||"")+"~~"+c;               // separador seguro area/cuadrilla
-    if(!porCuad[k]) porCuad[k]={area:o.area||"", cuad:c, n:0};
-    porCuad[k].n++;
-  });
-  var cuadData=Object.keys(porCuad).map(function(k){
-    var r=porCuad[k];
-    return {label:"N° "+r.cuad, sub:(r.area||"—"), value:r.n, color:"linear-gradient(90deg,#7c3aed,#a78bfa)"};
-  }).sort(function(a,b){return b.value-a.value;}).slice(0,12);
-  document.getElementById("cuadChart").innerHTML=cuadData.length?hBars(cuadData):emptyChart("Sin datos");
-
-  // heatmap sección x estado(levantamiento)
-  var estados=["pendiente","en_proceso","levantado","rechazado"];
-  var secs=seccionesVigentes();
-  var matrix={};
-  secs.forEach(function(s){ matrix[s]={}; estados.forEach(function(e){matrix[s][e]=0;}); });
-  d.forEach(function(o){ if(matrix[o.seccion]) matrix[o.seccion][o.levantamiento]++; });
-  var maxC=1; secs.forEach(function(s){estados.forEach(function(e){maxC=Math.max(maxC,matrix[s][e]);});});
-  var hm='<table style="width:100%;border-collapse:separate;border-spacing:4px">';
-  hm+='<tr><th style="text-align:left;font-size:11px;color:#94a3b8;padding:4px 8px"></th>'+
-    estados.map(function(e){return '<th style="font-size:11px;color:#64748b;font-weight:700;padding:4px">'+EST_LEV[e].label+'</th>';}).join("")+'</tr>';
-  secs.forEach(function(s){
-    if(!d.some(function(o){return o.seccion===s;})) return;
-    hm+='<tr><td style="font-size:12px;font-weight:600;color:#334155;padding:4px 8px;white-space:nowrap">'+esc(s)+'</td>'+
-      estados.map(function(e){
-        var v=matrix[s][e], a=v?(0.18+0.82*v/maxC):0;
-        var base=e==="rechazado"?"220,38,38":e==="levantado"?"22,163,74":e==="en_proceso"?"2,132,199":"148,163,184";
-        return '<td style="text-align:center;border-radius:8px;padding:10px 4px;font-weight:700;font-size:13px;'+
-          'background:rgba('+base+','+a.toFixed(2)+');color:'+(a>0.5?"#fff":"#334155")+'">'+(v||"")+'</td>';
-      }).join("")+'</tr>';
-  });
-  hm+='</table>';
-  document.getElementById("heatmap").innerHTML=hm;
-
-  // comparación entre áreas (solo SSOMA viendo todas)
-  var cmp=document.getElementById("areaCompare");
-  if(APP.userAreas.indexOf("*")>=0 && !APP.fArea){
-    cmp.style.display="grid";
-    cmp.innerHTML=areasPresentes().map(function(a){
-      var da=baseDatos().filter(function(o){return o.area===a;});
-      var lev=da.filter(function(o){return o.levantamiento==="levantado";}).length;
-      var av=da.length?Math.round(lev/da.length*100):0;
-      return '<div class="card"><div class="cb"><div style="font-size:12px;color:#64748b;font-weight:700;min-height:32px">'+esc(a)+'</div>'+
-        '<div style="display:flex;align-items:baseline;gap:8px;margin:8px 0 6px"><b style="font-size:26px">'+av+'%</b><span style="font-size:12px;color:#64748b">avance</span></div>'+
-        '<div class="lev-bar"><i style="width:'+av+'%"></i></div>'+
-        '<div style="font-size:12px;color:#64748b;margin-top:8px">'+da.length+' obs · '+lev+' levantadas</div></div></div>';
-    }).join("");
-  } else { cmp.style.display="none"; cmp.innerHTML=""; }
 }
 
 /* ============================================================
