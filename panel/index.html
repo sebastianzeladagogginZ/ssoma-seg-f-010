@@ -897,7 +897,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V56";
+var PANEL_VERSION = "V57";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1162,16 +1162,15 @@ function iniciarSesion(user){
     rb.style.display=""; rb.onclick=function(){
       var _v=(document.querySelector(".nav-item.active")||{dataset:{}}).dataset.view;
       if(_v==="historico"||_v==="cobertura"){ APP.historico=null; if(_v==="historico") cargarHistorico(); else cargarCobertura(); }   // trae inspecciones nuevas
-      else if(_v==="ats"){ var _sy=window.pageYOffset||0; cargarAts(function(){ try{ window.scrollTo(0,_sy); }catch(e){} }, true); }
+      else if(_v==="ats"){ cargarAts(null, true); }                     // quieto: sin spinner ni saltos
       else cargarDatos(true);
     };
     if(APP.pollTimer) clearInterval(APP.pollTimer);
     APP.pollTimer=setInterval(function(){                                   // auto-refresco cada 1 min
       if(document.hidden) return;
       var _v=(document.querySelector(".nav-item.active")||{dataset:{}}).dataset.view;
-      if(_v==="ats"){                                                       // refresca ATS de verdad, sin colapsar ni saltar el scroll
-        var _sy=window.pageYOffset||0;
-        cargarAts(function(){ try{ window.scrollTo(0,_sy); }catch(e){} }, true);
+      if(_v==="ats"){                                                       // refresca ATS en segundo plano: solo cambia lo que cambió
+        cargarAts(null, true);
       } else if(_v==="historico" || _v==="cobertura"){                      // usan APP.historico; el poll no trae dato nuevo → no repintar (no colapsar)
       } else {
         refrescoLiviano();                                                  // pregunta primero si hay cambios; descarga solo si cambió
@@ -1529,7 +1528,7 @@ function refrescar(){
   else if(active==="evidencias") renderEvidencias();
   else if(active==="historico"){ if(APP.historico) renderHistorico(); else cargarHistorico(); }
   else if(active==="cobertura"){ if(APP.historico) renderCobertura(); else cargarCobertura(); }
-  else if(active==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
+  else if(active==="ats"){ if(APP.atsCargado) conPantallaQuieta(renderAts); else cargarAts(); }
 }
 
 /* ============================================================
@@ -2031,7 +2030,7 @@ function cargarMetasCuadrillas(){
   APP._metasPedidas=true;
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=cuadrillas"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(d){
-    if(d && d.metas && Object.keys(d.metas).length){ APP.cuadrillasMeta=d.metas; renderCobertura(); if(APP.atsCargado && !APP.atsError) renderAts(); }
+    if(d && d.metas && Object.keys(d.metas).length){ APP.cuadrillasMeta=d.metas; renderCobertura(); if(APP.atsCargado && !APP.atsError) conPantallaQuieta(renderAts); }
   }).catch(function(){});
 }
 function cargarCobertura(){
@@ -2518,13 +2517,39 @@ function cargarAts(onReady, silent){
       // MÁS RECIENTE por documento. Consecuencia clave: si un ATS se anuló ("observado") y la
       // cuadrilla lo volvió a subir, la subida nueva SUPERA a la anulada → deja de aparecer/
       // contar en Anulados y pasa a "Por revisar" (y luego a "Aprobado" cuando el jefe aprueba).
-      var seen={}; APP.ats=lista.filter(function(x){ var k=atsDocKey(x); if(seen[k]) return false; seen[k]=1; return true; });
-      APP.atsCargado=true; APP.atsError=false; renderAts(); done();
+      var seen={}, nueva=lista.filter(function(x){ var k=atsDocKey(x); if(seen[k]) return false; seen[k]=1; return true; });
+      var firma=atsFirma(nueva), igual=(silent && APP.atsCargado && !APP.atsError && firma===APP._atsFirma);
+      APP.ats=nueva; APP._atsFirma=firma; APP.atsCargado=true; APP.atsError=false;
+      if(!igual) conPantallaQuieta(renderAts);              // sin cambios → la pantalla ni se toca
+      done();
     }).catch(function(){
       if(intentos<MAX){ setTimeout(pedir, 1200); return; }
+      if(silent && APP.atsCargado && !APP.atsError){ done(); return; }   // falla en segundo plano: se conserva lo que ya se ve
       APP.ats=[]; APP.atsCargado=true; APP.atsError=true; renderAts(); done();
     });
   })();
+}
+// Firma de los registros ATS: si el auto-refresco trae exactamente lo mismo, no se repinta nada.
+function atsFirma(list){
+  var h=0; (list||[]).forEach(function(x){ var t=x.carpeta+"|"+x.estado+"|"+x.fecha+"|"+x.revisadoPor+"|"+x.archivos;
+    for(var i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))|0; });
+  return (list||[]).length+":"+h;
+}
+/* Repinta la pestaña ATS sin que se note: la sección que se está mirando queda en el mismo
+   lugar de la pantalla (ancla), se conservan el foco/cursor del buscador y el desplazamiento
+   lateral de las tablas. Lo abierto (meses, jefes, divisiones, celdas, análisis) ya se recuerda
+   en APP.openSecs / APP.prodSel / APP.prodSelU / APP.prodCeldas. */
+function conPantallaQuieta(fn){
+  var ids=["kpisAts","atsTrend","prodCard","prodTblCard","atsRevisoresCard","atsBody"], anc=null, top0=0;
+  for(var i=0;i<ids.length;i++){ var el=document.getElementById(ids[i]); if(!el || !el.offsetParent) continue;
+    var r=el.getBoundingClientRect(); if(r.bottom>60){ anc=el; top0=r.top; break; } }
+  var ae=document.activeElement, aeId=(ae && ae.id)||"", sS=null, sE=null;
+  try{ if(ae && ae.setSelectionRange){ sS=ae.selectionStart; sE=ae.selectionEnd; } }catch(e){}
+  var lat=[]; document.querySelectorAll("#view-ats .ptbl-wrap, #view-ats .tbl-wrap, #atsRevisores").forEach(function(w){ lat.push(w.scrollLeft); });
+  fn();
+  document.querySelectorAll("#view-ats .ptbl-wrap, #view-ats .tbl-wrap, #atsRevisores").forEach(function(w,j){ if(lat[j]) w.scrollLeft=lat[j]; });
+  if(anc && document.body.contains(anc)){ var dy=anc.getBoundingClientRect().top-top0; if(Math.abs(dy)>1) window.scrollBy(0,dy); }
+  if(aeId){ var n=document.getElementById(aeId); if(n && n!==document.activeElement){ try{ n.focus({preventScroll:true}); if(sS!=null) n.setSelectionRange(sS,sE); }catch(e){} } }
 }
 // Filtra por el alcance del usuario (idéntico criterio que datosArea, sobre los registros ATS).
 function datosAtsScope(){
@@ -3139,9 +3164,10 @@ function prodBarrasSVG(serie){
   return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" role="img" aria-label="ATS y charlas por período contra la meta" style="display:block;max-width:100%;height:auto">'+out+'</svg>';
 }
 // Celda de la tabla: N° de documentos + % (contorno rojo/verde/azul). Al tocarla: ATS / Charla.
-function prodCelda(ev){
+function prodCelda(ev, ck){
   if(ev.pct==null) return '<span class="pc n" title="'+PROD_ST.n+'">'+(ev.tot?'<b>'+ev.tot+'</b>':'—')+'</span>';
-  return '<button type="button" class="pc '+ev.cls+'" title="'+PROD_ST[ev.cls]+' · mínimo '+ev.exp+' ATS + '+ev.exp+' charlas">'+
+  var ab=!!(ck && APP.prodCeldas && APP.prodCeldas[ck]);
+  return '<button type="button" class="pc '+ev.cls+(ab?' open':'')+'"'+(ck?' data-ck="'+esc(ck)+'"':'')+' title="'+PROD_ST[ev.cls]+' · mínimo '+ev.exp+' ATS + '+ev.exp+' charlas">'+
     '<b>'+ev.tot+'</b><i>'+ev.pct+'%</i><span class="pd">ATS: '+ev.a+'<br>CHARLA DE 5 MIN: '+ev.c+'</span></button>';
 }
 // Tabla de doble entrada: filas = cuadrillas/personas (desplegables por división) · columnas = últimas 8 semanas.
@@ -3166,13 +3192,13 @@ function renderProdTabla(){
     var uTxt=plural(d.total, d.tipo==="persona"?"persona":"cuadrilla", d.tipo==="persona"?"personas":"cuadrillas");
     h+='<tr class="pt-div" data-k="'+esc(k)+'" data-open="'+(open?1:0)+'"><td title="Mostrar u ocultar '+esc(uTxt)+'"><span class="pt-chev">'+(open?'▾':'▸')+'</span>'+esc(divName(d.comp))+
        '<small>'+esc(parentArea(d.comp))+' · '+esc(uTxt)+(d.rotativa?' · rotativas':'')+'</small></td>'+
-       sems.map(function(s){ var x=prodSumar(d.idx,s.desde,s.hasta); return '<td>'+prodCelda(prodEval(x.a,x.c,d.total,s.dias))+'</td>'; }).join("")+'</tr>';
+       sems.map(function(s){ var x=prodSumar(d.idx,s.desde,s.hasta); return '<td>'+prodCelda(prodEval(x.a,x.c,d.total,s.dias),"d|"+d.comp+"|"+s.desde)+'</td>'; }).join("")+'</tr>';
     if(!open) return;
     d.unidades.forEach(function(u){
       h+='<tr class="pt-u"><td title="'+esc(u.label)+'">'+esc(u.label)+'</td>'+sems.map(function(s){
         var x=prodContar(d.idx[u.key],s.desde,s.hasta), ev=prodEval(x.a,x.c,1,s.dias);
         if(d.rotativa && !(x.a+x.c)) ev={ a:0, c:0, tot:0, exp:0, esp:0, pct:null, cls:"n" };   // rotativa: ese N° no trabajó esa semana
-        return '<td>'+prodCelda(ev)+'</td>';
+        return '<td>'+prodCelda(ev,"u|"+d.comp+"|"+u.key+"|"+s.desde)+'</td>';
       }).join("")+'</tr>';
     });
     if(!d.unidades.length) h+='<tr class="pt-x"><td colspan="'+(sems.length+1)+'">Sin registros de cuadrillas en estas semanas.</td></tr>';
@@ -3192,7 +3218,10 @@ function renderProdTabla(){
   tb.querySelectorAll("tr.pt-div td:first-child").forEach(function(td){
     td.onclick=function(){ var tr=td.parentNode; APP.openSecs[tr.getAttribute("data-k")]=(tr.getAttribute("data-open")!=="1"); renderProdTabla(); };
   });
-  tb.querySelectorAll("button.pc").forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); b.classList.toggle("open"); }; });
+  tb.querySelectorAll("button.pc").forEach(function(b){ b.onclick=function(e){
+    e.stopPropagation(); var on=b.classList.toggle("open"), ck=b.getAttribute("data-ck");
+    if(ck){ APP.prodCeldas=APP.prodCeldas||{}; if(on) APP.prodCeldas[ck]=1; else delete APP.prodCeldas[ck]; }
+  }; });
 }
 
 /* ---- Tendencia de llenado contra la meta (diseño azul + verde) ----
@@ -3431,8 +3460,8 @@ function atsEnviarRevision(action, carpeta, mensaje){
     if(archivar){ APP.atsArchivadosLocal[atsDocKey(x)]=1; }   // se oculta ya, aunque el backend aún no persista
   } });
   toast(anular?"Anulado — enviado a papelera; se pedirá resubir 📤":archivar?"Anulado archivado — se quitó de la lista 🗂️":"Documento aprobado ✓","ok");
-  renderAts();
-  setTimeout(function(){ var a=document.querySelector(".nav-item.active"); if(a && a.dataset.view==="ats"){ APP.atsCargado=false; cargarAts(); } }, 3000);
+  conPantallaQuieta(renderAts);
+  setTimeout(function(){ var a=document.querySelector(".nav-item.active"); if(a && a.dataset.view==="ats"){ cargarAts(null, true); } }, 3000);
 }
 function atsModalAnular(carpeta){
   var wrap=document.createElement("div");
