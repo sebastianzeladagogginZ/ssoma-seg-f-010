@@ -854,10 +854,6 @@
           <div class="ch"><h3>Producción por semana</h3><span class="sub">sábado → viernes · toca una celda para ver ATS y charlas</span></div>
           <div class="cb" id="prodTabla"></div>
         </div>
-        <div class="card" id="atsRevisoresCard" style="margin-bottom:16px">
-          <div class="ch"><h3>Verificado por jefe</h3><span class="sub" id="atsRevisoresSub"></span></div>
-          <div class="cb" style="overflow-x:auto" id="atsRevisores"></div>
-        </div>
         <div class="tbl-wrap">
           <table class="data">
             <thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Circuito</th><th>Cuadrilla</th><th>Área ▸ División</th><th>Arch.</th><th>Estado</th><th>Carpeta</th><th>Revisión</th></tr></thead>
@@ -897,7 +893,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V57";
+var PANEL_VERSION = "V58";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2540,14 +2536,14 @@ function atsFirma(list){
    lateral de las tablas. Lo abierto (meses, jefes, divisiones, celdas, análisis) ya se recuerda
    en APP.openSecs / APP.prodSel / APP.prodSelU / APP.prodCeldas. */
 function conPantallaQuieta(fn){
-  var ids=["kpisAts","atsTrend","prodCard","prodTblCard","atsRevisoresCard","atsBody"], anc=null, top0=0;
+  var ids=["kpisAts","atsTrend","prodCard","prodTblCard","atsBody"], anc=null, top0=0;
   for(var i=0;i<ids.length;i++){ var el=document.getElementById(ids[i]); if(!el || !el.offsetParent) continue;
     var r=el.getBoundingClientRect(); if(r.bottom>60){ anc=el; top0=r.top; break; } }
   var ae=document.activeElement, aeId=(ae && ae.id)||"", sS=null, sE=null;
   try{ if(ae && ae.setSelectionRange){ sS=ae.selectionStart; sE=ae.selectionEnd; } }catch(e){}
-  var lat=[]; document.querySelectorAll("#view-ats .ptbl-wrap, #view-ats .tbl-wrap, #atsRevisores").forEach(function(w){ lat.push(w.scrollLeft); });
+  var lat=[]; document.querySelectorAll("#view-ats .ptbl-wrap, #view-ats .tbl-wrap").forEach(function(w){ lat.push(w.scrollLeft); });
   fn();
-  document.querySelectorAll("#view-ats .ptbl-wrap, #view-ats .tbl-wrap, #atsRevisores").forEach(function(w,j){ if(lat[j]) w.scrollLeft=lat[j]; });
+  document.querySelectorAll("#view-ats .ptbl-wrap, #view-ats .tbl-wrap").forEach(function(w,j){ if(lat[j]) w.scrollLeft=lat[j]; });
   if(anc && document.body.contains(anc)){ var dy=anc.getBoundingClientRect().top-top0; if(Math.abs(dy)>1) window.scrollBy(0,dy); }
   if(aeId){ var n=document.getElementById(aeId); if(n && n!==document.activeElement){ try{ n.focus({preventScroll:true}); if(sS!=null) n.setSelectionRange(sS,sE); }catch(e){} } }
 }
@@ -2639,96 +2635,6 @@ function atsPendientesReales(list, resueltas){
   });
   return out;
 }
-/* Apartado "Verificado por jefe": agrupa lo revisado (Aprobado/Anulado) por
-   revisadoPor. Cada jefe es una fila DESPLEGABLE → al abrir muestra TODOS sus
-   documentos revisados (fecha, tipo, cliente, circuito, división, estado y
-   enlace a Drive). Carga perezosa (el detalle se arma al abrir). Excluye
-   entradas de sistema (Limpieza fantasmas). Usa el alcance área/división. */
-function renderAtsRevisores(scope){
-  var cont=document.getElementById("atsRevisores"); if(!cont) return;
-  APP.openSecs=APP.openSecs||{};   // recuerda qué jefes dejó desplegados (sobrevive a auto-refrescos)
-  var sub=document.getElementById("atsRevisoresSub");
-  var by={};
-  (scope||[]).forEach(function(r){
-    var kk=estadoInfo(r.estado).key;
-    if(kk!=="Aprobado" && kk!=="Anulado") return;
-    var nom=String(r.revisadoPor||"").trim();
-    if(!nom || nom.toLowerCase().indexOf("limpieza")>=0) return;   // excluir sistema / sin nombre
-    var o=by[nom]||(by[nom]={aprob:0,anul:0,tot:0,ult:"",items:[]});
-    o.tot++; if(kk==="Aprobado") o.aprob++; else o.anul++;
-    var fr=String(r.revisadoEn||"").slice(0,10);
-    if(fr>o.ult) o.ult=fr;
-    o.items.push(r);
-  });
-  var lista=Object.keys(by).map(function(n){ var o=by[n]; o.nombre=n; return o; })
-    .sort(function(a,b){ return b.tot-a.tot; });
-  if(sub) sub.textContent = lista.length ? (lista.length+(lista.length===1?" revisor · clic para ver sus documentos":" revisores · clic en un jefe para ver sus documentos")) : "";
-  if(!lista.length){ cont.innerHTML=emptyChart("Aún no hay revisiones registradas en este alcance."); return; }
-  var th="padding:8px 12px;border-bottom:2px solid #e2e8f0;font-size:12px;color:#64748b;text-align:left;white-space:nowrap";
-  var thc=th+";text-align:center";
-  var td="padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:13px";
-  var tdc=td+";text-align:center;font-variant-numeric:tabular-nums";
-  function jefe(n){
-    var i=n.indexOf(" (");
-    if(i<0) return '<b>'+esc(n)+'</b>';
-    return '<b>'+esc(n.slice(0,i))+'</b><span style="display:block;font-size:11px;color:#94a3b8">'+esc(n.slice(i+2).replace(/\)\s*$/,""))+'</span>';
-  }
-  var html='<table style="width:100%;border-collapse:collapse"><thead><tr>'+
-    '<th style="'+th+';width:22px"></th><th style="'+th+'">Jefe / revisor</th><th style="'+thc+'">Revisados</th>'+
-    '<th style="'+thc+'">Aprobados</th><th style="'+thc+'">Anulados</th><th style="'+thc+'">Última revisión</th></tr></thead><tbody>';
-  lista.forEach(function(o,idx){
-    var gid="rev"+idx;
-    var skey="revA:"+o.nombre;                 // clave estable por jefe
-    var op=!!APP.openSecs[skey];               // recuerda si estaba desplegado
-    html+='<tr class="rev-head" data-g="'+gid+'" data-k="'+esc(skey)+'" data-open="'+(op?"1":"0")+'" style="cursor:pointer">'+
-      '<td style="'+td+';color:#0284c7;font-weight:800;text-align:center"><span class="rev-chev">'+(op?"▾":"▸")+'</span></td>'+
-      '<td style="'+td+'">'+jefe(o.nombre)+'</td>'+
-      '<td style="'+tdc+';font-weight:800">'+o.tot+'</td>'+
-      '<td style="'+tdc+';color:#15803d">'+o.aprob+'</td>'+
-      '<td style="'+tdc+';color:#b91c1c">'+o.anul+'</td>'+
-      '<td style="'+tdc+';color:#475569;white-space:nowrap">'+(o.ult?esc(fechaLarga(o.ult)):"—")+'</td></tr>';
-    html+='<tr class="rev-det" data-g="'+gid+'" data-loaded="'+(op?"1":"0")+'" style="display:'+(op?"":"none")+'"><td colspan="6" style="padding:0 10px 10px 30px;background:#f8fafc">'+(op?detalleHTML(o.items):"")+'</td></tr>';
-  });
-  html+='</tbody></table>';
-  cont.innerHTML=html;
-  function detalleHTML(items){
-    items=items.slice().sort(function(a,b){ return String(b.revisadoEn||b.fecha||"").localeCompare(String(a.revisadoEn||a.fecha||"")); });
-    var dth="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:left;white-space:nowrap";
-    var dtd="padding:6px 10px;border-bottom:1px solid #eef2f6;font-size:12.5px;vertical-align:top";
-    var h='<table style="width:100%;border-collapse:collapse;margin:6px 0"><thead><tr>'+
-      '<th style="'+dth+'">Fecha</th><th style="'+dth+'">Tipo</th><th style="'+dth+'">Cliente</th><th style="'+dth+'">Circuito</th><th style="'+dth+'">División</th><th style="'+dth+'">Estado</th><th style="'+dth+'">Carpeta</th></tr></thead><tbody>';
-    items.forEach(function(r){
-      var st=estadoInfo(r.estado);
-      var esA=String(r.tipo||"").toUpperCase().indexOf("ATS")===0;
-      var badge='<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:10.5px;font-weight:700;background:'+st.bg+';color:'+st.fg+'">'+st.label+'</span>';
-      var carp=r.carpeta?'<a href="'+esc(r.carpeta)+'" target="_blank" rel="noopener" style="color:#0284c7;font-weight:600">Abrir ▸</a>':'—';
-      h+='<tr><td style="'+dtd+';white-space:nowrap">'+esc(fechaLarga(r.fecha))+'</td>'+
-        '<td style="'+dtd+'">'+(esA?"ATS":"Charla 5 min")+'</td>'+
-        '<td style="'+dtd+'">'+esc(r.cliente||"—")+'</td>'+
-        '<td style="'+dtd+'">'+esc(r.circuito||"—")+'</td>'+
-        '<td style="'+dtd+'">'+esc(divName(r.area))+'</td>'+
-        '<td style="'+dtd+'">'+badge+'</td>'+
-        '<td style="'+dtd+'">'+carp+'</td></tr>';
-    });
-    return h+'</tbody></table>';
-  }
-  cont.querySelectorAll("tr.rev-head").forEach(function(hd,idx){
-    hd.onclick=function(){
-      var g=hd.getAttribute("data-g"), open=hd.getAttribute("data-open")==="1";
-      hd.setAttribute("data-open",open?"0":"1");
-      APP.openSecs[hd.getAttribute("data-k")]=!open;   // recuerda el estado tras auto-refrescos
-      var ch=hd.querySelector(".rev-chev"); if(ch) ch.textContent=open?"▸":"▾";
-      var det=cont.querySelector('tr.rev-det[data-g="'+g+'"]');
-      if(det){
-        if(det.getAttribute("data-loaded")==="0"){
-          var cell=det.querySelector("td"); if(cell) cell.innerHTML=detalleHTML(lista[idx].items);
-          det.setAttribute("data-loaded","1");
-        }
-        det.style.display=open?"none":"";
-      }
-    };
-  });
-}
 function renderAts(){
   wireAtsFiltros();
   var kp=document.getElementById("kpisAts");
@@ -2744,7 +2650,6 @@ function renderAts(){
     return;
   }
   var scope=datosAtsScope(), f=APP.filtrosAts;
-  renderAtsRevisores(scope);   // apartado "Verificado por jefe" (se pinta aun si no hay pendientes)
   renderProduccion(scope);     // mínimo de producción (tarjetas + tabla por semana); no depende de los filtros de arriba
   var cut=null;
   if(f.periodo){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); cut=fechaISO(dd); }
@@ -3182,13 +3087,12 @@ function renderProdTabla(){
     if(ini && ini>desde) desde=ini;
     sems.push({ desde:desde, hasta:hasta, sab:s, enCurso:(i===0), dias:diasLaborables(desde,hasta) });
   }
-  var unaDiv=(divs.length===1);
   var h='<div class="ptbl-wrap"><table class="ptbl"><thead><tr><th>Cuadrilla / persona</th>'+
     sems.map(function(s){ var v=new Date(s.sab); v.setDate(v.getDate()+6);
       return '<th title="Semana '+esc(rangoSemanaSab(s.sab))+'">'+pad(s.sab.getDate())+' '+MES3[s.sab.getMonth()]+(s.enCurso?'<em>en curso</em>':'')+'</th>'; }).join("")+
     '</tr></thead><tbody>';
   divs.forEach(function(d){
-    var k="prod:"+d.comp, open=(APP.openSecs[k]!=null)?!!APP.openSecs[k]:unaDiv;
+    var k="prod:"+d.comp, open=(APP.openSecs[k]!=null)?!!APP.openSecs[k]:false;   // por defecto contraído
     var uTxt=plural(d.total, d.tipo==="persona"?"persona":"cuadrilla", d.tipo==="persona"?"personas":"cuadrillas");
     h+='<tr class="pt-div" data-k="'+esc(k)+'" data-open="'+(open?1:0)+'"><td title="Mostrar u ocultar '+esc(uTxt)+'"><span class="pt-chev">'+(open?'▾':'▸')+'</span>'+esc(divName(d.comp))+
        '<small>'+esc(parentArea(d.comp))+' · '+esc(uTxt)+(d.rotativa?' · rotativas':'')+'</small></td>'+
@@ -3392,7 +3296,7 @@ function renderAtsTabla(base, estadoFilter){
       var items=by[ym].slice().sort(byDateDesc);
       var gid="mg_"+ym.replace(/[^0-9]/g,"");
       var skey="mgA:"+ym;                                    // clave estable para recordar abierto/cerrado
-      var open=(skey in APP.openSecs) ? APP.openSecs[skey] : (idx===0);   // recuerda tu elección; por defecto abre el mes más reciente
+      var open=(skey in APP.openSecs) ? APP.openSecs[skey] : false;      // por defecto TODO contraído; recuerda lo que abras
       var nP=0,nA=0,nX=0;
       items.forEach(function(r){ var k=keyOf(r); if(k==="Pendiente")nP++; else if(k==="Aprobado")nA++; else if(k==="Anulado")nX++; });
       var meta=[]; if(nP)meta.push(nP+" por revisar"); if(nA)meta.push(nA+" aprob."); if(nX)meta.push(nX+" anul.");
