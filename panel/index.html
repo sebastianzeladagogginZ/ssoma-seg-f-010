@@ -848,7 +848,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V51";
+var PANEL_VERSION = "V52";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2253,13 +2253,21 @@ function lineChartSVG(points,w){
   var step=Math.max(1,Math.ceil(n/Math.max(2,Math.floor(w/64))));
   var dots=coords.map(function(c,i){return '<circle cx="'+c.x.toFixed(1)+'" cy="'+c.y.toFixed(1)+'" r="'+(n>40?2.5:3.5)+'" fill="#fff" stroke="#0284c7" stroke-width="2"><title>'+esc(c.lbl)+': '+c.v+(hayMin?' · mínimo '+(+points[i].min||0):'')+'</title></circle>';}).join("");
   var labels=coords.map(function(c,i){ return (i%step===0||i===n-1)?'<text x="'+c.x.toFixed(1)+'" y="'+(h-6)+'" text-anchor="middle" font-size="10.5" fill="#94a3b8">'+esc(c.lbl)+'</text>':""; }).join("");
+  // Valor de cada punto encima del punto (con halo blanco para leerse sobre la línea verde).
+  // Con muchos días se muestra uno de cada 'vStep' (+ el último) para que no se encimen.
+  var vStep=(n===1)?1:Math.max(1,Math.ceil(24/dx));
+  var vals=coords.map(function(c,i){
+    if(!(i===n-1 || (i%vStep===0 && n-1-i>=vStep))) return "";
+    var y=c.y<20?c.y+16:c.y-8;
+    return '<text x="'+c.x.toFixed(1)+'" y="'+y.toFixed(1)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0369a1" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">'+c.v+'</text>';
+  }).join("");
   var grid=[0,.25,.5,.75,1].map(function(g){var y=h-24-g*(h-48);return '<line x1="'+padL+'" y1="'+y+'" x2="'+(w-padR)+'" y2="'+y+'" stroke="#eef2f6"/>'+'<text x="'+(padL-7)+'" y="'+(y+3)+'" text-anchor="end" font-size="9.5" fill="#94a3b8">'+Math.round(maxY*g)+'</text>';}).join("");
   var gid="ag"+Math.random().toString(36).slice(2,7);
   return '<svg class="lc-svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" role="img">'+grid+
     '<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".22"/><stop offset="1" stop-color="#0284c7" stop-opacity="0"/></linearGradient></defs>'+
     '<path d="'+area+'" fill="url(#'+gid+')"/>'+
     (minPath?'<path d="'+minPath+'" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-dasharray="6 4" stroke-linejoin="round"/>':'')+
-    '<path d="'+line+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+labels+'</svg>';
+    '<path d="'+line+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+vals+labels+'</svg>';
 }
 // Ajusta cada línea de tendencia al ancho de su tarjeta (al pintarse y al cambiar el tamaño de la ventana).
 (function(){
