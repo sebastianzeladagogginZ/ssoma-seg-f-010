@@ -733,25 +733,48 @@
           #view-ats .prod-per{display:flex;gap:6px;flex-wrap:wrap}
           #view-ats .prod-sum{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding:12px 14px;margin-bottom:14px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);font-size:13px;color:var(--muted)}
           #view-ats .prod-sum b.pv{font-size:22px}
-          #view-ats .prod-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px}
-          #view-ats .pcard{border:1.5px solid var(--line);border-top:4px solid var(--p-n);border-radius:14px;padding:12px 14px;background:#fff;min-width:0}
-          #view-ats .pcard.r{border-top-color:var(--p-r)} #view-ats .pcard.g{border-top-color:var(--p-g)} #view-ats .pcard.b{border-top-color:var(--p-b)}
-          #view-ats .pc-name{font-weight:800;font-size:13.5px;color:var(--ink);line-height:1.25}
-          #view-ats .pc-area{font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
-          #view-ats .pc-main{display:flex;align-items:baseline;gap:8px;margin:8px 0 6px}
-          #view-ats .pc-main b{font-size:28px;line-height:1}
-          #view-ats .pc-st{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
-          #view-ats .r .pc-st,#view-ats .pc-st.r{background:var(--p-rbg);color:var(--p-r)}
-          #view-ats .g .pc-st,#view-ats .pc-st.g{background:var(--p-gbg);color:var(--p-g)}
-          #view-ats .b .pc-st,#view-ats .pc-st.b{background:var(--p-bbg);color:var(--p-b)}
-          #view-ats .pc-bar{height:7px;border-radius:999px;background:#eef2f6;overflow:hidden;margin-bottom:8px}
-          #view-ats .pc-bar i{display:block;height:100%;border-radius:999px}
-          #view-ats .pc-row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#334155;padding:2px 0}
-          #view-ats .pc-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
-          #view-ats .pc-row.tot{border-top:1px dashed var(--line);margin-top:3px;padding-top:5px;font-weight:700}
-          #view-ats .pc-est{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:11.5px;color:var(--muted)}
-          #view-ats .pc-est b{color:var(--ink)}
-          #view-ats .pc-note{font-size:11px;color:var(--soft);margin-top:6px;line-height:1.4}
+          /* Mosaico compacto (una ficha por división, peor primero) + análisis al tocar una ficha */
+          #view-ats .ptiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:8px}
+          @media(max-width:640px){#view-ats .ptiles{grid-template-columns:repeat(2,minmax(0,1fr))} #view-ats .pt-pct{font-size:20px}}
+          #view-ats .ptile{display:block;width:100%;text-align:left;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-top:3px solid var(--p-n);border-radius:0;padding:9px 11px;cursor:pointer;min-width:0}
+          #view-ats .ptile:hover{background:#f8fbfe;border-color:#cbd5e1}
+          #view-ats .ptile.r{border-top-color:var(--p-r)} #view-ats .ptile.g{border-top-color:var(--p-g)} #view-ats .ptile.b{border-top-color:var(--p-b)}
+          #view-ats .ptile.sel{outline:2px solid var(--brand2);outline-offset:1px;background:#f0f9ff}
+          #view-ats .pt-area{display:block;font-size:10.5px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+          #view-ats .pt-name{display:block;font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-ats .pt-pct{display:block;font-size:22px;font-weight:800;line-height:1.2;margin:2px 0 3px}
+          #view-ats .pt-l{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+          #view-ats .mbar{display:block;height:5px;background:#eef2f6;border-radius:999px;overflow:hidden;margin:2px 0 5px}
+          #view-ats .mbar i{display:block;height:100%;border-radius:999px;background:#0284c7}
+          #view-ats .mbar.cv i{background:#7c3aed}
+          #view-ats .pc-st{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
+          #view-ats .pc-st.r{background:var(--p-rbg);color:var(--p-r)} #view-ats .pc-st.g{background:var(--p-gbg);color:var(--p-g)} #view-ats .pc-st.b{background:var(--p-bbg);color:var(--p-b)} #view-ats .pc-st.n{background:#f1f5f9;color:#64748b}
+          #view-ats .pan{margin-top:12px;border:2px solid var(--brand2);border-radius:14px;padding:14px 16px;background:#fff}
+          #view-ats .pan-h{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+          #view-ats .pan-h small{display:block;font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+          #view-ats .pan-h h4{margin:0;font-size:16px}
+          #view-ats .pan-x{margin-left:auto;font:inherit;font-size:12px;font-weight:700;color:var(--brand2);background:#fff;border:1px solid #bae6fd;border-radius:999px;padding:4px 12px;cursor:pointer}
+          #view-ats .pan-big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:8px 0 12px}
+          #view-ats .pan-big b{font-size:34px;line-height:1}
+          #view-ats .pan-d{font-size:12.5px;font-weight:700} #view-ats .pan-d.up{color:#15803d} #view-ats .pan-d.dn{color:#64748b}
+          #view-ats .pan-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:8px;margin-bottom:12px}
+          #view-ats .pan-k>div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
+          #view-ats .pan-k .l{font-size:11.5px;color:var(--muted)}
+          #view-ats .pan-k .v{font-size:12px;color:var(--muted)} #view-ats .pan-k .v b{font-size:18px;color:var(--ink)}
+          #view-ats .pan-k .s{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.35}
+          #view-ats .pan-hall{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+          #view-ats .pan-hall h5,#view-ats .pan-col h5{margin:0 0 4px;font-size:13px}
+          #view-ats .pan-hall h5 span,#view-ats .pan-col h5 span{font-weight:500;color:var(--soft);font-size:11.5px}
+          #view-ats .pan-hall ul{margin:0;padding-left:18px;line-height:1.65;font-size:12.5px;color:#334155}
+          #view-ats .pan-cols{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+          @media(max-width:900px){#view-ats .pan-cols{grid-template-columns:1fr}}
+          #view-ats .pu{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 44px 92px;gap:8px;align-items:center;padding:5px 2px;border-bottom:1px solid #f1f5f9;font-size:12px}
+          #view-ats .pu.hd{color:var(--soft);font-size:11px;border-bottom:1px solid var(--line)}
+          #view-ats .pu .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-ats .pu .nu{display:flex;justify-content:flex-end;color:var(--muted);font-variant-numeric:tabular-nums}
+          #view-ats .pu .pc-st{text-align:center}
+          #view-ats .pan-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted);margin-top:4px}
+          #view-ats .pan-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
           /* Tabla de doble entrada (cuadrilla/persona × semana) */
           #view-ats .ptbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
           #view-ats table.ptbl{border-collapse:separate;border-spacing:0;font-size:12.5px;min-width:100%}
@@ -863,7 +886,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V53";
+var PANEL_VERSION = "V54";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2855,6 +2878,16 @@ function prodRangoTxt(p, R){
   if(p==="anio") return h.getFullYear()+" · del "+f(dd)+(R.recorte?" (inicio de la app)":"")+" a hoy";
   return "Semana en curso · "+f(dd)+" a hoy (sáb→vie)";
 }
+// Período anterior comparable (para el ▲/▼ del análisis). "Año" no compara.
+function prodRangoPrevio(p, R){
+  var ini=prodInicio(), r=null;
+  if(p==="hoy"){ var d=parseISO(R.desde), g=0; do{ d.setDate(d.getDate()-1); }while(!esDiaLaborable(d) && g++<7); var k=fechaISO(d); r={ desde:k, hasta:k, txt:"el día hábil anterior" }; }
+  else if(p==="mes"){ var h=parseISO(R.hasta); r={ desde:fechaISO(new Date(h.getFullYear(),h.getMonth()-1,1)), hasta:fechaISO(new Date(h.getFullYear(),h.getMonth(),0)), txt:"el mes anterior" }; }
+  else if(p==="semana"){ var s=sabadoDe(R.hasta); s.setDate(s.getDate()-7); var v=new Date(s); v.setDate(v.getDate()+6); r={ desde:fechaISO(s), hasta:fechaISO(v), txt:"la semana anterior" }; }
+  if(!r || r.hasta<ini) return null;
+  if(r.desde<ini) r.desde=ini;
+  return r;
+}
 function renderProduccion(){
   var cont=document.getElementById("prodCards"), tb=document.getElementById("prodTabla"); if(!cont||!tb) return;
   APP.prodPer=APP.prodPer||"semana"; APP.openSecs=APP.openSecs||{};
@@ -2876,37 +2909,150 @@ function renderProduccion(){
   prodIndice(docs, divs);
   APP._prodDivs=divs;
   var R=prodRango(APP.prodPer), dias=diasLaborables(R.desde,R.hasta);
-  var G={a:0,c:0,uC:0,uP:0}, cards=divs.map(function(d){
-    var x=prodSumar(d.idx,R.desde,R.hasta), ev=prodEval(x.a,x.c,d.total,dias), col=PROD_COL[ev.cls];
-    G.a+=x.a; G.c+=x.c; if(d.tipo==="persona") G.uP+=d.total; else G.uC+=d.total;
-    var st={Pendiente:0,Aprobado:0,Anulado:0};
-    d.docs.forEach(function(r){ if(r.fecha>=R.desde && r.fecha<=R.hasta){ var k=estadoInfo(r.estado).key; if(st[k]!=null) st[k]++; } });
-    var fueraN=prodSumar(d.fuera,R.desde,R.hasta), fN=fueraN.a+fueraN.c;
-    var extraN=Object.keys(d.extra).filter(function(k){ var y=prodContar(d.extra[k],R.desde,R.hasta); return y.a+y.c>0; }).length;
-    var pctTipo=function(n){ return ev.exp?' · '+Math.round(n/ev.exp*100)+'%':''; };
-    var uTxt=plural(d.total, d.tipo==="persona"?"persona":"cuadrilla", d.tipo==="persona"?"personas":"cuadrillas");
-    return '<div class="pcard '+ev.cls+'">'+
-      '<div class="pc-area">'+esc(parentArea(d.comp))+'</div><div class="pc-name">'+esc(divName(d.comp))+'</div>'+
-      '<div class="pc-main"><b class="tnum" style="color:'+col+'">'+(ev.pct==null?'—':ev.pct+'%')+'</b><span class="pc-st">'+PROD_ST[ev.cls]+'</span></div>'+
-      '<div class="pc-bar"><i style="width:'+Math.min(100,ev.pct||0)+'%;background:'+col+'"></i></div>'+
-      '<div class="pc-row"><span>ATS</span><span>'+x.a+' / '+ev.exp+pctTipo(x.a)+'</span></div>'+
-      '<div class="pc-row"><span>Charlas de 5 min</span><span>'+x.c+' / '+ev.exp+pctTipo(x.c)+'</span></div>'+
-      '<div class="pc-row tot"><span>Total</span><span>'+ev.tot+' / '+ev.esp+'</span></div>'+
-      '<div class="pc-est"><span>Por revisar <b>'+st.Pendiente+'</b></span><span>Aprobados <b>'+st.Aprobado+'</b></span><span>Anulados <b>'+st.Anulado+'</b></span></div>'+
-      '<div class="pc-note">'+uTxt+' × '+plural(dias,"día","días")+' × (1 ATS + 1 charla)'+
-        (d.rotativa?' · cuadrillas rotativas: cuenta lo registrado, tope = total':'')+
-        (fN?' · ⚠ '+fN+' doc. con N° de cuadrilla fuera de la lista (no suman)':'')+
-        (extraN?' · '+plural(extraN,"persona","personas")+' fuera del padrón (no suman)':'')+'</div>'+
-    '</div>';
-  });
-  var evG=prodEval(G.a,G.c,G.uC+G.uP,dias), uniG=[];
+  var G={a:0,c:0,uC:0,uP:0}, cuenta={r:0,g:0,b:0,n:0};
+  var fichas=divs.map(function(d){
+    var x=prodSumar(d.idx,R.desde,R.hasta), ev=prodEval(x.a,x.c,d.total,dias);
+    G.a+=x.a; G.c+=x.c; if(d.tipo==="persona") G.uP+=d.total; else G.uC+=d.total; cuenta[ev.cls]++;
+    return { d:d, x:x, ev:ev };
+  }).sort(function(p,q){ return (p.ev.pct==null?1e9:p.ev.pct)-(q.ev.pct==null?1e9:q.ev.pct) || String(p.d.comp).localeCompare(String(q.d.comp)); });
+  if(APP.prodSel && !divs.some(function(d){ return d.comp===APP.prodSel; })) APP.prodSel=null;   // salió del alcance
+  var evG=prodEval(G.a,G.c,G.uC+G.uP,dias), uniG=[], est=[];
   if(G.uC) uniG.push(plural(G.uC,"cuadrilla","cuadrillas")); if(G.uP) uniG.push(plural(G.uP,"persona","personas"));
+  if(cuenta.b) est.push('<b style="color:var(--p-b)">'+cuenta.b+'</b> sobresaliente'+(cuenta.b===1?'':'s'));
+  if(cuenta.g) est.push('<b style="color:var(--p-g)">'+cuenta.g+'</b> cumple'+(cuenta.g===1?'':'n'));
+  if(cuenta.r) est.push('<b style="color:var(--p-r)">'+cuenta.r+'</b> no cumple'+(cuenta.r===1?'':'n'));
+  var tiles=fichas.map(function(F){
+    var d=F.d, ev=F.ev, sel=(APP.prodSel===d.comp);
+    var pa=ev.exp?Math.min(100,Math.round(F.x.a/ev.exp*100)):0, pc=ev.exp?Math.min(100,Math.round(F.x.c/ev.exp*100)):0;
+    return '<button type="button" class="ptile '+ev.cls+(sel?' sel':'')+'" data-comp="'+esc(d.comp)+'" aria-expanded="'+(sel?'true':'false')+'" title="Ver el análisis de '+esc(divName(d.comp))+'">'+
+      '<span class="pt-area">'+esc(parentArea(d.comp))+'</span><span class="pt-name">'+esc(divName(d.comp))+'</span>'+
+      '<span class="pt-pct tnum" style="color:'+PROD_COL[ev.cls]+'">'+(ev.pct==null?'—':ev.pct+'%')+'</span>'+
+      '<span class="pt-l"><span>ATS</span><span class="tnum">'+F.x.a+'/'+ev.exp+'</span></span><span class="mbar"><i style="width:'+pa+'%"></i></span>'+
+      '<span class="pt-l"><span>Charlas</span><span class="tnum">'+F.x.c+'/'+ev.exp+'</span></span><span class="mbar cv"><i style="width:'+pc+'%"></i></span>'+
+    '</button>';
+  }).join("");
+  var selD=APP.prodSel?divs.filter(function(d){ return d.comp===APP.prodSel; })[0]:null;
   cont.innerHTML='<div class="prod-sum"><span><b>'+esc(prodRangoTxt(APP.prodPer,R))+'</b> · '+plural(dias,"día laborable","días laborables")+' · '+uniG.join(" + ")+'</span>'+
       '<span>Total: <b class="pv tnum" style="color:'+PROD_COL[evG.cls]+'">'+(evG.pct==null?'—':evG.pct+'%')+'</b> '+
       '<span class="pc-st '+evG.cls+'">'+PROD_ST[evG.cls]+'</span> · ATS '+G.a+' / '+evG.exp+' · Charlas '+G.c+' / '+evG.exp+'</span>'+
+      (est.length?'<span>'+est.join(' · ')+'</span>':'')+
       (dias?'':'<span>Hoy es domingo: no hay mínimo exigido.</span>')+'</div>'+
-    '<div class="prod-cards">'+cards.join("")+'</div>';
+    '<div class="ptiles">'+tiles+'</div>'+
+    (selD?prodAnalisisHTML(selD,R,dias,APP.prodPer):'<div style="font-size:11.5px;color:var(--soft);margin-top:8px">Toca una división para ver su análisis detallado.</div>');
+  cont.querySelectorAll(".ptile").forEach(function(b){
+    b.onclick=function(){
+      var c=b.getAttribute("data-comp"); APP.prodSel=(APP.prodSel===c)?null:c; renderProduccion();
+      var pan=document.getElementById("prodAnalisis"); if(pan && pan.scrollIntoView) pan.scrollIntoView({behavior:"smooth",block:"nearest"});
+    };
+  });
+  var bx=document.getElementById("prodAnalisisX"); if(bx) bx.onclick=function(){ APP.prodSel=null; renderProduccion(); };
   renderProdTabla();
+}
+// Análisis detallado de UNA división en el período elegido (se abre al tocar su ficha).
+function prodAnalisisHTML(d, R, dias, per){
+  var esP=(d.tipo==="persona"), uS=esP?"persona":"cuadrilla", uP=esP?"personas":"cuadrillas";
+  var x=prodSumar(d.idx,R.desde,R.hasta), ev=prodEval(x.a,x.c,d.total,dias);
+  var prev=prodRangoPrevio(per,R), evp=null;
+  if(prev){ var xp=prodSumar(d.idx,prev.desde,prev.hasta); evp=prodEval(xp.a,xp.c,d.total,diasLaborables(prev.desde,prev.hasta)); }
+  // por unidad (cuadrilla CU n o persona), peor primero
+  var us=d.unidades.map(function(u){ var y=prodContar(d.idx[u.key],R.desde,R.hasta); return { label:u.label, a:y.a, c:y.c, ev:prodEval(y.a,y.c,1,dias) }; })
+    .sort(function(p,q){ return (p.ev.pct==null?1e9:p.ev.pct)-(q.ev.pct==null?1e9:q.ev.pct) || String(p.label).localeCompare(String(q.label),undefined,{numeric:true}); });
+  var cumplen=us.filter(function(u){ return u.ev.cls==="g"||u.ev.cls==="b"; });
+  var st={Pendiente:0,Aprobado:0,Anulado:0};
+  d.docs.forEach(function(r){ if(r.fecha>=R.desde && r.fecha<=R.hasta){ var k=estadoInfo(r.estado).key; if(st[k]!=null) st[k]++; } });
+  // día a día (o semana a semana si el período es largo)
+  var serie=[], largo=(dias>31);
+  if(largo){
+    for(var s=sabadoDe(R.desde); s && fechaISO(s)<=R.hasta; s.setDate(s.getDate()+7)){
+      var de=fechaISO(s), v=new Date(s); v.setDate(v.getDate()+6); var ha=fechaISO(v); if(ha>R.hasta) ha=R.hasta; if(de<R.desde) de=R.desde;
+      var nd=diasLaborables(de,ha); if(!nd) continue; var z=prodSumar(d.idx,de,ha);
+      serie.push({ lbl:pad(s.getDate())+"/"+pad(s.getMonth()+1), a:z.a, c:z.c, meta:d.total*nd });
+    }
+  } else {
+    var DIAS=["dom","lun","mar","mié","jue","vie","sáb"];
+    for(var t=parseISO(R.desde); t && fechaISO(t)<=R.hasta; t.setDate(t.getDate()+1)){
+      if(!esDiaLaborable(t)) continue; var k=fechaISO(t), w=prodSumar(d.idx,k,k);
+      serie.push({ lbl:DIAS[t.getDay()]+" "+pad(t.getDate()), a:w.a, c:w.c, meta:d.total });
+    }
+  }
+  var okDias=serie.filter(function(p){ return p.a>=p.meta && p.c>=p.meta; }).length;
+  // ---- hallazgos (texto automático) ----
+  var H=[], lista=function(arr){ var n=arr.map(function(u){ return '<b>'+esc(u.label)+'</b>'; }); return n.length>5?n.slice(0,5).join(", ")+" y "+(n.length-5)+" más":n.join(", "); };
+  if(ev.pct==null) H.push("No hay días exigidos en este período.");
+  else if(ev.cls!=="r") H.push(ev.cls==="b"?"Cumple el mínimo de ATS y de charlas y lo supera: <b>"+ev.pct+"%</b>.":"Cumple el mínimo de ATS y de charlas.");
+  else {
+    var pA=Math.round(x.a/ev.exp*100), pC=Math.round(x.c/ev.exp*100), fa=Math.max(ev.exp-x.a,0), fc=Math.max(ev.exp-x.c,0);
+    if(Math.abs(pA-pC)>=15) H.push("El problema está en "+(pC<pA?"las <b>charlas</b>: "+pC+"% contra "+pA+"% de ATS":"los <b>ATS</b>: "+pA+"% contra "+pC+"% de charlas")+".");
+    var falta=[]; if(fc) falta.push("<b>"+fc+"</b> charla"+(fc===1?"":"s")); if(fa) falta.push("<b>"+fa+"</b> ATS");
+    if(falta.length) H.push("Faltan "+falta.join(" y ")+" para llegar al 100%.");
+  }
+  if(dias && !d.rotativa){
+    var nada=us.filter(function(u){ return !u.a && !u.c; }), sinC=us.filter(function(u){ return u.a && !u.c; }), sinA=us.filter(function(u){ return u.c && !u.a; });
+    if(nada.length) H.push("Sin ningún documento en el período: "+lista(nada)+".");
+    if(sinC.length) H.push("Subieron ATS pero <b>ninguna charla</b>: "+lista(sinC)+".");
+    if(sinA.length) H.push("Subieron charlas pero <b>ningún ATS</b>: "+lista(sinA)+".");
+  }
+  if(serie.length>1) H.push(okDias?("La meta "+(largo?"semanal":"diaria")+" se alcanzó en <b>"+okDias+"</b> de "+serie.length+(largo?" semanas.":" días.")):((largo?"Ninguna semana":"Ningún día")+" alcanzó la meta "+(largo?"semanal":"diaria")+"."));
+  if(evp && evp.pct!=null && ev.pct!=null){
+    var dl=ev.pct-evp.pct;
+    H.push(dl>0?"Mejora de <b>"+plural(dl,"pt","pts")+"</b> contra "+prev.txt+" ("+evp.pct+"% → "+ev.pct+"%).":(dl<0?"Baja de <b>"+plural(-dl,"pt","pts")+"</b> contra "+prev.txt+" ("+evp.pct+"% → "+ev.pct+"%).":"Igual que "+prev.txt+" ("+ev.pct+"%)."));
+  }
+  if(st.Pendiente) H.push("<b>"+st.Pendiente+"</b> documento"+(st.Pendiente===1?" espera":"s esperan")+" revisión de SSOMA (cuentan mientras tanto).");
+  if(st.Anulado) H.push("<b>"+st.Anulado+"</b> anulado"+(st.Anulado===1?"":"s")+" en el período (no suman).");
+  var fz=prodSumar(d.fuera,R.desde,R.hasta), fN=fz.a+fz.c, fK=Object.keys(d.fuera).filter(function(k){ var y=prodContar(d.fuera[k],R.desde,R.hasta); return y.a+y.c>0; }).sort(porNumero);
+  if(fN) H.push("<b>"+fN+"</b> documento"+(fN===1?"":"s")+" con N° de cuadrilla fuera de la lista ("+esc(fK.map(function(k){ return "N° "+k; }).join(", "))+"): no suman.");
+  var exN=Object.keys(d.extra).filter(function(k){ var y=prodContar(d.extra[k],R.desde,R.hasta); return y.a+y.c>0; }).length;
+  if(exN) H.push("<b>"+exN+"</b> persona"+(exN===1?"":"s")+" fuera del padrón subieron documentos (no suman).");
+  if(d.rotativa) H.push("Cuadrillas rotativas: se cuentan las que registran; tope = "+plural(d.total,"cuadrilla","cuadrillas")+".");
+  // ---- armado ----
+  var dTxt="";
+  if(evp && evp.pct!=null && ev.pct!=null){ var d2=ev.pct-evp.pct; dTxt='<span class="pan-d '+(d2>=0?'up':'dn')+'">'+(d2>=0?'▲ ':'▼ ')+plural(Math.abs(d2),'pt','pts')+' vs. '+prev.txt+' ('+evp.pct+'%)</span>'; }
+  var pctT=function(n){ return ev.exp?Math.round(n/ev.exp*100):0; };
+  var nombresOk=cumplen.slice(0,4).map(function(u){ return esc(u.label); }).join(" · ")+(cumplen.length>4?" y "+(cumplen.length-4)+" más":"");
+  var filas=us.map(function(u){
+    var e=u.ev, tx=!u.a&&!u.c?"Sin registros":(!u.c?"Sin charlas":(!u.a?"Sin ATS":PROD_ST[e.cls]));
+    return '<div class="pu"><span class="nm" title="'+esc(u.label)+'">'+esc(u.label)+'</span>'+
+      '<span><span class="nu">'+u.a+'/'+dias+'</span><span class="mbar"><i style="width:'+(dias?Math.min(100,u.a/dias*100):0)+'%"></i></span></span>'+
+      '<span><span class="nu">'+u.c+'/'+dias+'</span><span class="mbar cv"><i style="width:'+(dias?Math.min(100,u.c/dias*100):0)+'%"></i></span></span>'+
+      '<b class="tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b><span class="pc-st '+e.cls+'">'+tx+'</span></div>';
+  }).join("");
+  return '<div class="pan" id="prodAnalisis" role="region" aria-label="Análisis de '+esc(divName(d.comp))+'">'+
+    '<div class="pan-h"><div><small>'+esc(parentArea(d.comp))+' · '+plural(d.total,uS,uP)+' · '+esc(prodRangoTxt(per,R))+'</small><h4>Análisis · '+esc(divName(d.comp))+'</h4></div>'+
+      '<button type="button" class="pan-x" id="prodAnalisisX">✕ Cerrar</button></div>'+
+    '<div class="pan-big"><b class="tnum" style="color:'+PROD_COL[ev.cls]+'">'+(ev.pct==null?'—':ev.pct+'%')+'</b><span class="pc-st '+ev.cls+'">'+PROD_ST[ev.cls]+'</span>'+dTxt+'</div>'+
+    '<div class="pan-k">'+
+      '<div><div class="l">ATS</div><div class="v"><b>'+x.a+'</b> / '+ev.exp+' · '+pctT(x.a)+'%</div><span class="mbar"><i style="width:'+Math.min(100,pctT(x.a))+'%"></i></span></div>'+
+      '<div><div class="l">Charlas de 5 min</div><div class="v"><b>'+x.c+'</b> / '+ev.exp+' · '+pctT(x.c)+'%</div><span class="mbar cv"><i style="width:'+Math.min(100,pctT(x.c))+'%"></i></span></div>'+
+      '<div><div class="l">'+(esP?"Personas":"Cuadrillas")+' que cumplen</div><div class="v"><b>'+cumplen.length+'</b> de '+(d.rotativa?us.length+' registradas':d.total)+'</div><div class="s">'+(nombresOk||'Ninguna todavía')+'</div></div>'+
+      '<div><div class="l">Revisión SSOMA</div><div class="v"><b>'+st.Aprobado+'</b> aprobados</div><div class="s">'+st.Pendiente+' por revisar · '+st.Anulado+' anulados</div></div>'+
+    '</div>'+
+    '<div class="pan-hall"><h5>Hallazgos</h5><ul>'+H.map(function(h){ return '<li>'+h+'</li>'; }).join("")+'</ul></div>'+
+    '<div class="pan-cols">'+
+      '<div class="pan-col"><h5>Por '+uS+' <span>peor primero · mínimo '+dias+' ATS + '+dias+' charlas</span></h5>'+
+        '<div class="pu hd"><span></span><span class="nu">ATS</span><span class="nu">Charlas</span><span>%</span><span></span></div>'+(filas||'<div style="font-size:12px;color:var(--soft);padding:6px 2px">Sin registros en el período.</div>')+'</div>'+
+      '<div class="pan-col"><h5>'+(largo?"Semana a semana":"Día a día")+' <span>meta por tipo: '+(largo?d.total+' × días hábiles':d.total+' ATS + '+d.total+' charlas')+'</span></h5>'+
+        (serie.length?prodBarrasSVG(serie):'<div style="font-size:12px;color:var(--soft)">Sin días hábiles.</div>')+
+        '<div class="pan-leg"><span><i style="background:#0284c7"></i>ATS</span><span><i style="background:#7c3aed"></i>Charlas</span><span><i style="background:none;border-top:2px dashed #16a34a;height:0;width:14px;border-radius:0"></i>Meta por tipo</span></div></div>'+
+    '</div>'+
+  '</div>';
+}
+// Barras agrupadas ATS / Charlas por día (o semana) contra la meta de cada tipo (línea verde punteada).
+function prodBarrasSVG(serie){
+  var w=520, h=190, pL=30, pR=8, pT=14, pB=24, ih=h-pT-pB, n=serie.length;
+  var mx=Math.max.apply(null,serie.map(function(p){ return Math.max(p.a,p.c,p.meta); }).concat([1]))*1.12;
+  var Y=function(v){ return pT+(1-v/mx)*ih; }, gw=(w-pL-pR)/n, bw=Math.max(2,Math.min(14,gw*0.32));
+  var out=[0,.5,1].map(function(g){ var v=Math.round(mx*g), y=Y(v); return '<line x1="'+pL+'" y1="'+y.toFixed(1)+'" x2="'+(w-pR)+'" y2="'+y.toFixed(1)+'" stroke="#eef2f6"/><text x="'+(pL-5)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="#94a3b8">'+v+'</text>'; }).join("");
+  var step=Math.max(1,Math.ceil(n/12));
+  serie.forEach(function(p,i){
+    var cx=pL+gw*i+gw/2, ya=Y(p.a), yc=Y(p.c), ym=Y(p.meta), base=pT+ih;
+    var tip=esc(p.lbl)+"\nATS: "+p.a+" / "+p.meta+"\nCHARLA DE 5 MIN: "+p.c+" / "+p.meta;
+    out+='<g><title>'+tip+'</title>'+
+      '<rect x="'+(cx-bw-1).toFixed(1)+'" y="'+ya.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,base-ya).toFixed(1)+'" rx="2" fill="#0284c7"/>'+
+      '<rect x="'+(cx+1).toFixed(1)+'" y="'+yc.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,base-yc).toFixed(1)+'" rx="2" fill="#7c3aed"/>'+
+      '<line x1="'+(cx-gw/2+2).toFixed(1)+'" y1="'+ym.toFixed(1)+'" x2="'+(cx+gw/2-2).toFixed(1)+'" y2="'+ym.toFixed(1)+'" stroke="#16a34a" stroke-width="2" stroke-dasharray="4 3"/></g>';
+    if(i%step===0||i===n-1) out+='<text x="'+cx.toFixed(1)+'" y="'+(h-7)+'" text-anchor="middle" font-size="10" fill="#94a3b8">'+esc(p.lbl)+'</text>';
+  });
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" role="img" aria-label="ATS y charlas por período contra la meta" style="display:block;max-width:100%;height:auto">'+out+'</svg>';
 }
 // Celda de la tabla: N° de documentos + % (contorno rojo/verde/azul). Al tocarla: ATS / Charla.
 function prodCelda(ev){
