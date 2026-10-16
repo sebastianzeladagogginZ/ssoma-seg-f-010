@@ -776,8 +776,23 @@
           #view-ats .pc.open .pd{display:block} #view-ats .pc.open b,#view-ats .pc.open i{display:none}
           #view-ats .p-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:11.5px;color:var(--muted)}
           #view-ats .p-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;border:2px solid;vertical-align:-2px;margin-right:5px}
-          #view-ats .lc-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:var(--muted);margin-top:4px}
-          #view-ats .lc-legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:3px;margin-right:6px}
+          /* Tendencia de llenado vs. meta (azul = producido · verde = meta) */
+          #view-ats .tp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}
+          #view-ats .tp-chip{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:7px 12px;min-width:150px}
+          #view-ats .tp-chip.meta{background:#f0fdf4;border-color:#bbf7d0}
+          #view-ats .tp-l{font-size:11.5px;color:var(--muted)}
+          #view-ats .tp-chip.meta .tp-l,#view-ats .tp-chip.meta .tp-v span{color:#15803d}
+          #view-ats .tp-v{font-size:12px;color:var(--muted)}
+          #view-ats .tp-v b{font-size:18px;font-weight:800;color:#0369a1}
+          #view-ats .tp-chip.meta .tp-v b{color:#166534}
+          #view-ats .tp-bar{height:5px;background:#e2e8f0;border-radius:999px;margin-top:5px;overflow:hidden}
+          #view-ats .tp-bar i{display:block;height:100%;background:#0284c7;border-radius:999px}
+          #view-ats .tp-up{color:#15803d;font-weight:700} #view-ats .tp-down{color:#64748b;font-weight:700}
+          #view-ats .tp-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:var(--muted);margin-top:4px}
+          #view-ats .tp-legend span{display:inline-flex;align-items:center;gap:6px}
+          #view-ats .tp-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px solid #0284c7;background:#fff}
+          #view-ats .tp-dot.ok{border-color:#fff;background:#16a34a;box-shadow:0 0 0 1.5px #16a34a}
+          #view-ats .tp-dash{display:inline-block;width:18px;border-top:2px dashed #16a34a}
         </style>
         <div class="filters">
           <input type="search" id="atsSearch" placeholder="Buscar cliente, circuito, cuadrilla…">
@@ -848,7 +863,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V52";
+var PANEL_VERSION = "V53";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2276,7 +2291,7 @@ function lineChartSVG(points,w){
     entries.forEach(function(en){
       var el=en.target, w=Math.floor(en.contentRect.width), pts=_LC.data[el.getAttribute("data-lc")];
       if(!pts || w<50 || Math.abs(w-(+el.getAttribute("data-w")||0))<6) return;
-      el.setAttribute("data-w",w); el.innerHTML=lineChartSVG(pts,w);
+      el.setAttribute("data-w",w); el.innerHTML=(typeof pts==="function")?pts(w):lineChartSVG(pts,w);   // función = gráfico propio (p. ej. tendencia de producción)
     });
   });
   function enganchar(){
@@ -2715,16 +2730,15 @@ function renderAts(){
     return;
   }
 
-  // Tendencia por fecha (sobre base) + línea verde del MÍNIMO de producción del alcance:
-  // (cuadrillas + personas) × documentos exigidos por día (2, o 1 si se filtró un solo tipo); 0 el domingo.
-  var porFecha={}; base.forEach(function(r){ porFecha[r.fecha]=(porFecha[r.fecha]||0)+1; });
-  var fk=Object.keys(porFecha).sort();
-  var unidadesMin=prodDivisiones().reduce(function(s,d){ return s+d.total; },0), porDia=unidadesMin*(f.tipo?1:2);
-  document.getElementById("atsTrend").innerHTML=lineChart(fk.map(function(x){
-    var dt=parseISO(x); return {x:fechaCorta(x),y:porFecha[x],min:(dt&&esDiaLaborable(dt))?porDia:0};
-  }))+(porDia?'<div class="lc-legend"><span><i style="background:#0284c7"></i>Documentos subidos</span>'+
-     '<span><i style="background:#16a34a"></i>Mínimo de producción: '+porDia+' por día (lun–sáb) · '+plural(unidadesMin,"unidad","unidades")+' × '+(f.tipo?'1 '+(f.tipo==="ATS"?'ATS':'charla'):'(1 ATS + 1 charla)')+'</span></div>':'');
-  document.getElementById("atsTrendSub").textContent=fk.length+(fk.length===1?" día con carga":" días con carga");
+  // Tendencia de llenado contra la META (mínimo de producción). "Últimos 7 días" → vista diaria;
+  // 30 / 90 días / todo el período → vista semanal en % de la meta. Si el alcance no tiene
+  // cuadrillas ni personas con meta, se muestra la línea simple de documentos subidos.
+  if(!renderTendenciaProd(f)){
+    var porFecha={}; base.forEach(function(r){ porFecha[r.fecha]=(porFecha[r.fecha]||0)+1; });
+    var fk=Object.keys(porFecha).sort();
+    document.getElementById("atsTrend").innerHTML=lineChart(fk.map(function(x){ return {x:fechaCorta(x),y:porFecha[x]}; }));
+    document.getElementById("atsTrendSub").textContent=fk.length+(fk.length===1?" día con carga":" días con carga");
+  }
 
   renderAtsTabla(base, f.estado);
 }
@@ -2749,7 +2763,10 @@ function diasLaborables(desde, hasta){                                    // ISO
   while(a<=b && g++<400){ if(esDiaLaborable(a)) n++; a.setDate(a.getDate()+1); }
   return n;
 }
-function prodInicio(){ var m=""; (APP.ats||[]).forEach(function(r){ if(r.fecha && (!m||r.fecha<m)) m=r.fecha; }); return m; }
+// Inicio de la medición: 1er registro de la app, pero nunca antes del arranque real de la carga
+// (10-ago-2026; antes solo hubo pruebas sueltas, p. ej. una del 31-jul, que bajaban "Año").
+var PROD_INICIO_REAL="2026-08-10";
+function prodInicio(){ var m=""; (APP.ats||[]).forEach(function(r){ if(r.fecha && (!m||r.fecha<m)) m=r.fecha; }); return (m && m>PROD_INICIO_REAL)?m:PROD_INICIO_REAL; }
 function atsCuentaMinimo(r){ var k=estadoInfo(r.estado).key; return k==="Aprobado"||k==="Pendiente"; }
 // Divisiones en alcance con sus unidades (cuadrillas CU n o personas del padrón).
 function prodDivisiones(){
@@ -2946,6 +2963,133 @@ function renderProdTabla(){
     td.onclick=function(){ var tr=td.parentNode; APP.openSecs[tr.getAttribute("data-k")]=(tr.getAttribute("data-open")!=="1"); renderProdTabla(); };
   });
   tb.querySelectorAll("button.pc").forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); b.classList.toggle("open"); }; });
+}
+
+/* ---- Tendencia de llenado contra la meta (diseño azul + verde) ----
+   Azul = lo producido (línea, área, puntos con borde azul y su número).
+   Verde = la meta (línea punteada) y los puntos que la ALCANZAN (relleno verde, número verde).
+   Diaria (filtro "Últimos 7 días"): documentos que cuentan por día hábil vs. meta diaria.
+   Semanal (30 / 90 días / todo): % de la meta por semana sáb→vie (meta = 100%).
+   Domingos fuera. Cuentan aprobados + por revisar, asignados a una cuadrilla o persona.
+   Con filtro de tipo (solo ATS / solo charlas) la meta es 1 documento de ese tipo. */
+function renderTendenciaProd(f){
+  var cont=document.getElementById("atsTrend"), sub=document.getElementById("atsTrendSub"); if(!cont) return false;
+  var divs=prodDivisiones(), U=divs.reduce(function(s,d){ return s+d.total; },0);
+  if(!U) return false;
+  var docs=(APP.ats||[]).filter(function(r){
+    return estadoInfo(r.estado).key!=="Archivado" && !(APP.atsArchivadosLocal && APP.atsArchivadosLocal[atsDocKey(r)]);
+  });
+  prodIndice(docs, divs);
+  var tipo=f.tipo||"", porU=tipo?1:2;
+  var sumar=function(desde,hasta){ var a=0,c=0; divs.forEach(function(d){ var x=prodSumar(d.idx,desde,hasta); a+=x.a; c+=x.c; }); return {a:a,c:c}; };
+  // valor que cuenta según el filtro de tipo y si alcanzó la meta (cada tipo debe cumplir)
+  var medir=function(x,exp){
+    var v=tipo==="ATS"?x.a:(tipo==="Charla"?x.c:x.a+x.c);
+    var ok=tipo==="ATS"?x.a>=exp:(tipo==="Charla"?x.c>=exp:(x.a>=exp && x.c>=exp));
+    return {v:v, ok:!!exp && ok};
+  };
+  var hoy=fechaISO(new Date()), ini=prodInicio();
+  var cut=f.periodo?(function(){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); return fechaISO(dd); })():ini;
+  if(cut<ini) cut=ini;
+  var detalle=function(x,exp){
+    var t=[]; if(tipo!=="Charla") t.push("ATS: "+x.a+" / "+exp); if(tipo!=="ATS") t.push("CHARLA DE 5 MIN: "+x.c+" / "+exp); return t;
+  };
+  var metaTxt=tipo?('1 '+(tipo==="ATS"?'ATS':'charla')):'(1 ATS + 1 charla)';
+  var pts=[], chips="", leyPunto, leyOk, leyMeta, cfg;
+  if(f.periodo==="7"){
+    // ---- vista DIARIA ----
+    var goal=U*porU, totV=0, totG=0, mejor=null;
+    for(var d=parseISO(cut); d && fechaISO(d)<=hoy; d.setDate(d.getDate()+1)){
+      if(!esDiaLaborable(d)) continue;
+      var k=fechaISO(d), x=sumar(k,k), m=medir(x,U);
+      totV+=m.v; totG+=goal;
+      if(!mejor || m.v>mejor.v) mejor={v:m.v, k:k};
+      pts.push({ x:fechaCorta(k), y:m.v, ok:m.ok,
+        tip:[fechaLarga(k)+" · "+Math.round(m.v/goal*100)+"% de la meta"].concat(detalle(x,U)) });
+    }
+    var prom=totG?Math.round(totV/totG*100):0;
+    chips=tendChip("Promedio del período", prom+"%", "de la meta", prom)+
+      (mejor?tendChip("Mejor día", fechaCorta(mejor.k)+" · "+mejor.v):"")+
+      tendChipMeta("Meta diaria", goal, plural(U,"unidad","unidades")+" × "+metaTxt);
+    cfg={ pts:pts, goal:goal, fmt:function(v){ return String(v); } };
+    leyPunto="Producción del día"; leyOk="Día que alcanzó la meta"; leyMeta="Meta "+goal;
+    if(sub) sub.textContent=plural(pts.length,"día hábil","días hábiles")+" · por día";
+  } else {
+    // ---- vista SEMANAL en % de la meta ----
+    var sems=[];
+    for(var s=sabadoDe(cut); s && fechaISO(s)<=hoy; s.setDate(s.getDate()+7)){
+      var desde=fechaISO(s), v=new Date(s); v.setDate(v.getDate()+6);
+      var hasta=fechaISO(v); if(hasta>hoy) hasta=hoy; if(desde<cut) desde=cut;
+      var dias=diasLaborables(desde,hasta); if(!dias) continue;
+      var xs=sumar(desde,hasta), exp=U*dias, ms=medir(xs,exp), pct=Math.round(ms.v/(exp*porU)*100);
+      sems.push({ sab:new Date(s), pct:pct, v:ms.v, esp:exp*porU, ok:ms.ok, x:xs, exp:exp });
+    }
+    sems.forEach(function(w){
+      pts.push({ x:pad(w.sab.getDate())+"/"+pad(w.sab.getMonth()+1), y:w.pct, ok:w.ok,
+        tip:["Semana "+rangoSemanaSab(w.sab)+" · "+w.pct+"% de la meta"].concat(detalle(w.x,w.exp)) });
+    });
+    var tV=0,tE=0; sems.forEach(function(w){ tV+=w.v; tE+=w.esp; });
+    var promS=tE?Math.round(tV/tE*100):0, ult=sems[sems.length-1], ant=sems[sems.length-2];
+    var delta=(ult&&ant)?ult.pct-ant.pct:null;
+    chips=tendChip("Promedio de "+plural(sems.length,"semana","semanas"), promS+"%", "de la meta", promS)+
+      (ult?tendChip("Semana en curso", ult.pct+"%", delta==null?"":(delta>=0?'<span class="tp-up">▲ '+delta+' pts</span>':'<span class="tp-down">▼ '+Math.abs(delta)+' pts</span>')+" vs. anterior"):"")+
+      tendChipMeta("Meta semanal", U*6*porU, plural(U,"unidad","unidades")+" × 6 días × "+(tipo?"1":"2"));
+    cfg={ pts:pts, goal:100, fmt:function(v){ return v+"%"; } };
+    leyPunto="% de la meta en la semana"; leyOk="Semana que alcanzó la meta"; leyMeta="Meta 100%";
+    if(sub) sub.textContent=plural(pts.length,"semana","semanas")+" · % de la meta (sáb→vie)";
+  }
+  if(!pts.length){ cont.innerHTML=emptyChart("Sin días hábiles en el período."); return true; }
+  var id="lc"+(++_LC.n); _LC.data[id]=function(w){ return prodTrendSVG(cfg,w); };
+  cont.innerHTML='<div class="tp-chips">'+chips+'</div>'+
+    '<div class="lchart" data-lc="'+id+'">'+prodTrendSVG(cfg,560)+'</div>'+
+    '<div class="tp-legend"><span><i class="tp-dot"></i>'+leyPunto+'</span><span><i class="tp-dot ok"></i>'+leyOk+'</span>'+
+    '<span><i class="tp-dash"></i>'+leyMeta+'</span><span>Domingos no aparecen · cuentan aprobados y por revisar</span></div>';
+  return true;
+}
+function tendChip(lbl, val, extra, barra){
+  return '<div class="tp-chip"><div class="tp-l">'+esc(lbl)+'</div><div class="tp-v"><b>'+esc(val)+'</b>'+(extra?' <span>'+extra+'</span>':'')+'</div>'+
+    (barra!=null?'<div class="tp-bar"><i style="width:'+Math.max(0,Math.min(100,barra))+'%"></i></div>':'')+'</div>';
+}
+function tendChipMeta(lbl, val, extra){
+  return '<div class="tp-chip meta"><div class="tp-l">'+esc(lbl)+'</div><div class="tp-v"><b>'+val+'</b> <span>'+esc(extra)+'</span></div></div>';
+}
+// SVG de la tendencia: línea + área azul, meta verde punteada, puntos azules (verdes si alcanzan la meta).
+function prodTrendSVG(cfg, w){
+  var pts=cfg.pts, n=pts.length; w=Math.max(300,Math.round(w));
+  var h=230, padL=40, padR=16, padT=24, padB=26, ih=h-padT-padB;
+  var mx=Math.max(cfg.goal, Math.max.apply(null,pts.map(function(p){ return p.y; }).concat([1])))*1.08;
+  // Tope "redondo" divisible en cuartos (líneas guía limpias): 120, 160, 200, 240, 300…
+  var mag=Math.pow(10,Math.floor(Math.log(mx)/Math.LN10)), maxY=mag*10;
+  [1,1.2,1.6,2,2.4,3,4,5,6,8,10].some(function(k){ if(k*mag>=mx){ maxY=k*mag; return true; } return false; });
+  var Y=function(v){ return padT+(1-v/maxY)*ih; };
+  var ins=18;                                           // margen interno: los números no chocan con el eje
+  var dx=(w-padL-padR-2*ins)/Math.max(1,n-1);
+  var c=pts.map(function(p,i){ return { x:(n===1?(padL+w-padR)/2:padL+ins+i*dx), y:Y(p.y), p:p }; });
+  var line=c.map(function(q,i){ return (i?"L":"M")+q.x.toFixed(1)+" "+q.y.toFixed(1); }).join(" ");
+  var area=line+" L"+c[n-1].x.toFixed(1)+" "+(padT+ih)+" L"+c[0].x.toFixed(1)+" "+(padT+ih)+" Z";
+  var grid=[0,.25,.5,.75,1].map(function(g){ var v=maxY*g, y=Y(v);
+    return '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(1)+'" stroke="#eef2f6"/>'+
+      '<text x="'+(padL-7)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="#94a3b8">'+esc(cfg.fmt(Math.round(v)))+'</text>'; }).join("");
+  var gy=Y(cfg.goal);
+  var meta='<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+gy.toFixed(1)+'" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 4"/>';
+  var step=Math.max(1,Math.ceil(n/Math.max(2,Math.floor((w-padL-padR)/56))));
+  var xl=c.map(function(q,i){ return (i%step===0||i===n-1)?'<text x="'+q.x.toFixed(1)+'" y="'+(h-7)+'" text-anchor="middle" font-size="10.5" fill="#94a3b8">'+esc(q.p.x)+'</text>':""; }).join("");
+  var vStep=(n===1)?1:Math.max(1,Math.ceil(30/dx));
+  var vals=c.map(function(q,i){
+    if(!(i===n-1 || (i%vStep===0 && n-1-i>=vStep))) return "";
+    var y=q.y<padT+6?q.y+19:q.y-11;
+    return '<text x="'+q.x.toFixed(1)+'" y="'+y.toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="'+(q.p.ok?"#15803d":"#0369a1")+
+      '" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">'+esc(cfg.fmt(q.p.y))+'</text>';
+  }).join("");
+  var dots=c.map(function(q){
+    return '<circle cx="'+q.x.toFixed(1)+'" cy="'+q.y.toFixed(1)+'" r="'+(n>40?3.5:5)+'" fill="'+(q.p.ok?"#16a34a":"#fff")+'" stroke="'+(q.p.ok?"#fff":"#0284c7")+'" stroke-width="2.5">'+
+      '<title>'+esc((q.p.tip||[]).join("\n"))+'</title></circle>';
+  }).join("");
+  var gid="tg"+Math.random().toString(36).slice(2,7);
+  return '<svg class="lc-svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Tendencia de llenado frente a la meta">'+grid+
+    '<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".2"/><stop offset="1" stop-color="#0284c7" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+area+'" fill="url(#'+gid+')"/>'+meta+
+    '<path d="'+line+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+vals+xl+'</svg>';
 }
 
 /* Celdas de una fila ATS (sin el <tr>): se reutilizan en la cola y en los meses. */
