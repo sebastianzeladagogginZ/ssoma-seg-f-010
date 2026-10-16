@@ -780,6 +780,10 @@
           #view-ats .pan-u b{color:var(--ink)} #view-ats .pan-u .pp{font-size:16px;font-weight:800}
           #view-ats .pan-ux{margin-left:auto;font:inherit;font-size:11.5px;font-weight:700;color:var(--brand2);background:#fff;border:1px solid #bae6fd;border-radius:999px;padding:3px 10px;cursor:pointer}
           #view-ats .pan-ul{margin:0 0 6px;padding-left:18px;font-size:12px;line-height:1.6;color:#334155}
+          #view-ats .pan-gh{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:4px}
+          #view-ats .pan-gh h5{margin:0;flex:1 1 220px}
+          #view-ats .pan-per{display:flex;gap:4px;flex-wrap:wrap}
+          #view-ats .pan-per .chip-f{padding:3px 10px;font-size:11.5px}
           #view-ats .pan-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted);margin-top:4px}
           #view-ats .pan-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
           /* Tabla de doble entrada (cuadrilla/persona × semana) */
@@ -839,7 +843,7 @@
         <div class="card" id="prodCard" style="margin-bottom:16px">
           <div class="ch prod-ch">
             <div><h3>Cumplimiento del mínimo de producción</h3>
-              <span class="prod-sub">Mínimo = 1 ATS + 1 charla de 5 min por día (lun–sáb) por cuadrilla o persona · cuentan aprobados y por revisar</span></div>
+              <span class="prod-sub">Mínimo = 1 ATS + 1 charla de 5 min por día (lun–sáb) por cuadrilla o persona · cuentan aprobados y por revisar · el período se elige aquí (o en el gráfico del análisis)</span></div>
             <div class="prod-per" id="prodPeriodo" role="group" aria-label="Período">
               <button type="button" class="chip-f" data-p="hoy">Hoy</button><button type="button" class="chip-f" data-p="semana">Semana</button><button type="button" class="chip-f" data-p="mes">Mes</button><button type="button" class="chip-f" data-p="anio">Año</button>
             </div>
@@ -893,7 +897,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V55";
+var PANEL_VERSION = "V56";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -3058,8 +3062,11 @@ function prodColGrafHTML(d, R, dias, key){
   var SR=u?prodSerie(function(a,b){ return prodContar(d.idx[u.key],a,b); }, 1, R, dias)
           :prodSerie(function(a,b){ return prodSumar(d.idx,a,b); }, d.total, R, dias);
   var serie=SR.serie, largo=SR.largo, unid=u?1:d.total, per=largo?"semanas":"días";
-  var h='<h5>'+(largo?"Semana a semana":"Día a día")+' · '+(u?'<span style="color:var(--brand2);font-weight:800;font-size:13px">'+esc(u.label)+'</span>':'toda la división')+
-    ' <span>meta por tipo: '+(largo?unid+' × días hábiles':unid+' ATS + '+unid+' charla'+(unid===1?'':'s'))+'</span></h5>';
+  var PER=[["hoy","Hoy"],["semana","Semana"],["mes","Mes"],["anio","Año"]];
+  var h='<div class="pan-gh"><h5>'+(largo?"Semana a semana":"Día a día")+' · '+(u?'<span style="color:var(--brand2);font-weight:800;font-size:13px">'+esc(u.label)+'</span>':'toda la división')+
+    ' <span>meta por tipo: '+(largo?unid+' × días hábiles':unid+' ATS + '+unid+' charla'+(unid===1?'':'s'))+'</span></h5>'+
+    '<span class="pan-per" role="group" aria-label="Período del gráfico">'+PER.map(function(x){
+      return '<button type="button" class="chip-f'+(APP.prodPer===x[0]?' on':'')+'" data-pp="'+x[0]+'" aria-pressed="'+(APP.prodPer===x[0]?'true':'false')+'">'+x[1]+'</button>'; }).join("")+'</span></div>';
   if(u){
     var y=prodContar(d.idx[u.key],R.desde,R.hasta), e=prodEval(y.a,y.c,1,dias), n=serie.length;
     var ok=serie.filter(function(p){ return p.a>=p.meta && p.c>=p.meta; }).length;
@@ -3085,7 +3092,16 @@ function prodColGrafHTML(d, R, dias, key){
 // (otro clic en la misma fila o "Ver toda la división" vuelve al total). No re-pinta el resto.
 function wireProdUnidades(){
   var pan=document.getElementById("prodAnalisis"), ctx=APP._prodCtx; if(!pan || !ctx) return;
-  var wireX=function(){ var x=document.getElementById("prodUnidadX"); if(x) x.onclick=function(){ elegir(null); }; };
+  var wireX=function(){
+    var x=document.getElementById("prodUnidadX"); if(x) x.onclick=function(){ elegir(null); };
+    var g0=document.getElementById("prodColGraf");
+    if(g0) g0.querySelectorAll("[data-pp]").forEach(function(b){
+      b.onclick=function(){
+        APP.prodPer=b.getAttribute("data-pp"); renderProduccion();   // tarjetas, análisis y gráfico van a la par
+        var g=document.getElementById("prodColGraf"); if(g && g.scrollIntoView) g.scrollIntoView({block:"nearest"});
+      };
+    });
+  };
   var elegir=function(key){
     var pre=ctx.d.comp+"|", nuevo=(key && APP.prodSelU!==pre+key)?pre+key:null;
     APP.prodSelU=nuevo;
