@@ -725,6 +725,59 @@
           #view-ats .ats-mchev{display:inline-block;width:16px;color:#0284c7;font-weight:800}
           #view-ats .ats-mname{text-transform:capitalize}
           #view-ats .ats-mcount{margin-left:10px;font-weight:600;color:#94a3b8;font-size:12px}
+          /* Mínimo de producción: rojo = no cumple · verde = 100% · azul = sobresaliente (>100%) */
+          #view-ats{--p-r:#dc2626;--p-rbg:#fef2f2;--p-g:#16a34a;--p-gbg:#f0fdf4;--p-b:#2563eb;--p-bbg:#eff6ff;--p-n:#94a3b8}
+          #view-ats .prod-ch{flex-wrap:wrap;align-items:flex-start;gap:10px 16px}
+          #view-ats .prod-ch>div:first-child{flex:1 1 320px;min-width:0}
+          #view-ats .prod-sub{display:block;font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4}
+          #view-ats .prod-per{display:flex;gap:6px;flex-wrap:wrap}
+          #view-ats .prod-sum{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding:12px 14px;margin-bottom:14px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+          #view-ats .prod-sum b.pv{font-size:22px}
+          #view-ats .prod-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px}
+          #view-ats .pcard{border:1.5px solid var(--line);border-top:4px solid var(--p-n);border-radius:14px;padding:12px 14px;background:#fff;min-width:0}
+          #view-ats .pcard.r{border-top-color:var(--p-r)} #view-ats .pcard.g{border-top-color:var(--p-g)} #view-ats .pcard.b{border-top-color:var(--p-b)}
+          #view-ats .pc-name{font-weight:800;font-size:13.5px;color:var(--ink);line-height:1.25}
+          #view-ats .pc-area{font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+          #view-ats .pc-main{display:flex;align-items:baseline;gap:8px;margin:8px 0 6px}
+          #view-ats .pc-main b{font-size:28px;line-height:1}
+          #view-ats .pc-st{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
+          #view-ats .r .pc-st,#view-ats .pc-st.r{background:var(--p-rbg);color:var(--p-r)}
+          #view-ats .g .pc-st,#view-ats .pc-st.g{background:var(--p-gbg);color:var(--p-g)}
+          #view-ats .b .pc-st,#view-ats .pc-st.b{background:var(--p-bbg);color:var(--p-b)}
+          #view-ats .pc-bar{height:7px;border-radius:999px;background:#eef2f6;overflow:hidden;margin-bottom:8px}
+          #view-ats .pc-bar i{display:block;height:100%;border-radius:999px}
+          #view-ats .pc-row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#334155;padding:2px 0}
+          #view-ats .pc-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+          #view-ats .pc-row.tot{border-top:1px dashed var(--line);margin-top:3px;padding-top:5px;font-weight:700}
+          #view-ats .pc-est{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:11.5px;color:var(--muted)}
+          #view-ats .pc-est b{color:var(--ink)}
+          #view-ats .pc-note{font-size:11px;color:var(--soft);margin-top:6px;line-height:1.4}
+          /* Tabla de doble entrada (cuadrilla/persona × semana) */
+          #view-ats .ptbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+          #view-ats table.ptbl{border-collapse:separate;border-spacing:0;font-size:12.5px;min-width:100%}
+          #view-ats .ptbl th{background:var(--bg2);color:#475569;font-size:11px;font-weight:800;padding:9px 8px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--line)}
+          #view-ats .ptbl th em{display:block;font-style:normal;color:#b45309;font-size:10px}
+          #view-ats .ptbl th:first-child,#view-ats .ptbl td:first-child{position:sticky;left:0;z-index:1;text-align:left;background:#fff;min-width:150px;max-width:230px;border-right:1px solid var(--line)}
+          #view-ats .ptbl th:first-child{background:var(--bg2);z-index:2}
+          #view-ats .ptbl td{padding:4px 5px;border-bottom:1px solid #f1f5f9;text-align:center;vertical-align:middle}
+          #view-ats .ptbl tr.pt-div td{background:#f8fafc}
+          #view-ats .ptbl tr.pt-div td:first-child{background:#f1f5f9;cursor:pointer;font-weight:800;color:var(--ink);padding:8px 10px}
+          #view-ats .ptbl tr.pt-div td:first-child small{display:block;font-weight:600;color:var(--soft);font-size:10.5px}
+          #view-ats .ptbl .pt-chev{display:inline-block;width:14px;color:var(--brand2)}
+          #view-ats .ptbl tr.pt-u td:first-child{padding:6px 10px 6px 26px;color:#334155;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #view-ats .ptbl tr.pt-x td:first-child{padding:6px 10px 6px 26px;color:var(--soft);font-style:italic;white-space:normal}
+          #view-ats .pc{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:62px;padding:4px 6px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font:inherit;cursor:pointer;line-height:1.15;color:var(--ink)}
+          #view-ats .pc b{font-size:13px} #view-ats .pc i{font-style:normal;font-size:11px;font-weight:800}
+          #view-ats .pc.r{border-color:var(--p-r);background:var(--p-rbg)} #view-ats .pc.r i{color:var(--p-r)}
+          #view-ats .pc.g{border-color:var(--p-g);background:var(--p-gbg)} #view-ats .pc.g i{color:var(--p-g)}
+          #view-ats .pc.b{border-color:var(--p-b);background:var(--p-bbg)} #view-ats .pc.b i{color:var(--p-b)}
+          #view-ats .pc.n{color:var(--p-n);cursor:default}
+          #view-ats .pc .pd{display:none;font-size:10.5px;font-weight:700;color:#334155;white-space:nowrap;text-align:left}
+          #view-ats .pc.open .pd{display:block} #view-ats .pc.open b,#view-ats .pc.open i{display:none}
+          #view-ats .p-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:11.5px;color:var(--muted)}
+          #view-ats .p-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;border:2px solid;vertical-align:-2px;margin-right:5px}
+          #view-ats .lc-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:var(--muted);margin-top:4px}
+          #view-ats .lc-legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:3px;margin-right:6px}
         </style>
         <div class="filters">
           <input type="search" id="atsSearch" placeholder="Buscar cliente, circuito, cuadrilla…">
@@ -738,13 +791,19 @@
           <div class="ch"><h3>Tendencia de llenado</h3><span class="sub" id="atsTrendSub"></span></div>
           <div class="cb" id="atsTrend"></div>
         </div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="ch"><h3>Llenado por cuadrilla</h3><span class="sub">Documentos subidos</span></div>
-          <div class="cb" id="atsCuad"></div>
+        <div class="card" id="prodCard" style="margin-bottom:16px">
+          <div class="ch prod-ch">
+            <div><h3>Cumplimiento del mínimo de producción</h3>
+              <span class="prod-sub">Mínimo = 1 ATS + 1 charla de 5 min por día (lun–sáb) por cuadrilla o persona · cuentan aprobados y por revisar</span></div>
+            <div class="prod-per" id="prodPeriodo" role="group" aria-label="Período">
+              <button type="button" class="chip-f" data-p="hoy">Hoy</button><button type="button" class="chip-f" data-p="semana">Semana</button><button type="button" class="chip-f" data-p="mes">Mes</button><button type="button" class="chip-f" data-p="anio">Año</button>
+            </div>
+          </div>
+          <div class="cb" id="prodCards"></div>
         </div>
-        <div class="card" id="atsAreaCard" style="margin-bottom:16px;display:none">
-          <div class="ch"><h3>Llenado por área ▸ división</h3></div>
-          <div class="cb" id="atsArea"></div>
+        <div class="card" id="prodTblCard" style="margin-bottom:16px">
+          <div class="ch"><h3>Producción por semana</h3><span class="sub">sábado → viernes · toca una celda para ver ATS y charlas</span></div>
+          <div class="cb" id="prodTabla"></div>
         </div>
         <div class="card" id="atsRevisoresCard" style="margin-bottom:16px">
           <div class="ch"><h3>Verificado por jefe</h3><span class="sub" id="atsRevisoresSub"></span></div>
@@ -789,7 +848,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V50";
+var PANEL_VERSION = "V51";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1318,7 +1377,7 @@ function navTo(v){
   else if(v==="evidencias") renderEvidencias();
   else if(v==="historico") cargarHistorico();
   else if(v==="cobertura") cargarCobertura();
-  else if(v==="ats"){ if(APP.atsCargado) renderAts(); else cargarAts(); }
+  else if(v==="ats"){ cargarMetasCuadrillas(); if(APP.atsCargado) renderAts(); else cargarAts(); }
 }
 // Menú lateral en móvil: se abre/cierra con scrim y refleja el estado en aria-expanded.
 function abrirMenu(){
@@ -1923,7 +1982,7 @@ function cargarMetasCuadrillas(){
   APP._metasPedidas=true;
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=cuadrillas"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(d){
-    if(d && d.metas && Object.keys(d.metas).length){ APP.cuadrillasMeta=d.metas; renderCobertura(); }
+    if(d && d.metas && Object.keys(d.metas).length){ APP.cuadrillasMeta=d.metas; renderCobertura(); if(APP.atsCargado && !APP.atsError) renderAts(); }
   }).catch(function(){});
 }
 function cargarCobertura(){
@@ -2177,26 +2236,30 @@ function hBars(data){
 // Línea de tendencia que se re-dibuja al ancho real de su contenedor (ResizeObserver):
 // el texto conserva su tamaño y el trazo aprovecha todo el espacio en cualquier pantalla.
 var _LC={n:0,data:{}};
-function lineChart(points){ // points: [{x,y}]
+function lineChart(points){ // points: [{x,y,min?}] · min = línea verde de referencia (mínimo de producción)
   if(!points.length) return emptyChart("Sin datos");
   var id="lc"+(++_LC.n); _LC.data[id]=points;
   return '<div class="lchart" data-lc="'+id+'">'+lineChartSVG(points,560)+'</div>';
 }
 function lineChartSVG(points,w){
   w=Math.max(300,Math.round(w)); var h=200,padL=34,padR=14;
-  var maxY=Math.max.apply(null,points.map(function(p){return p.y;}).concat([1]));
+  var hayMin=points.some(function(p){ return p.min!=null; });
+  var maxY=Math.max.apply(null,points.map(function(p){return Math.max(p.y,hayMin?(+p.min||0):0);}).concat([1]));
   var n=points.length, dx=(w-padL-padR)/Math.max(1,n-1);
   var coords=points.map(function(p,i){ return {x:(n===1?w/2:padL+i*dx), y:h-24-(p.y/maxY)*(h-48), v:p.y, lbl:p.x}; });
   var line=coords.map(function(c,i){return (i?"L":"M")+c.x.toFixed(1)+" "+c.y.toFixed(1);}).join(" ");
+  var minPath=hayMin?points.map(function(p,i){ var y=h-24-((+p.min||0)/maxY)*(h-48); return (i?"L":"M")+coords[i].x.toFixed(1)+" "+y.toFixed(1); }).join(" "):"";
   var area=line+" L"+coords[n-1].x.toFixed(1)+" "+(h-24)+" L"+coords[0].x.toFixed(1)+" "+(h-24)+" Z";
   var step=Math.max(1,Math.ceil(n/Math.max(2,Math.floor(w/64))));
-  var dots=coords.map(function(c){return '<circle cx="'+c.x.toFixed(1)+'" cy="'+c.y.toFixed(1)+'" r="'+(n>40?2.5:3.5)+'" fill="#fff" stroke="#0284c7" stroke-width="2"><title>'+esc(c.lbl)+': '+c.v+'</title></circle>';}).join("");
+  var dots=coords.map(function(c,i){return '<circle cx="'+c.x.toFixed(1)+'" cy="'+c.y.toFixed(1)+'" r="'+(n>40?2.5:3.5)+'" fill="#fff" stroke="#0284c7" stroke-width="2"><title>'+esc(c.lbl)+': '+c.v+(hayMin?' · mínimo '+(+points[i].min||0):'')+'</title></circle>';}).join("");
   var labels=coords.map(function(c,i){ return (i%step===0||i===n-1)?'<text x="'+c.x.toFixed(1)+'" y="'+(h-6)+'" text-anchor="middle" font-size="10.5" fill="#94a3b8">'+esc(c.lbl)+'</text>':""; }).join("");
   var grid=[0,.25,.5,.75,1].map(function(g){var y=h-24-g*(h-48);return '<line x1="'+padL+'" y1="'+y+'" x2="'+(w-padR)+'" y2="'+y+'" stroke="#eef2f6"/>'+'<text x="'+(padL-7)+'" y="'+(y+3)+'" text-anchor="end" font-size="9.5" fill="#94a3b8">'+Math.round(maxY*g)+'</text>';}).join("");
   var gid="ag"+Math.random().toString(36).slice(2,7);
   return '<svg class="lc-svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" role="img">'+grid+
     '<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".22"/><stop offset="1" stop-color="#0284c7" stop-opacity="0"/></linearGradient></defs>'+
-    '<path d="'+area+'" fill="url(#'+gid+')"/><path d="'+line+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+labels+'</svg>';
+    '<path d="'+area+'" fill="url(#'+gid+')"/>'+
+    (minPath?'<path d="'+minPath+'" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-dasharray="6 4" stroke-linejoin="round"/>':'')+
+    '<path d="'+line+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+labels+'</svg>';
 }
 // Ajusta cada línea de tendencia al ancho de su tarjeta (al pintarse y al cambiar el tamaño de la ventana).
 (function(){
@@ -2329,6 +2392,10 @@ function normalizarAts(r){
   var tipo=/charla|5\s*min/i.test(tipoRaw)?"Charla":"ATS";
   var comp=atsComposite(r.area||r["Área"]||r.Area, r.division||r["División"]||r.Division);
   var dniP=String(r.dni||r.DNI||"").trim();
+  // DNIs del personal: se leen del texto legible "Participantes" ("DNI NOMBRE, DNI NOMBRE").
+  // La columna "DNIs" llega dañada con 2+ personas (Sheets convierte "a,b" en un número).
+  var partTxt=String(r.participantes||r.Participantes||"");
+  var dnisPart=partTxt.trim()?parseDnisCsv([dniP].concat(partTxt.match(/\b\d{7,8}\b/g)||[]).join(","), ""):[];
   return {
     tipo:tipo, area:comp,
     cliente:String(r.cliente||r.Cliente||"").trim(),
@@ -2344,7 +2411,7 @@ function normalizarAts(r){
     // Áreas por persona (Networking / I&D): DNI + participantes, para cobertura individual.
     dni:dniP,
     nombre:String(r.nombre||r.Nombre||"").trim(),
-    dnis:parseDnisCsv(r.dnis||r.DNIs||"", dniP)
+    dnis:dnisPart.length?dnisPart:parseDnisCsv(r.dnis||r.DNIs||"", dniP)
   };
 }
 // Identidad de un documento = su carpeta de Drive. El backend la construye a partir de
@@ -2588,7 +2655,7 @@ function renderAts(){
       '<h3>No se pudo conectar con la app de campo</h3>'+
       '<p>Para no inducir a error, no se muestran datos de ejemplo. Verifica la conexión e inténtalo otra vez.</p>'+
       '<button id="atsRetry">Reintentar</button></div>';
-    ["atsTrend","atsCuad","atsArea"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML="";});
+    ["atsTrend","prodCards","prodTabla"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML="";});
     var tb0=document.getElementById("atsBody"); if(tb0) tb0.innerHTML='<tr><td colspan="10"><div class="load-note" style="color:#991b1b">Sin conexión con la app de campo.</div></td></tr>';
     var rb=document.getElementById("atsRetry"); if(rb) rb.onclick=function(){ APP.atsCargado=false; cargarAts(); };
     var ct0=document.getElementById("atsCount"); if(ct0) ct0.textContent="";
@@ -2596,6 +2663,7 @@ function renderAts(){
   }
   var scope=datosAtsScope(), f=APP.filtrosAts;
   renderAtsRevisores(scope);   // apartado "Verificado por jefe" (se pinta aun si no hay pendientes)
+  renderProduccion(scope);     // mínimo de producción (tarjetas + tabla por semana); no depende de los filtros de arriba
   var cut=null;
   if(f.periodo){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); cut=fechaISO(dd); }
   // baseT = alcance + período + búsqueda (SIN tipo ni estado): los tiles "ATS" y "Charlas"
@@ -2634,36 +2702,244 @@ function renderAts(){
       ? emptyChart("Sin registros para el filtro o área seleccionados.")
       : emptyChart("Aún no hay ATS ni charlas subidas.<br><span style=\"font-size:12px;color:#94a3b8\">Aparecerán aquí en cuanto las cuadrillas suban documentos desde la app de campo.</span>");
     var t1=document.getElementById("atsTrend"); if(t1) t1.innerHTML=msg;
-    var _ac=document.getElementById("atsCuad"); if(_ac) _ac.innerHTML=emptyChart("Sin datos");
-    document.getElementById("atsAreaCard").style.display="none";
     document.getElementById("atsBody").innerHTML='<tr><td colspan="10"><div class="empty-state" style="padding:22px"><div class="em">📭</div>Aún no hay registros.</div></td></tr>';
     document.getElementById("atsTrendSub").textContent="";
     return;
   }
 
-  // Tendencia por fecha (sobre base)
+  // Tendencia por fecha (sobre base) + línea verde del MÍNIMO de producción del alcance:
+  // (cuadrillas + personas) × documentos exigidos por día (2, o 1 si se filtró un solo tipo); 0 el domingo.
   var porFecha={}; base.forEach(function(r){ porFecha[r.fecha]=(porFecha[r.fecha]||0)+1; });
   var fk=Object.keys(porFecha).sort();
-  document.getElementById("atsTrend").innerHTML=lineChart(fk.map(function(x){return {x:fechaCorta(x),y:porFecha[x]};}));
+  var unidadesMin=prodDivisiones().reduce(function(s,d){ return s+d.total; },0), porDia=unidadesMin*(f.tipo?1:2);
+  document.getElementById("atsTrend").innerHTML=lineChart(fk.map(function(x){
+    var dt=parseISO(x); return {x:fechaCorta(x),y:porFecha[x],min:(dt&&esDiaLaborable(dt))?porDia:0};
+  }))+(porDia?'<div class="lc-legend"><span><i style="background:#0284c7"></i>Documentos subidos</span>'+
+     '<span><i style="background:#16a34a"></i>Mínimo de producción: '+porDia+' por día (lun–sáb) · '+plural(unidadesMin,"unidad","unidades")+' × '+(f.tipo?'1 '+(f.tipo==="ATS"?'ATS':'charla'):'(1 ATS + 1 charla)')+'</span></div>':'');
   document.getElementById("atsTrendSub").textContent=fk.length+(fk.length===1?" día con carga":" días con carga");
-
-  // Por cuadrilla
-  var porCuad={}; base.forEach(function(r){ var c=r.cuadrilla||"—"; porCuad[c]=(porCuad[c]||0)+1; });
-  var cuadData=Object.keys(porCuad).map(function(c){return {label:"Cuadrilla "+c,short:c,value:porCuad[c],color:"#0284c7"};})
-    .sort(function(a,b){return b.value-a.value;}).slice(0,12);
-  document.getElementById("atsCuad").innerHTML=barChart(cuadData);
-
-  // Por área ▸ división (útil sobre todo para SSOMA; se oculta si solo hay una)
-  var porArea={}; base.forEach(function(r){ var a=r.area||"—"; porArea[a]=(porArea[a]||0)+1; });
-  var areaKeys=Object.keys(porArea), areaCard=document.getElementById("atsAreaCard");
-  if(areaKeys.length>1){
-    areaCard.style.display="";
-    document.getElementById("atsArea").innerHTML=hBars(areaKeys.map(function(a){return {label:divName(a),sub:parentArea(a),value:porArea[a]};})
-      .sort(function(x,y){return y.value-x.value;}));
-  } else { areaCard.style.display="none"; }
 
   renderAtsTabla(base, f.estado);
 }
+/* ============================================================
+   MÍNIMO DE PRODUCCIÓN · ATS + CHARLA DE 5 MIN
+   Mínimo = 1 ATS + 1 charla de 5 min por DÍA LABORABLE (lun–sáb) por cada
+   CUADRILLA (CU 1…CU total de la hoja «Cuadrillas»; rotativas = las que registran)
+   o PERSONA (Networking / I&D, padrón). 100% = mínimo cumplido; puede pasar de 100%
+   (cuadrillas/personas que atienden a más de un cliente en el día).
+   Cuentan: Aprobados + Por revisar (no Anulados ni Archivados).
+   Color: ROJO = no llegó al mínimo de ATS o al de charlas · VERDE = cumplió (100%) ·
+   AZUL = cumplió ambos y pasó de 100% (sobresaliente).
+   Los días exigidos van solo hasta HOY y desde el 1er registro de la app de campo.
+   Una persona cuenta aunque el ATS se haya subido en la otra subdivisión.
+   ============================================================ */
+var PROD_ST={r:"No cumple",g:"Cumple",b:"Sobresaliente",n:"Sin mínimo exigido"};
+var PROD_COL={r:"#dc2626",g:"#16a34a",b:"#2563eb",n:"#94a3b8"};
+function parseISO(s){ var p=String(s||"").split("-"); if(p.length<3) return null; var d=new Date(+p[0],+p[1]-1,+p[2]); return isNaN(d.getTime())?null:d; }
+function esDiaLaborable(d){ return d.getDay()!==0; }                     // lunes a sábado
+function diasLaborables(desde, hasta){                                    // ISO, ambos inclusive
+  var a=parseISO(desde), b=parseISO(hasta), n=0, g=0; if(!a||!b) return 0;
+  while(a<=b && g++<400){ if(esDiaLaborable(a)) n++; a.setDate(a.getDate()+1); }
+  return n;
+}
+function prodInicio(){ var m=""; (APP.ats||[]).forEach(function(r){ if(r.fecha && (!m||r.fecha<m)) m=r.fecha; }); return m; }
+function atsCuentaMinimo(r){ var k=estadoInfo(r.estado).key; return k==="Aprobado"||k==="Pendiente"; }
+// Divisiones en alcance con sus unidades (cuadrillas CU n o personas del padrón).
+function prodDivisiones(){
+  var out=[], meta=metaCuadrillas();
+  Object.keys(meta).forEach(function(comp){
+    if(!divEnAlcanceCob(comp)) return;
+    var total=+meta[comp]||0, rot=esDivRotativa(comp), u=[];
+    if(!rot) for(var i=1;i<=total;i++) u.push({ key:String(i), label:"CU "+i });
+    out.push({ comp:comp, tipo:"cuadrilla", total:total, rotativa:rot, unidades:u });
+  });
+  Object.keys(PADRON_INDIVIDUAL).forEach(function(ab){
+    var porDiv={}, orden=[];
+    PADRON_INDIVIDUAL[ab].forEach(function(p){
+      var dv=p.div||((AREAS_DIV[ab]||[])[0])||"";
+      if(!porDiv[dv]){ porDiv[dv]=[]; orden.push(dv); } porDiv[dv].push(p);
+    });
+    orden.forEach(function(dv){
+      var comp=dv?ab+SEP+dv:ab; if(!divEnAlcanceCob(comp)) return;
+      var u=porDiv[dv].slice().sort(function(a,b){ return String(a.nombre).localeCompare(String(b.nombre)); })
+        .map(function(p){ return { key:padDni(p.dni), label:p.nombre }; });
+      out.push({ comp:comp, tipo:"persona", areaBig:ab, total:u.length, rotativa:false, unidades:u });
+    });
+  });
+  return out.sort(function(a,b){ return String(a.comp).localeCompare(String(b.comp)); });
+}
+// Reparte los documentos en sus unidades: idx[unidad] = [{f:fecha,t:tipo}], fuera = N° fuera de
+// lista, extra = DNIs fuera del padrón, docs = todo lo subido en la división (desglose por estado).
+function prodIndice(docs, divs){
+  var byComp={}, byArea={};
+  divs.forEach(function(d){
+    d.idx={}; d.fuera={}; d.extra={}; d.docs=[];
+    d.unidades.forEach(function(u){ d.idx[u.key]=[]; });
+    byComp[norm(d.comp)]=d;
+    if(d.tipo==="persona") (byArea[norm(d.areaBig)]=byArea[norm(d.areaBig)]||[]).push(d);
+  });
+  (docs||[]).forEach(function(r){
+    var d=byComp[norm(r.area||"")];
+    if(d) d.docs.push(r);
+    if(!atsCuentaMinimo(r)) return;
+    var it={ f:r.fecha, t:r.tipo }, pa=byArea[norm(parentArea(r.area||""))];
+    if(pa){                                           // por persona: cuenta para cada participante
+      var ds=(r.dnis&&r.dnis.length)?r.dnis:[padDni(r.dni)];
+      ds.forEach(function(dni){
+        if(!dni) return; var hit=false;
+        pa.forEach(function(dd){ if(dd.idx[dni]){ dd.idx[dni].push(it); hit=true; } });
+        if(!hit && d) (d.extra[dni]=d.extra[dni]||[]).push(it);
+      });
+      return;
+    }
+    if(!d) return;
+    var num=numCuadrilla(r.cuadrilla)||"—";
+    if(d.rotativa){ (d.idx[num]=d.idx[num]||[]).push(it); return; }
+    if(d.idx[num]) d.idx[num].push(it); else (d.fuera[num]=d.fuera[num]||[]).push(it);
+  });
+  divs.forEach(function(d){ if(d.rotativa) d.unidades=Object.keys(d.idx).sort(porNumero).map(function(k){ return { key:k, label:"CU "+k }; }); });
+}
+function prodContar(list, desde, hasta){
+  var a=0, c=0; (list||[]).forEach(function(it){ if(it.f>=desde && it.f<=hasta){ if(it.t==="Charla") c++; else a++; } });
+  return { a:a, c:c };
+}
+function prodSumar(mapa, desde, hasta){
+  var a=0, c=0; Object.keys(mapa||{}).forEach(function(k){ var x=prodContar(mapa[k],desde,hasta); a+=x.a; c+=x.c; });
+  return { a:a, c:c };
+}
+// unid = cuadrillas/personas exigidas; dias = días laborables del rango.
+function prodEval(a, c, unid, dias){
+  var exp=unid*dias, esp=2*exp, tot=a+c;
+  if(!exp) return { a:a, c:c, tot:tot, exp:0, esp:0, pct:null, cls:"n" };
+  var ok=(a>=exp && c>=exp);
+  return { a:a, c:c, tot:tot, exp:exp, esp:esp, pct:Math.round(tot/esp*100), cls:!ok?"r":(tot>esp?"b":"g") };
+}
+function prodRango(p){
+  var hoy=fechaISO(new Date()), desde;
+  if(p==="hoy") desde=hoy;
+  else if(p==="mes") desde=hoy.slice(0,8)+"01";
+  else if(p==="anio") desde=hoy.slice(0,4)+"-01-01";
+  else desde=fechaISO(sabadoDe(hoy));
+  var ini=prodInicio(), recorte=!!(ini && ini>desde); if(recorte) desde=ini;
+  return { desde:desde, hasta:hoy, recorte:recorte };
+}
+function prodRangoTxt(p, R){
+  var h=parseISO(R.hasta), dd=parseISO(R.desde), DIAS=["dom","lun","mar","mié","jue","vie","sáb"];
+  var f=function(d){ return pad(d.getDate())+" "+MES3[d.getMonth()]; };
+  if(p==="hoy") return "Hoy · "+DIAS[h.getDay()]+" "+f(h);
+  if(p==="mes") return MES3[h.getMonth()]+" "+h.getFullYear()+" · del "+f(dd)+" a hoy";
+  if(p==="anio") return h.getFullYear()+" · del "+f(dd)+(R.recorte?" (inicio de la app)":"")+" a hoy";
+  return "Semana en curso · "+f(dd)+" a hoy (sáb→vie)";
+}
+function renderProduccion(){
+  var cont=document.getElementById("prodCards"), tb=document.getElementById("prodTabla"); if(!cont||!tb) return;
+  APP.prodPer=APP.prodPer||"semana"; APP.openSecs=APP.openSecs||{};
+  var pp=document.getElementById("prodPeriodo");
+  if(pp) pp.querySelectorAll("[data-p]").forEach(function(b){
+    b.classList.toggle("on", b.getAttribute("data-p")===APP.prodPer);
+    b.onclick=function(){ APP.prodPer=b.getAttribute("data-p"); renderProduccion(); };
+  });
+  var divs=prodDivisiones();
+  if(!divs.length){
+    cont.innerHTML='<div class="load-note" style="justify-content:flex-start">El alcance seleccionado no tiene cuadrillas ni personas con mínimo de producción.</div>';
+    tb.innerHTML=""; return;
+  }
+  // Todos los documentos vigentes (no solo los de la división del jefe): así una persona cuenta
+  // aunque su ATS se haya subido bajo la otra subdivisión. Las unidades sí respetan el alcance.
+  var docs=(APP.ats||[]).filter(function(r){
+    return estadoInfo(r.estado).key!=="Archivado" && !(APP.atsArchivadosLocal && APP.atsArchivadosLocal[atsDocKey(r)]);
+  });
+  prodIndice(docs, divs);
+  APP._prodDivs=divs;
+  var R=prodRango(APP.prodPer), dias=diasLaborables(R.desde,R.hasta);
+  var G={a:0,c:0,uC:0,uP:0}, cards=divs.map(function(d){
+    var x=prodSumar(d.idx,R.desde,R.hasta), ev=prodEval(x.a,x.c,d.total,dias), col=PROD_COL[ev.cls];
+    G.a+=x.a; G.c+=x.c; if(d.tipo==="persona") G.uP+=d.total; else G.uC+=d.total;
+    var st={Pendiente:0,Aprobado:0,Anulado:0};
+    d.docs.forEach(function(r){ if(r.fecha>=R.desde && r.fecha<=R.hasta){ var k=estadoInfo(r.estado).key; if(st[k]!=null) st[k]++; } });
+    var fueraN=prodSumar(d.fuera,R.desde,R.hasta), fN=fueraN.a+fueraN.c;
+    var extraN=Object.keys(d.extra).filter(function(k){ var y=prodContar(d.extra[k],R.desde,R.hasta); return y.a+y.c>0; }).length;
+    var pctTipo=function(n){ return ev.exp?' · '+Math.round(n/ev.exp*100)+'%':''; };
+    var uTxt=plural(d.total, d.tipo==="persona"?"persona":"cuadrilla", d.tipo==="persona"?"personas":"cuadrillas");
+    return '<div class="pcard '+ev.cls+'">'+
+      '<div class="pc-area">'+esc(parentArea(d.comp))+'</div><div class="pc-name">'+esc(divName(d.comp))+'</div>'+
+      '<div class="pc-main"><b class="tnum" style="color:'+col+'">'+(ev.pct==null?'—':ev.pct+'%')+'</b><span class="pc-st">'+PROD_ST[ev.cls]+'</span></div>'+
+      '<div class="pc-bar"><i style="width:'+Math.min(100,ev.pct||0)+'%;background:'+col+'"></i></div>'+
+      '<div class="pc-row"><span>ATS</span><span>'+x.a+' / '+ev.exp+pctTipo(x.a)+'</span></div>'+
+      '<div class="pc-row"><span>Charlas de 5 min</span><span>'+x.c+' / '+ev.exp+pctTipo(x.c)+'</span></div>'+
+      '<div class="pc-row tot"><span>Total</span><span>'+ev.tot+' / '+ev.esp+'</span></div>'+
+      '<div class="pc-est"><span>Por revisar <b>'+st.Pendiente+'</b></span><span>Aprobados <b>'+st.Aprobado+'</b></span><span>Anulados <b>'+st.Anulado+'</b></span></div>'+
+      '<div class="pc-note">'+uTxt+' × '+plural(dias,"día","días")+' × (1 ATS + 1 charla)'+
+        (d.rotativa?' · cuadrillas rotativas: cuenta lo registrado, tope = total':'')+
+        (fN?' · ⚠ '+fN+' doc. con N° de cuadrilla fuera de la lista (no suman)':'')+
+        (extraN?' · '+plural(extraN,"persona","personas")+' fuera del padrón (no suman)':'')+'</div>'+
+    '</div>';
+  });
+  var evG=prodEval(G.a,G.c,G.uC+G.uP,dias), uniG=[];
+  if(G.uC) uniG.push(plural(G.uC,"cuadrilla","cuadrillas")); if(G.uP) uniG.push(plural(G.uP,"persona","personas"));
+  cont.innerHTML='<div class="prod-sum"><span><b>'+esc(prodRangoTxt(APP.prodPer,R))+'</b> · '+plural(dias,"día laborable","días laborables")+' · '+uniG.join(" + ")+'</span>'+
+      '<span>Total: <b class="pv tnum" style="color:'+PROD_COL[evG.cls]+'">'+(evG.pct==null?'—':evG.pct+'%')+'</b> '+
+      '<span class="pc-st '+evG.cls+'">'+PROD_ST[evG.cls]+'</span> · ATS '+G.a+' / '+evG.exp+' · Charlas '+G.c+' / '+evG.exp+'</span>'+
+      (dias?'':'<span>Hoy es domingo: no hay mínimo exigido.</span>')+'</div>'+
+    '<div class="prod-cards">'+cards.join("")+'</div>';
+  renderProdTabla();
+}
+// Celda de la tabla: N° de documentos + % (contorno rojo/verde/azul). Al tocarla: ATS / Charla.
+function prodCelda(ev){
+  if(ev.pct==null) return '<span class="pc n" title="'+PROD_ST.n+'">'+(ev.tot?'<b>'+ev.tot+'</b>':'—')+'</span>';
+  return '<button type="button" class="pc '+ev.cls+'" title="'+PROD_ST[ev.cls]+' · mínimo '+ev.exp+' ATS + '+ev.exp+' charlas">'+
+    '<b>'+ev.tot+'</b><i>'+ev.pct+'%</i><span class="pd">ATS: '+ev.a+'<br>CHARLA DE 5 MIN: '+ev.c+'</span></button>';
+}
+// Tabla de doble entrada: filas = cuadrillas/personas (desplegables por división) · columnas = últimas 8 semanas.
+function renderProdTabla(){
+  var tb=document.getElementById("prodTabla"), divs=APP._prodDivs||[]; if(!tb) return;
+  var hoy=fechaISO(new Date()), sab=sabadoDe(hoy), ini=prodInicio(), sems=[];
+  for(var i=7;i>=0;i--){
+    var s=new Date(sab); s.setDate(s.getDate()-7*i);
+    var v=new Date(s); v.setDate(v.getDate()+6);
+    var desde=fechaISO(s), hasta=fechaISO(v); if(hasta>hoy) hasta=hoy;
+    if(ini && hasta<ini) continue;
+    if(ini && ini>desde) desde=ini;
+    sems.push({ desde:desde, hasta:hasta, sab:s, enCurso:(i===0), dias:diasLaborables(desde,hasta) });
+  }
+  var unaDiv=(divs.length===1);
+  var h='<div class="ptbl-wrap"><table class="ptbl"><thead><tr><th>Cuadrilla / persona</th>'+
+    sems.map(function(s){ var v=new Date(s.sab); v.setDate(v.getDate()+6);
+      return '<th title="Semana '+esc(rangoSemanaSab(s.sab))+'">'+pad(s.sab.getDate())+' '+MES3[s.sab.getMonth()]+(s.enCurso?'<em>en curso</em>':'')+'</th>'; }).join("")+
+    '</tr></thead><tbody>';
+  divs.forEach(function(d){
+    var k="prod:"+d.comp, open=(APP.openSecs[k]!=null)?!!APP.openSecs[k]:unaDiv;
+    var uTxt=plural(d.total, d.tipo==="persona"?"persona":"cuadrilla", d.tipo==="persona"?"personas":"cuadrillas");
+    h+='<tr class="pt-div" data-k="'+esc(k)+'" data-open="'+(open?1:0)+'"><td title="Mostrar u ocultar '+esc(uTxt)+'"><span class="pt-chev">'+(open?'▾':'▸')+'</span>'+esc(divName(d.comp))+
+       '<small>'+esc(parentArea(d.comp))+' · '+esc(uTxt)+(d.rotativa?' · rotativas':'')+'</small></td>'+
+       sems.map(function(s){ var x=prodSumar(d.idx,s.desde,s.hasta); return '<td>'+prodCelda(prodEval(x.a,x.c,d.total,s.dias))+'</td>'; }).join("")+'</tr>';
+    if(!open) return;
+    d.unidades.forEach(function(u){
+      h+='<tr class="pt-u"><td title="'+esc(u.label)+'">'+esc(u.label)+'</td>'+sems.map(function(s){
+        var x=prodContar(d.idx[u.key],s.desde,s.hasta), ev=prodEval(x.a,x.c,1,s.dias);
+        if(d.rotativa && !(x.a+x.c)) ev={ a:0, c:0, tot:0, exp:0, esp:0, pct:null, cls:"n" };   // rotativa: ese N° no trabajó esa semana
+        return '<td>'+prodCelda(ev)+'</td>';
+      }).join("")+'</tr>';
+    });
+    if(!d.unidades.length) h+='<tr class="pt-x"><td colspan="'+(sems.length+1)+'">Sin registros de cuadrillas en estas semanas.</td></tr>';
+    var fk=Object.keys(d.fuera).sort(porNumero);
+    if(fk.length) h+='<tr class="pt-x"><td title="No suman al %">N° fuera de lista: '+esc(fk.join(", "))+'</td>'+sems.map(function(s){
+      var x=prodSumar(d.fuera,s.desde,s.hasta); return '<td>'+((x.a+x.c)?'<span class="pc n" title="No suma al %"><b>'+(x.a+x.c)+'</b></span>':'')+'</td>'; }).join("")+'</tr>';
+    var ek=Object.keys(d.extra);
+    if(ek.length) h+='<tr class="pt-x"><td title="DNIs que no están en el padrón: no suman al %">Fuera del padrón ('+plural(ek.length,"persona","personas")+')</td>'+sems.map(function(s){
+      var x=prodSumar(d.extra,s.desde,s.hasta); return '<td>'+((x.a+x.c)?'<span class="pc n" title="No suma al %"><b>'+(x.a+x.c)+'</b></span>':'')+'</td>'; }).join("")+'</tr>';
+  });
+  h+='</tbody></table></div>'+
+    '<div class="p-legend"><span><i style="border-color:#dc2626;background:#fef2f2"></i>No llegó al mínimo (ATS o charlas)</span>'+
+    '<span><i style="border-color:#16a34a;background:#f0fdf4"></i>Cumple (100%)</span>'+
+    '<span><i style="border-color:#2563eb;background:#eff6ff"></i>Sobresaliente (más de 100%)</span>'+
+    '<span>Semana en curso: el mínimo cuenta solo los días hasta hoy.</span></div>';
+  tb.innerHTML=h;
+  tb.querySelectorAll("tr.pt-div td:first-child").forEach(function(td){
+    td.onclick=function(){ var tr=td.parentNode; APP.openSecs[tr.getAttribute("data-k")]=(tr.getAttribute("data-open")!=="1"); renderProdTabla(); };
+  });
+  tb.querySelectorAll("button.pc").forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); b.classList.toggle("open"); }; });
+}
+
 /* Celdas de una fila ATS (sin el <tr>): se reutilizan en la cola y en los meses. */
 function atsRowCells(r){
   var bAp='padding:5px 10px;border:0;border-radius:8px;background:#16a34a;color:#fff;font:inherit;font-weight:600;font-size:12px;cursor:pointer';
