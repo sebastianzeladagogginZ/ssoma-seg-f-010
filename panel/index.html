@@ -773,6 +773,13 @@
           #view-ats .pu .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
           #view-ats .pu .nu{display:flex;justify-content:flex-end;color:var(--muted);font-variant-numeric:tabular-nums}
           #view-ats .pu .pc-st{text-align:center}
+          #view-ats .pu[data-u]{cursor:pointer;border-radius:8px}
+          #view-ats .pu[data-u]:hover{background:#f8fbfe}
+          #view-ats .pu.sel{background:#e0f2fe;box-shadow:inset 3px 0 0 var(--brand2)}
+          #view-ats .pan-u{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:7px 10px;margin:4px 0 6px;font-size:12px;color:var(--muted)}
+          #view-ats .pan-u b{color:var(--ink)} #view-ats .pan-u .pp{font-size:16px;font-weight:800}
+          #view-ats .pan-ux{margin-left:auto;font:inherit;font-size:11.5px;font-weight:700;color:var(--brand2);background:#fff;border:1px solid #bae6fd;border-radius:999px;padding:3px 10px;cursor:pointer}
+          #view-ats .pan-ul{margin:0 0 6px;padding-left:18px;font-size:12px;line-height:1.6;color:#334155}
           #view-ats .pan-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted);margin-top:4px}
           #view-ats .pan-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
           /* Tabla de doble entrada (cuadrilla/persona × semana) */
@@ -886,7 +893,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V54";
+var PANEL_VERSION = "V55";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2946,6 +2953,7 @@ function renderProduccion(){
     };
   });
   var bx=document.getElementById("prodAnalisisX"); if(bx) bx.onclick=function(){ APP.prodSel=null; renderProduccion(); };
+  wireProdUnidades();
   renderProdTabla();
 }
 // Análisis detallado de UNA división en el período elegido (se abre al tocar su ficha).
@@ -2955,26 +2963,15 @@ function prodAnalisisHTML(d, R, dias, per){
   var prev=prodRangoPrevio(per,R), evp=null;
   if(prev){ var xp=prodSumar(d.idx,prev.desde,prev.hasta); evp=prodEval(xp.a,xp.c,d.total,diasLaborables(prev.desde,prev.hasta)); }
   // por unidad (cuadrilla CU n o persona), peor primero
-  var us=d.unidades.map(function(u){ var y=prodContar(d.idx[u.key],R.desde,R.hasta); return { label:u.label, a:y.a, c:y.c, ev:prodEval(y.a,y.c,1,dias) }; })
+  var us=d.unidades.map(function(u){ var y=prodContar(d.idx[u.key],R.desde,R.hasta); return { key:u.key, label:u.label, a:y.a, c:y.c, ev:prodEval(y.a,y.c,1,dias) }; })
     .sort(function(p,q){ return (p.ev.pct==null?1e9:p.ev.pct)-(q.ev.pct==null?1e9:q.ev.pct) || String(p.label).localeCompare(String(q.label),undefined,{numeric:true}); });
   var cumplen=us.filter(function(u){ return u.ev.cls==="g"||u.ev.cls==="b"; });
+  var pre=d.comp+"|", selKey=(APP.prodSelU && APP.prodSelU.indexOf(pre)===0)?APP.prodSelU.slice(pre.length):null;
+  if(selKey && !d.unidades.some(function(u){ return u.key===selKey; })) selKey=null;
+  APP._prodCtx={ d:d, R:R, dias:dias };
   var st={Pendiente:0,Aprobado:0,Anulado:0};
   d.docs.forEach(function(r){ if(r.fecha>=R.desde && r.fecha<=R.hasta){ var k=estadoInfo(r.estado).key; if(st[k]!=null) st[k]++; } });
-  // día a día (o semana a semana si el período es largo)
-  var serie=[], largo=(dias>31);
-  if(largo){
-    for(var s=sabadoDe(R.desde); s && fechaISO(s)<=R.hasta; s.setDate(s.getDate()+7)){
-      var de=fechaISO(s), v=new Date(s); v.setDate(v.getDate()+6); var ha=fechaISO(v); if(ha>R.hasta) ha=R.hasta; if(de<R.desde) de=R.desde;
-      var nd=diasLaborables(de,ha); if(!nd) continue; var z=prodSumar(d.idx,de,ha);
-      serie.push({ lbl:pad(s.getDate())+"/"+pad(s.getMonth()+1), a:z.a, c:z.c, meta:d.total*nd });
-    }
-  } else {
-    var DIAS=["dom","lun","mar","mié","jue","vie","sáb"];
-    for(var t=parseISO(R.desde); t && fechaISO(t)<=R.hasta; t.setDate(t.getDate()+1)){
-      if(!esDiaLaborable(t)) continue; var k=fechaISO(t), w=prodSumar(d.idx,k,k);
-      serie.push({ lbl:DIAS[t.getDay()]+" "+pad(t.getDate()), a:w.a, c:w.c, meta:d.total });
-    }
-  }
+  var SR=prodSerie(function(a,b){ return prodSumar(d.idx,a,b); }, d.total, R, dias), serie=SR.serie, largo=SR.largo;
   var okDias=serie.filter(function(p){ return p.a>=p.meta && p.c>=p.meta; }).length;
   // ---- hallazgos (texto automático) ----
   var H=[], lista=function(arr){ var n=arr.map(function(u){ return '<b>'+esc(u.label)+'</b>'; }); return n.length>5?n.slice(0,5).join(", ")+" y "+(n.length-5)+" más":n.join(", "); };
@@ -3011,7 +3008,8 @@ function prodAnalisisHTML(d, R, dias, per){
   var nombresOk=cumplen.slice(0,4).map(function(u){ return esc(u.label); }).join(" · ")+(cumplen.length>4?" y "+(cumplen.length-4)+" más":"");
   var filas=us.map(function(u){
     var e=u.ev, tx=!u.a&&!u.c?"Sin registros":(!u.c?"Sin charlas":(!u.a?"Sin ATS":PROD_ST[e.cls]));
-    return '<div class="pu"><span class="nm" title="'+esc(u.label)+'">'+esc(u.label)+'</span>'+
+    var on=(selKey===u.key);
+    return '<div class="pu'+(on?' sel':'')+'" data-u="'+esc(u.key)+'" role="button" tabindex="0" aria-pressed="'+(on?'true':'false')+'" title="Ver el gráfico de '+esc(u.label)+'"><span class="nm">'+esc(u.label)+'</span>'+
       '<span><span class="nu">'+u.a+'/'+dias+'</span><span class="mbar"><i style="width:'+(dias?Math.min(100,u.a/dias*100):0)+'%"></i></span></span>'+
       '<span><span class="nu">'+u.c+'/'+dias+'</span><span class="mbar cv"><i style="width:'+(dias?Math.min(100,u.c/dias*100):0)+'%"></i></span></span>'+
       '<b class="tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b><span class="pc-st '+e.cls+'">'+tx+'</span></div>';
@@ -3028,13 +3026,83 @@ function prodAnalisisHTML(d, R, dias, per){
     '</div>'+
     '<div class="pan-hall"><h5>Hallazgos</h5><ul>'+H.map(function(h){ return '<li>'+h+'</li>'; }).join("")+'</ul></div>'+
     '<div class="pan-cols">'+
-      '<div class="pan-col"><h5>Por '+uS+' <span>peor primero · mínimo '+dias+' ATS + '+dias+' charlas</span></h5>'+
+      '<div class="pan-col"><h5>Por '+uS+' <span>peor primero · mínimo '+dias+' ATS + '+dias+' charlas · toca una para ver su gráfico</span></h5>'+
         '<div class="pu hd"><span></span><span class="nu">ATS</span><span class="nu">Charlas</span><span>%</span><span></span></div>'+(filas||'<div style="font-size:12px;color:var(--soft);padding:6px 2px">Sin registros en el período.</div>')+'</div>'+
-      '<div class="pan-col"><h5>'+(largo?"Semana a semana":"Día a día")+' <span>meta por tipo: '+(largo?d.total+' × días hábiles':d.total+' ATS + '+d.total+' charlas')+'</span></h5>'+
-        (serie.length?prodBarrasSVG(serie):'<div style="font-size:12px;color:var(--soft)">Sin días hábiles.</div>')+
-        '<div class="pan-leg"><span><i style="background:#0284c7"></i>ATS</span><span><i style="background:#7c3aed"></i>Charlas</span><span><i style="background:none;border-top:2px dashed #16a34a;height:0;width:14px;border-radius:0"></i>Meta por tipo</span></div></div>'+
+      '<div class="pan-col" id="prodColGraf">'+prodColGrafHTML(d,R,dias,selKey)+'</div>'+
     '</div>'+
   '</div>';
+}
+// Serie del gráfico del análisis: día a día (o semana a semana si el período pasa de 31 días hábiles).
+// sumar(desde,hasta) → {a,c}; unid = cuadrillas/personas exigidas (toda la división o 1 sola).
+function prodSerie(sumar, unid, R, dias){
+  var serie=[], largo=(dias>31);
+  if(largo){
+    for(var s=sabadoDe(R.desde); s && fechaISO(s)<=R.hasta; s.setDate(s.getDate()+7)){
+      var de=fechaISO(s), v=new Date(s); v.setDate(v.getDate()+6); var ha=fechaISO(v); if(ha>R.hasta) ha=R.hasta; if(de<R.desde) de=R.desde;
+      var nd=diasLaborables(de,ha); if(!nd) continue; var z=sumar(de,ha);
+      serie.push({ lbl:pad(s.getDate())+"/"+pad(s.getMonth()+1), a:z.a, c:z.c, meta:unid*nd });
+    }
+  } else {
+    var DIAS=["dom","lun","mar","mié","jue","vie","sáb"];
+    for(var t=parseISO(R.desde); t && fechaISO(t)<=R.hasta; t.setDate(t.getDate()+1)){
+      if(!esDiaLaborable(t)) continue; var k=fechaISO(t), w=sumar(k,k);
+      serie.push({ lbl:DIAS[t.getDay()]+" "+pad(t.getDate()), a:w.a, c:w.c, meta:unid });
+    }
+  }
+  return { serie:serie, largo:largo };
+}
+// Columna derecha del análisis: gráfico de toda la división o, si se tocó una fila, de esa
+// cuadrilla/persona sola (con su resumen y hallazgos propios).
+function prodColGrafHTML(d, R, dias, key){
+  var u=key?d.unidades.filter(function(x){ return x.key===key; })[0]:null;
+  var SR=u?prodSerie(function(a,b){ return prodContar(d.idx[u.key],a,b); }, 1, R, dias)
+          :prodSerie(function(a,b){ return prodSumar(d.idx,a,b); }, d.total, R, dias);
+  var serie=SR.serie, largo=SR.largo, unid=u?1:d.total, per=largo?"semanas":"días";
+  var h='<h5>'+(largo?"Semana a semana":"Día a día")+' · '+(u?'<span style="color:var(--brand2);font-weight:800;font-size:13px">'+esc(u.label)+'</span>':'toda la división')+
+    ' <span>meta por tipo: '+(largo?unid+' × días hábiles':unid+' ATS + '+unid+' charla'+(unid===1?'':'s'))+'</span></h5>';
+  if(u){
+    var y=prodContar(d.idx[u.key],R.desde,R.hasta), e=prodEval(y.a,y.c,1,dias), n=serie.length;
+    var ok=serie.filter(function(p){ return p.a>=p.meta && p.c>=p.meta; }).length;
+    var sinC=serie.filter(function(p){ return !p.c; }).length, sinA=serie.filter(function(p){ return !p.a; }).length;
+    var nada=serie.filter(function(p){ return !p.a && !p.c; }).length;
+    var mejor=null; serie.forEach(function(p){ if(!mejor || p.a+p.c>mejor.a+mejor.c) mejor=p; });
+    var L=[];
+    if(n>1) L.push(ok?'Alcanzó la meta en <b>'+ok+'</b> de '+n+' '+per+'.':'No alcanzó la meta en '+(largo?'ninguna de las ':'ninguno de los ')+n+' '+per+'.');
+    if(nada) L.push('Sin ningún documento en <b>'+nada+'</b> de '+n+' '+per+'.');
+    if(sinC>nada) L.push('Sin charlas en <b>'+sinC+'</b> de '+n+' '+per+'.');
+    if(sinA>nada) L.push('Sin ATS en <b>'+sinA+'</b> de '+n+' '+per+'.');
+    if(mejor && n>1 && mejor.a+mejor.c>0) L.push('Mejor '+(largo?'semana':'día')+': <b>'+esc(mejor.lbl)+'</b> ('+mejor.a+' ATS + '+mejor.c+' charla'+(mejor.c===1?'':'s')+').');
+    h+='<div class="pan-u"><span><b class="pp tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b> <span class="pc-st '+e.cls+'">'+PROD_ST[e.cls]+'</span></span>'+
+       '<span>ATS <b>'+y.a+'</b>/'+dias+' · Charlas <b>'+y.c+'</b>/'+dias+'</span>'+
+       '<button type="button" class="pan-ux" id="prodUnidadX">✕ Ver toda la división</button></div>'+
+       (L.length?'<ul class="pan-ul">'+L.map(function(t){ return '<li>'+t+'</li>'; }).join("")+'</ul>':'');
+  }
+  h+=(serie.length?prodBarrasSVG(serie):'<div style="font-size:12px;color:var(--soft)">Sin días hábiles.</div>')+
+    '<div class="pan-leg"><span><i style="background:#0284c7"></i>ATS</span><span><i style="background:#7c3aed"></i>Charlas</span><span><i style="background:none;border-top:2px dashed #16a34a;height:0;width:14px;border-radius:0"></i>Meta por tipo</span></div>';
+  return h;
+}
+// Clic en una fila del análisis → el gráfico de la derecha muestra solo esa cuadrilla/persona
+// (otro clic en la misma fila o "Ver toda la división" vuelve al total). No re-pinta el resto.
+function wireProdUnidades(){
+  var pan=document.getElementById("prodAnalisis"), ctx=APP._prodCtx; if(!pan || !ctx) return;
+  var wireX=function(){ var x=document.getElementById("prodUnidadX"); if(x) x.onclick=function(){ elegir(null); }; };
+  var elegir=function(key){
+    var pre=ctx.d.comp+"|", nuevo=(key && APP.prodSelU!==pre+key)?pre+key:null;
+    APP.prodSelU=nuevo;
+    pan.querySelectorAll(".pu[data-u]").forEach(function(r){
+      var on=(nuevo===pre+r.getAttribute("data-u")); r.classList.toggle("sel",on); r.setAttribute("aria-pressed",on?"true":"false");
+    });
+    var g=document.getElementById("prodColGraf");
+    if(g){
+      g.innerHTML=prodColGrafHTML(ctx.d,ctx.R,ctx.dias,nuevo?key:null); wireX();
+      if(nuevo && window.innerWidth<=900 && g.scrollIntoView) g.scrollIntoView({behavior:"smooth",block:"nearest"});   // en celular el gráfico queda debajo
+    }
+  };
+  pan.querySelectorAll(".pu[data-u]").forEach(function(r){
+    r.onclick=function(){ elegir(r.getAttribute("data-u")); };
+    r.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); elegir(r.getAttribute("data-u")); } };
+  });
+  wireX();
 }
 // Barras agrupadas ATS / Charlas por día (o semana) contra la meta de cada tipo (línea verde punteada).
 function prodBarrasSVG(serie){
