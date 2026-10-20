@@ -654,6 +654,26 @@
           #view-cobertura .cob-subt{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
           #view-cobertura .cob-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
           #view-cobertura .cob-curso{font-style:normal;font-size:10.5px;letter-spacing:.03em;background:#fef3c7;color:#92400e;border-radius:99px;padding:2px 9px}
+          #view-cobertura .tp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}
+          #view-cobertura .tp-chip{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:7px 12px;min-width:150px}
+          #view-cobertura .tp-chip.meta{background:#f0fdf4;border-color:#bbf7d0}
+          #view-cobertura .tp-l{font-size:11.5px;color:var(--muted)}
+          #view-cobertura .tp-chip.meta .tp-l,#view-cobertura .tp-chip.meta .tp-v span{color:#15803d}
+          #view-cobertura .tp-v{font-size:12px;color:var(--muted)}
+          #view-cobertura .tp-v b{font-size:18px;font-weight:800;color:#0369a1}
+          #view-cobertura .tp-chip.meta .tp-v b{color:#166534}
+          #view-cobertura .tp-bar{height:5px;background:#e2e8f0;border-radius:999px;margin-top:5px;overflow:hidden}
+          #view-cobertura .tp-bar i{display:block;height:100%;background:#0284c7;border-radius:999px}
+          #view-cobertura .tp-up{color:#15803d;font-weight:700} #view-cobertura .tp-down{color:#64748b;font-weight:700}
+          #view-cobertura .tp-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:var(--muted);margin-top:4px}
+          #view-cobertura .tp-legend span{display:inline-flex;align-items:center;gap:6px}
+          #view-cobertura .tp-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px solid #0284c7;background:#fff}
+          #view-cobertura .tp-dot.ok{border-color:#fff;background:#16a34a;box-shadow:0 0 0 1.5px #16a34a}
+          #view-cobertura .tp-dot.cur{border-style:dashed}
+          #view-cobertura .tp-dash{display:inline-block;width:18px;border-top:2px dashed #16a34a}
+          #view-cobertura .cob-pt{cursor:pointer;outline:none}
+          #view-cobertura .cob-pt:hover rect{fill:rgba(2,132,199,.06)}
+          #view-cobertura .cob-pt:focus-visible rect{stroke:#0284c7;stroke-width:1.5}
           #view-cobertura .cob-legend{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
           #view-cobertura .sw-curso{background:repeating-linear-gradient(135deg,#94a3b8 0 3px,#e2e8f0 3px 6px)}
           #view-cobertura .cb-unit{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#0369a1;background:#e0f2fe;border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:1px}
@@ -893,7 +913,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V58";
+var PANEL_VERSION = "V59";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2061,6 +2081,58 @@ function iconCobTarget(){return '<svg viewBox="0 0 24 24" fill="none" stroke="cu
 function bgPct(p){ return p>=100?"#dcfce7":(p>=50?"#fef3c7":"#fee2e2"); }
 function plural(n,s,p){ return n+" "+(n===1?s:p); }
 
+/* ---- Cobertura por semana (mismo lenguaje que la tendencia del ATS) ----
+   Línea azul con el % en cada punto, meta verde 100%, punto verde si la semana se completó,
+   semana elegida resaltada (franja + punto grande) y semana en curso con trazo punteado.
+   Tocar un punto (o su columna) elige la semana: el clic se delega en #cobWeek para que siga
+   funcionando cuando el gráfico se redibuja al cambiar el ancho de la ventana. */
+function cobTrendSVG(cfg, w){
+  var pts=cfg.pts, n=pts.length, sel=cfg.sel, cur=cfg.cur; w=Math.max(300,Math.round(w));
+  var h=240, padL=40, padR=16, padT=28, padB=34, ih=h-padT-padB, ins=24;
+  var mx=Math.max(100, Math.max.apply(null,pts.map(function(p){ return p.y; }).concat([1])))*1.08;
+  var mag=Math.pow(10,Math.floor(Math.log(mx)/Math.LN10)), maxY=mag*10;
+  [1,1.2,1.6,2,2.4,3,4,5,6,8,10].some(function(k){ if(k*mag>=mx){ maxY=k*mag; return true; } return false; });
+  var Y=function(v){ return padT+(1-v/maxY)*ih; };
+  var dx=(w-padL-padR-2*ins)/Math.max(1,n-1);
+  var c=pts.map(function(p,i){ return { x:(n===1?(padL+w-padR)/2:padL+ins+i*dx), y:Y(p.y), p:p, i:i }; });
+  var colW=(n===1?120:dx), bw=Math.min(colW*0.84,96);
+  var out=[0,.25,.5,.75,1].map(function(g){ var v=maxY*g, y=Y(v);
+    return '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(1)+'" stroke="#eef2f6"/>'+
+      '<text x="'+(padL-7)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="#94a3b8">'+Math.round(v)+'%</text>'; }).join("");
+  if(sel!=null && c[sel]) out+='<rect x="'+(c[sel].x-bw/2).toFixed(1)+'" y="'+(padT-18)+'" width="'+bw.toFixed(1)+'" height="'+(ih+18+padB-4)+'" rx="10" fill="rgba(2,132,199,.10)"/>';
+  var path=function(arr){ return arr.map(function(q,i){ return (i?"L":"M")+q.x.toFixed(1)+" "+q.y.toFixed(1); }).join(" "); };
+  var area=path(c)+" L"+c[n-1].x.toFixed(1)+" "+(padT+ih)+" L"+c[0].x.toFixed(1)+" "+(padT+ih)+" Z";
+  var gid="cg"+Math.random().toString(36).slice(2,7);
+  out+='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".2"/><stop offset="1" stop-color="#0284c7" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+area+'" fill="url(#'+gid+')"/>'+
+    '<line x1="'+padL+'" y1="'+Y(100).toFixed(1)+'" x2="'+(w-padR)+'" y2="'+Y(100).toFixed(1)+'" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 4"/>';
+  var curUlt=(cur===n-1 && n>1);
+  out+='<path d="'+path(curUlt?c.slice(0,n-1):c)+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  if(curUlt) out+='<path d="'+path(c.slice(n-2))+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round"/>';
+  var vStep=(n===1)?1:Math.max(1,Math.ceil(30/dx));
+  c.forEach(function(q){
+    var ok=q.p.y>=100, esSel=(q.i===sel), esCur=(q.i===cur);
+    out+='<circle cx="'+q.x.toFixed(1)+'" cy="'+q.y.toFixed(1)+'" r="'+(esSel?7:5)+'" fill="'+(ok?"#16a34a":"#fff")+'" stroke="'+(ok?"#fff":"#0284c7")+'" stroke-width="2.5"'+(esCur&&!ok?' stroke-dasharray="3 2"':'')+'/>';
+    if(esSel || q.i===n-1 || (q.i%vStep===0 && n-1-q.i>=vStep)){
+      var ty=q.y<padT+8?q.y+20:q.y-12;
+      out+='<text x="'+q.x.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="'+(ok?"#15803d":(esSel?"#0c4a6e":"#0369a1"))+'" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">'+q.p.y+'%</text>';
+    }
+  });
+  var xStep=Math.max(1,Math.ceil(n/Math.max(2,Math.floor((w-padL-padR)/52))));
+  c.forEach(function(q){
+    var esSel=(q.i===sel), esCur=(q.i===cur);
+    if(!(esSel || esCur || q.i%xStep===0)) return;
+    out+='<text x="'+q.x.toFixed(1)+'" y="'+(padT+ih+15)+'" text-anchor="middle" font-size="10.5" fill="'+(esSel?"#0c4a6e":"#94a3b8")+'"'+(esSel?' font-weight="800"':'')+'>'+esc(q.p.x)+'</text>';
+    if(esCur) out+='<text x="'+q.x.toFixed(1)+'" y="'+(padT+ih+27)+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="#b45309">en curso</text>';
+  });
+  // zonas de clic (una columna por semana), encima de todo
+  c.forEach(function(q){
+    var x0=Math.max(padL,q.x-colW/2), x1=Math.min(w-padR,q.x+colW/2);
+    out+='<g class="cob-pt bar-click" data-i="'+q.i+'" role="button" tabindex="0" aria-label="'+esc(q.p.tip)+'"><title>'+esc(q.p.tip)+'</title>'+
+      '<rect x="'+x0.toFixed(1)+'" y="'+(padT-18)+'" width="'+Math.max(4,x1-x0).toFixed(1)+'" height="'+(ih+18+padB-4)+'" rx="10" fill="rgba(0,0,0,0)"/></g>';
+  });
+  return '<svg class="lc-svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Cobertura por semana">'+out+'</svg>';
+}
 function renderCobertura(){
   var cont=document.getElementById("cobContent"); if(!cont) return;
   var hayCrew=Object.keys(metaCuadrillas()).some(divEnAlcanceCob);
@@ -2104,13 +2176,25 @@ function renderCobertura(){
       '<div class="kpi-sub">'+partes.join(" · ")+'</div></div>';
   h+='</div>';
 
-  // ---- Un solo gráfico semanal ----
-  h+='<div class="card cob-card"><div class="ch"><h3>Cobertura por semana</h3><span class="sub">sábado → viernes · toca una barra para ver esa semana</span></div>'+
-     '<div class="cb" id="cobWeek">'+barChart(semanas.map(function(s,i){
-       var gg=resumenCob(filasCobertura(s.items));
-       return { label:"Semana "+rangoSemanaSab(s.sab), short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:gg.pct, color:colorPct(gg.pct), enCurso:(i===ultimo) };
-     }),{clickable:true,max:100,suffix:"%"})+
-     '<div class="legend cob-legend"><i><span class="sw" style="background:#16a34a"></span>100% · completa</i><i><span class="sw" style="background:#d97706"></span>50–99%</i><i><span class="sw" style="background:#dc2626"></span>menos de 50%</i><i><span class="sw sw-curso"></span>semana en curso</i></div>'+
+  // ---- Un solo gráfico semanal: línea (mismo lenguaje que la tendencia del ATS) + resumen ----
+  var pcts=semanas.map(function(s){ return resumenCob(filasCobertura(s.items)).pct; });
+  var cerr=pcts.slice(0,ultimo), promC=cerr.length?Math.round(cerr.reduce(function(a,b){ return a+b; },0)/cerr.length):null;
+  var dSel=(idx>0)?pcts[idx]-pcts[idx-1]:null;
+  var chipsC='<div class="tp-chips">'+
+    (promC!=null?'<div class="tp-chip"><div class="tp-l">Promedio de '+plural(cerr.length,"semana cerrada","semanas cerradas")+'</div><div class="tp-v"><b>'+promC+'%</b> de la meta</div><div class="tp-bar"><i style="width:'+Math.min(100,promC)+'%"></i></div></div>':'')+
+    '<div class="tp-chip"><div class="tp-l">'+(enCurso?'Semana en curso · cierra vie '+pad(vie.getDate())+' '+MES3[vie.getMonth()]:'Semana '+esc(rangoSemanaSab(sem.sab))+' (elegida)')+'</div>'+
+      '<div class="tp-v"><b>'+g.pct+'%</b>'+(dSel!=null && !enCurso?' <span class="'+(dSel>=0?'tp-up':'tp-down')+'">'+(dSel>=0?'▲ ':'▼ ')+plural(Math.abs(dSel),"pt","pts")+'</span> vs. anterior':'')+'</div></div>'+
+    (!enCurso?'<div class="tp-chip"><div class="tp-l">Semana en curso</div><div class="tp-v"><b>'+pcts[ultimo]+'%</b> hasta hoy</div></div>':'')+
+    '<div class="tp-chip meta"><div class="tp-l">Meta semanal</div><div class="tp-v"><b>100%</b> <span>'+[hayCrew?plural(g.cT,"cuadrilla","cuadrillas"):"",indivAreas.length?plural(g.pT,"persona","personas"):""].filter(Boolean).join(" + ")+'</span></div></div>'+
+  '</div>';
+  var cfgC={ pts:semanas.map(function(s,i){ var lbl=pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1);
+      return { x:lbl, y:pcts[i], tip:"Semana "+rangoSemanaSab(s.sab)+": "+pcts[i]+"%"+(i===ultimo?" (en curso)":"") }; }), sel:idx, cur:ultimo };
+  var idC="lc"+(++_LC.n); _LC.data[idC]=function(w){ return cobTrendSVG(cfgC,w); };
+  h+='<div class="card cob-card"><div class="ch"><h3>Cobertura por semana</h3><span class="sub">sábado → viernes · toca un punto para ver esa semana</span></div>'+
+     '<div class="cb" id="cobWeek">'+chipsC+
+       '<div class="lchart" data-lc="'+idC+'">'+cobTrendSVG(cfgC,560)+'</div>'+
+       '<div class="tp-legend"><span><i class="tp-dot"></i>% de cobertura</span><span><i class="tp-dot ok"></i>Semana completa (100%)</span>'+
+       '<span><i class="tp-dot cur"></i>Semana en curso</span><span><i class="tp-dash"></i>Meta 100%</span></div>'+
      '</div></div>';
 
   // ---- Una sola lista de detalle (cuadrillas + personas) ----
@@ -2136,12 +2220,14 @@ function renderCobertura(){
   h+='</div>';
   cont.innerHTML=h;
 
-  // Barras de semana → cambia la semana de TODA la vista (KPIs + detalle).
+  // Puntos de semana → cambia la semana de TODA la vista (KPIs + detalle).
   (function(){
     var cw=cont.querySelector("#cobWeek"); if(!cw) return;
-    var bars=cw.querySelectorAll(".bar-click");
-    bars.forEach(function(b){ b.onclick=function(){ APP.cobSemanaIdx=+b.getAttribute("data-i"); renderCobertura(); }; });
-    if(bars[idx]) bars[idx].classList.add("sel");
+    cw.onclick=function(e){
+      var t=e.target && e.target.closest ? e.target.closest("[data-i]") : null; if(!t || !cw.contains(t)) return;
+      var i=+t.getAttribute("data-i"); if(i===APP.cobSemanaIdx) return;
+      APP.cobSemanaIdx=i; renderCobertura();
+    };
   })();
   // Expandir/colapsar filas (una abierta a la vez; recuerda la elección al cambiar de semana).
   cont.querySelectorAll(".cb-row").forEach(function(row){
@@ -2343,7 +2429,7 @@ function lineChartSVG(points,w){
 })();
 document.addEventListener("keydown",function(e){
   var t=e.target; if(!t || !t.classList || !t.classList.contains("bar-click")) return;
-  if(e.key==="Enter"||e.key===" "){ e.preventDefault(); t.click(); }
+  if(e.key==="Enter"||e.key===" "){ e.preventDefault(); if(typeof t.click==="function") t.click(); else t.dispatchEvent(new MouseEvent("click",{bubbles:true})); }   // SVG no tiene .click()
 });
 function emptyChart(msg){ return '<div class="empty-state" style="padding:34px"><div class="em">📭</div>'+msg+'</div>'; }
 
