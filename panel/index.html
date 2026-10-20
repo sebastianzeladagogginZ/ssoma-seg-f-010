@@ -425,6 +425,34 @@
     .row2{grid-template-columns:1.5fr 1fr}
   }
 
+  /* ===== Marcar vacaciones / destacada (formulario) ===== */
+  .mk-wrap{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+  .mk-box{background:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(15,23,42,.25);width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow:auto;padding:18px 20px;font-size:13px;color:var(--ink)}
+  .mk-box [hidden]{display:none!important}
+  .mk-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+  .mk-h small{display:block;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.02em}
+  .mk-h h4{margin:3px 0 0;font-size:16px;font-weight:800;line-height:1.3}
+  .mk-x{flex:none;border:0;background:#f1f5f9;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13px}
+  .mk-act{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:12px;line-height:1.7}
+  .mk-act b{display:block;font-size:11px;color:var(--muted)}
+  .mk-act span{color:var(--soft)}
+  .mk-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+  .mk-op{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:9px 10px;font:inherit;font-weight:700;font-size:12.5px;color:var(--muted);cursor:pointer}
+  .mk-op[data-m=activa].on{border-color:#16a34a;background:#f0fdf4;color:#166534}
+  .mk-op[data-m=vacaciones].on{border-color:#f59e0b;background:#fffbeb;color:#92400e}
+  .mk-op[data-m=destacada].on{border-color:#8b5cf6;background:#f5f3ff;color:#5b21b6}
+  .mk-box label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:10px}
+  .mk-box input,.mk-box textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font:inherit;font-size:13px;color:var(--ink);background:#fff;resize:vertical}
+  .mk-box input:focus,.mk-box textarea:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(2,132,199,.15)}
+  .mk-f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mk-hint{font-size:11.5px;color:var(--soft);line-height:1.5;margin-bottom:10px}
+  .mk-err{font-size:12px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:8px 10px;margin-bottom:10px}
+  .mk-btns{display:flex;justify-content:flex-end;gap:8px}
+  .mk-btns button{border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+  .mk-cancel{border:1px solid #cbd5e1;background:#fff;color:var(--muted)}
+  .mk-save{border:0;background:var(--brand2);color:#fff}
+  .mk-save:disabled{opacity:.6;cursor:default}
+
   /* ===== Impresión / PDF del navegador: solo el contenido ===== */
   @media print{
     aside,.menu-toggle,.refresh-btn,.topbar-epp,.area-select,#bulkBar,.toast,.menu-scrim{display:none!important}
@@ -728,6 +756,7 @@
           #view-cobertura .cb-frac{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15;font-variant-numeric:tabular-nums}
           #view-cobertura .cb-frac b{font-size:13.5px;font-weight:800;color:#334155}
           #view-cobertura .cb-frac small{font-size:10px;font-weight:600;color:var(--soft)}
+          #view-cobertura .cb-frac small.cb-fz{color:#b45309;white-space:nowrap}
           #view-cobertura .cb-chev{display:inline-flex;width:18px;height:18px;color:var(--soft);transition:transform .2s ease}
           #view-cobertura .cb-chev svg{width:18px;height:18px;display:block}
           #view-cobertura .cb-item.open .cb-chev{transform:rotate(180deg);color:var(--brand2)}
@@ -755,6 +784,17 @@
           #view-cobertura .cb-person .cb-dot{font-weight:800;font-size:12px;color:#94a3b8}
           #view-cobertura .cb-person.ok .cb-dot{color:#16a34a}
           #view-cobertura .cb-person .cb-pn{white-space:nowrap}
+          /* Vacaciones / destacada: la ficha sale del total mientras dure la marca */
+          #view-cobertura .cb-person.mk{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+          #view-cobertura .cb-person.mk:hover{border-color:var(--brand2);box-shadow:0 0 0 3px rgba(2,132,199,.12)}
+          #view-cobertura .cb-person.mk:focus-visible{outline:2px solid var(--brand2);outline-offset:2px}
+          #view-cobertura .cb-person.nov{border-style:dashed}
+          #view-cobertura .cb-person.nov.vac{color:#92400e;background:#fffbeb;border-color:#fcd34d}
+          #view-cobertura .cb-person.nov.des{color:#5b21b6;background:#f5f3ff;border-color:#c4b5fd}
+          #view-cobertura .cb-person.nov .cb-dot{color:inherit}
+          #view-cobertura .cb-stat.cb-nov b{color:#b45309}
+          #view-cobertura .cb-mk-hint{font-size:11.5px;color:var(--soft);margin:0 0 8px;line-height:1.5}
+          #view-cobertura .cb-mk-hint b{color:var(--muted)}
           #view-cobertura .cb-chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}
           #view-cobertura .cb-chip-bad{background:#fee2e2;color:#991b1b}
           #view-cobertura .cb-chip-warn{background:#fef3c7;color:#92400e}
@@ -804,6 +844,9 @@
           #view-ats .mbar.cv i{background:#7c3aed}
           #view-ats .pc-st{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
           #view-ats .pc-st.r{background:var(--p-rbg);color:var(--p-r)} #view-ats .pc-st.g{background:var(--p-gbg);color:var(--p-g)} #view-ats .pc-st.b{background:var(--p-bbg);color:var(--p-b)} #view-ats .pc-st.n{background:#f1f5f9;color:#64748b}
+          #view-ats .pc-st.vac{background:#fffbeb;color:#92400e} #view-ats .pc-st.des{background:#f5f3ff;color:#5b21b6}
+          #view-ats .pu-nov{font-style:normal;font-size:10px;font-weight:800;color:#92400e;background:#fffbeb;border-radius:99px;padding:1px 6px;margin-right:5px}
+          #view-ats .pu-nov.des{color:#5b21b6;background:#f5f3ff}
           #view-ats .pan{margin-top:12px;border:2px solid var(--brand2);border-radius:14px;padding:14px 16px;background:#fff}
           #view-ats .pan-h{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
           #view-ats .pan-h small{display:block;font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
@@ -863,6 +906,8 @@
           #view-ats .pc.n{color:var(--p-n);cursor:default}
           #view-ats .pc .pd{display:none;font-size:10.5px;font-weight:700;color:#334155;white-space:nowrap;text-align:left}
           #view-ats .pc.open .pd{display:block} #view-ats .pc.open b,#view-ats .pc.open i{display:none}
+          #view-ats .pc.nv{border-style:dashed;border-color:#fcd34d;background:#fffbeb;color:#92400e;font-size:10.5px;font-weight:800;letter-spacing:.03em;padding:7px 6px}
+          #view-ats .pc.nv.des{border-color:#c4b5fd;background:#f5f3ff;color:#5b21b6}
           #view-ats .p-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:11.5px;color:var(--muted)}
           #view-ats .p-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;border:2px solid;vertical-align:-2px;margin-right:5px}
           /* Tendencia de llenado vs. meta (azul = producido · verde = meta) */
@@ -948,7 +993,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V62";
+var PANEL_VERSION = "V63";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1213,7 +1258,7 @@ function iniciarSesion(user){
     rb.style.display=""; rb.onclick=function(){
       var _v=(document.querySelector(".nav-item.active")||{dataset:{}}).dataset.view;
       if(_v==="historico"||_v==="cobertura"){ APP.historico=null; if(_v==="historico") cargarHistorico(); else cargarCobertura(); }   // trae inspecciones nuevas
-      else if(_v==="ats"){ cargarAts(null, true); }                     // quieto: sin spinner ni saltos
+      else if(_v==="ats"){ cargarAts(null, true); cargarNovedades(refrescarTrasNovedad); }   // quieto: sin spinner ni saltos
       else cargarDatos(true);
     };
     if(APP.pollTimer) clearInterval(APP.pollTimer);
@@ -1221,8 +1266,9 @@ function iniciarSesion(user){
       if(document.hidden) return;
       var _v=(document.querySelector(".nav-item.active")||{dataset:{}}).dataset.view;
       if(_v==="ats"){                                                       // refresca ATS en segundo plano: solo cambia lo que cambió
-        cargarAts(null, true);
+        cargarAts(null, true); cargarNovedades(refrescarTrasNovedad);
       } else if(_v==="historico" || _v==="cobertura"){                      // usan APP.historico; el poll no trae dato nuevo → no repintar (no colapsar)
+        if(_v==="cobertura") cargarNovedades(refrescarTrasNovedad);         // salvo marcas nuevas de vacaciones/destaque
       } else {
         refrescoLiviano();                                                  // pregunta primero si hay cambios; descarga solo si cambió
       }
@@ -1476,7 +1522,7 @@ function navTo(v){
   else if(v==="evidencias") renderEvidencias();
   else if(v==="historico") cargarHistorico();
   else if(v==="cobertura") cargarCobertura();
-  else if(v==="ats"){ cargarMetasCuadrillas(); if(APP.atsCargado) renderAts(); else cargarAts(); }
+  else if(v==="ats"){ cargarMetasCuadrillas(); cargarNovedades(refrescarTrasNovedad); if(APP.atsCargado) renderAts(); else cargarAts(); }
 }
 // Menú lateral en móvil: se abre/cierra con scrim y refleja el estado en aria-expanded.
 function abrirMenu(){
@@ -1864,8 +1910,167 @@ function esDivRotativa(comp){ return CUADRILLAS_ROTATIVAS.some(function(k){ retu
 function numCuadrilla(v){ var s=String(v==null?"":v).trim(); return /^\d+$/.test(s)?String(parseInt(s,10)):s; }
 function porNumero(a,b){ return (+a)-(+b) || String(a).localeCompare(String(b)); }
 
+/* ============================================================
+   NOVEDADES: cuadrillas o personas de VACACIONES o DESTACADAS a otra área
+   (hoja "Novedades" del servidor; rango desde–hasta). Mientras dure la marca:
+   · Cobertura semanal: la unidad sale del total de esa semana si la marca cubre la
+     mitad o más de sus días hábiles (lun–sáb).
+   · Mínimo de ATS/charlas: no se le exigen los días marcados.
+   Marcan SSOMA o el jefe de esa división (no los perfiles de solo lectura).
+   Cuadrillas rotativas (ON Negocios PE, Mangas Críticas, Ultra) no se marcan.
+   ============================================================ */
+function vistaActual(){ return ((document.querySelector(".nav-item.active")||{dataset:{}}).dataset||{}).view||""; }
+function esAreaPersona(div){ var a=norm(parentArea(div)); return a==="networking" || a==="inspeccion y diseno"; }
+function novClave(div, unidad){ unidad=String(unidad==null?"":unidad); return esAreaPersona(div) ? "p|"+padDni(unidad) : "c|"+norm(div)+"|"+unidad; }
+function novIndexar(list){
+  APP.novedades=(list||[]).slice(); var idx={};
+  APP.novedades.forEach(function(n){ var k=novClave(n.division,n.unidad); (idx[k]=idx[k]||[]).push(n); });
+  APP.novIdx=idx; APP._novFirma=JSON.stringify(APP.novedades);
+}
+function novDe(div, unidad){ return (APP.novIdx && APP.novIdx[novClave(div,unidad)])||[]; }
+function novEnDia(div, unidad, iso){ var L=novDe(div,unidad); for(var i=0;i<L.length;i++){ if(L[i].desde<=iso && iso<=L[i].hasta) return L[i]; } return null; }
+function novEnRango(div, unidad, de, ha){ var L=novDe(div,unidad), r=null; for(var i=0;i<L.length;i++){ if(L[i].hasta>=de && L[i].desde<=ha && (!r || L[i].hasta>r.hasta)) r=L[i]; } return r; }
+function diasNoDisp(div, unidad, de, ha){
+  if(!novDe(div,unidad).length) return 0;
+  var n=0, g=0; for(var d=parseISO(de); d && fechaISO(d)<=ha && g++<400; d.setDate(d.getDate()+1)){ if(esDiaLaborable(d) && novEnDia(div,unidad,fechaISO(d))) n++; }
+  return n;
+}
+function diasDisp(div, unidad, de, ha){ return Math.max(0, diasLaborables(de,ha)-diasNoDisp(div,unidad,de,ha)); }
+// Marca que deja a la unidad FUERA de la semana: cubre la mitad o más de sus días hábiles.
+function novSemana(div, unidad, sab){
+  if(!sab || !novDe(div,unidad).length) return null;
+  var de=fechaISO(sab), v=new Date(sab); v.setDate(v.getDate()+6); var ha=fechaISO(v);
+  var tot=diasLaborables(de,ha), no=diasNoDisp(div,unidad,de,ha);
+  return (no && no*2>=tot) ? novEnRango(div,unidad,de,ha) : null;
+}
+function novEtiqueta(n){
+  if(!n) return ""; var h=parseISO(n.hasta), f=h?pad(h.getDate())+" "+MES3[h.getMonth()]:n.hasta;
+  return n.motivo==="destacada" ? ("Destacada"+(n.destino?" → "+divName(n.destino):"")+" · hasta "+f) : ("Vacaciones hasta "+f);
+}
+// División de una persona del padrón (Networking por subdivisión; I&D su única división).
+function personaDiv(areaBig, p){ return areaBig+SEP+(p.div || (AREAS_DIV[areaBig]||[])[0] || ""); }
+function puedeMarcar(div){
+  if(!APP._novOK || !APP.user || APP.user.puede_aprobar===false) return false;
+  if((APP.userAreas||[]).indexOf("*")>=0) return true;
+  return (APP.userAreas||[]).some(function(a){ return norm(a)===norm(div); });
+}
+// "Unidad-días" exigidos (por tipo) de una unidad o de una división, descontando las marcas.
+function udUnidad(d, key, de, ha){ return d.rotativa ? diasLaborables(de,ha) : diasDisp(d.comp, key, de, ha); }
+function udDiv(d, de, ha){
+  var base=diasLaborables(de,ha);
+  if(d.rotativa || !d.unidades || !d.unidades.length) return d.total*base;
+  var s=0; d.unidades.forEach(function(u){ s+= novDe(d.comp,u.key).length ? diasDisp(d.comp,u.key,de,ha) : base; });
+  return s;
+}
+// Trae las marcas del servidor (liviano). Solo vuelve a pintar si algo cambió.
+function cargarNovedades(cb){
+  var fin=function(){ if(typeof cb==="function"){ try{ cb(); }catch(e){} } };
+  if(!tieneEndpoint()){ if(!APP.novIdx) novIndexar([]); APP._novOK=true; return; }   // demo: marcas en memoria
+  if(APP._novPidiendo) return; APP._novPidiendo=true;
+  var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=novedades"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
+  fetch(url).then(function(r){ return r.text(); }).then(function(txt){
+    APP._novPidiendo=false; var d=null; try{ d=JSON.parse(txt); }catch(e){}
+    if(d && d.error==="sesion_invalida"){ sesionExpirada(); return; }
+    var est=function(){ return (APP._novFirma||"[]")+"|"+!!APP._novOK; }, antes=est();
+    if(d && d.ok){ novIndexar(d.novedades); APP._novOK=true; APP._novSinServidor=false; }
+    else { if(d && /accion_no_reconocida/.test(String(d.error||""))){ APP._novSinServidor=true; APP._novOK=false; }   // servidor aún sin la función
+           if(!APP.novIdx) novIndexar([]); }
+    if(est()!==antes) fin();
+  }).catch(function(){ APP._novPidiendo=false; if(!APP.novIdx) novIndexar([]); });
+}
+function refrescarTrasNovedad(){
+  var v=vistaActual();
+  if(v==="cobertura" && APP.historico) renderCobertura();
+  else if(v==="ats" && APP.atsCargado && !APP.atsError) conPantallaQuieta(renderAts);
+}
+// Ficha (chip) de cuadrilla o persona en la Cobertura: ✓ / ○ / marcada; clicable si se puede marcar.
+function chipUnidad(o){
+  var cls='cb-person'+(o.nov?(' nov '+(o.nov.motivo==="destacada"?'des':'vac')):(o.ok?' ok':''))+(o.marcable?' mk':'');
+  var tit=o.nov ? (novEtiqueta(o.nov)+(o.nov.comentario?' · '+o.nov.comentario:'')+(o.nov.por?' · marcó '+o.nov.por:'')+' · no cuenta en el total')
+                : (o.ok?'Con inspección esta semana':'Sin inspección esta semana');
+  if(o.marcable) tit+=' · toca para marcar vacaciones o destaque';
+  var at=o.marcable?' role="button" tabindex="0" data-mk-div="'+esc(o.div)+'" data-mk-u="'+esc(o.unidad)+'" data-mk-l="'+esc(o.etiqueta)+'"':'';
+  return '<div class="'+cls+'" title="'+esc(tit)+'"'+at+'><span class="cb-dot">'+(o.nov?'—':(o.ok?'✓':'○'))+'</span><span class="cb-pn">'+esc(o.texto)+(o.nov?' · '+esc(novEtiqueta(o.nov)):'')+'</span></div>';
+}
+function wireMarcas(cont){
+  (cont||document).querySelectorAll("[data-mk-div]").forEach(function(el){
+    var ir=function(e){ if(e) e.stopPropagation(); abrirMarcar({ division:el.getAttribute("data-mk-div"), unidad:el.getAttribute("data-mk-u"), etiqueta:el.getAttribute("data-mk-l") }); };
+    el.onclick=ir; el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); ir(e); } };
+  });
+}
+// Demo (sin servidor): misma lógica de recorte que el backend, en memoria.
+function demoGuardarNov(b){
+  var out=[], dia=function(iso,n){ var d=parseISO(iso); d.setDate(d.getDate()+n); return fechaISO(d); };
+  (APP.novedades||[]).forEach(function(n){
+    if(novClave(n.division,n.unidad)!==novClave(b.division,b.unidad) || n.hasta<b.desde || n.desde>b.hasta){ out.push(n); return; }
+    if(n.desde<b.desde) out.push(objAssign(objAssign({},n),{ hasta:dia(b.desde,-1) }));
+    if(n.hasta>b.hasta) out.push(objAssign(objAssign({},n),{ desde:dia(b.hasta,1) }));
+  });
+  if(b.motivo!=="activa") out.push({ id:"demo"+Date.now(), division:b.division, unidad:b.unidad, etiqueta:b.etiqueta, motivo:b.motivo, destino:b.destino, desde:b.desde, hasta:b.hasta, comentario:b.comentario, por:(APP.user&&APP.user.nombre)||"", en:new Date().toISOString() });
+  novIndexar(out);
+}
+// Formulario para marcar una cuadrilla o persona (vacaciones / destacada / volver a activa).
+function abrirMarcar(o){
+  var hoy=fechaISO(new Date()), s0=sabadoDe(hoy), f0=new Date(s0); f0.setDate(f0.getDate()+6); var vie=fechaISO(f0);
+  var prox=novDe(o.division,o.unidad).filter(function(n){ return n.hasta>=hoy; }).sort(function(a,b){ return a.desde<b.desde?-1:1; });
+  var vig=prox.filter(function(n){ return n.desde<=hoy; })[0]||null;
+  var mot=vig?vig.motivo:"vacaciones";
+  var fmt=function(iso){ var d=parseISO(iso); return d?pad(d.getDate())+" "+MES3[d.getMonth()]:iso; };
+  var dests=allCatalogComposites().filter(function(c){ return norm(c)!==norm(o.division); });
+  var wrap=document.createElement("div"); wrap.className="mk-wrap";
+  wrap.innerHTML='<div class="mk-box" role="dialog" aria-modal="true" aria-labelledby="mkTit">'+
+    '<div class="mk-h"><div><small>'+esc(parentArea(o.division))+' · '+esc(divName(o.division))+'</small><h4 id="mkTit">Marcar '+esc(o.etiqueta)+'</h4></div><button type="button" class="mk-x" aria-label="Cerrar">✕</button></div>'+
+    (prox.length?'<div class="mk-act"><b>Marcas vigentes o próximas</b>'+prox.map(function(n){ return '<div>'+(n.motivo==="destacada"?'Destacada'+(n.destino?' → '+esc(n.destino):''):'Vacaciones')+' · '+fmt(n.desde)+' – '+fmt(n.hasta)+(n.por?' · <span>'+esc(n.por)+'</span>':'')+'</div>'; }).join("")+'</div>':'')+
+    '<div class="mk-opts" role="radiogroup">'+[["activa","Activa"],["vacaciones","Vacaciones"],["destacada","Destacada"]].map(function(x){
+      return '<button type="button" class="mk-op'+(x[0]===mot?' on':'')+'" data-m="'+x[0]+'" role="radio" aria-checked="'+(x[0]===mot)+'">'+x[1]+'</button>'; }).join("")+'</div>'+
+    '<div class="mk-f2"><label>Desde<input type="date" class="mk-de" value="'+(vig?vig.desde:hoy)+'"></label><label>Hasta<input type="date" class="mk-ha" value="'+(vig?vig.hasta:vie)+'"></label></div>'+
+    '<label class="mk-dest"'+(mot==="destacada"?'':' hidden')+'>¿A qué área o proyecto?<input type="text" class="mk-dv" list="mkDests" maxlength="80" value="'+esc(vig&&vig.destino||"")+'" placeholder="Ej: MANTENIMIENTO ▸ Normalización de Red"></label>'+
+    '<datalist id="mkDests">'+dests.map(function(c){ return '<option value="'+esc(c)+'">'; }).join("")+'</datalist>'+
+    '<label class="mk-com">Comentario (opcional)<textarea class="mk-cm" maxlength="300" rows="2" placeholder="Ej: vacaciones del líder; cuadrilla sin personal">'+esc(vig&&vig.comentario||"")+'</textarea></label>'+
+    '<div class="mk-hint"><b>Destacada</b> = apoya a otra área (solo sale de la suya). <b>Activa</b> quita la marca en esas fechas (sirve para terminar antes unas vacaciones). Queda registrado quién marcó y cuándo.</div>'+
+    (APP._novSinServidor?'<div class="mk-err">El servidor aún no tiene esta función: falta publicar la actualización del Apps Script.</div>':'')+
+    '<div class="mk-err" hidden></div>'+
+    '<div class="mk-btns"><button type="button" class="mk-cancel">Cancelar</button><button type="button" class="mk-save">Guardar</button></div>'+
+  '</div>';
+  document.body.appendChild(wrap);
+  var q=function(s){ return wrap.querySelector(s); }, sel=mot;
+  var cerrar=function(){ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); document.removeEventListener("keydown",esc1); };
+  var esc1=function(e){ if(e.key==="Escape") cerrar(); };
+  document.addEventListener("keydown",esc1);
+  wrap.onclick=function(e){ if(e.target===wrap) cerrar(); };
+  q(".mk-x").onclick=cerrar; q(".mk-cancel").onclick=cerrar;
+  wrap.querySelectorAll(".mk-op").forEach(function(b){ b.onclick=function(){
+    sel=b.getAttribute("data-m");
+    wrap.querySelectorAll(".mk-op").forEach(function(x){ var on=(x===b); x.classList.toggle("on",on); x.setAttribute("aria-checked",on?"true":"false"); });
+    q(".mk-dest").hidden=(sel!=="destacada");
+  }; });
+  var err=function(t){ var e=wrap.querySelectorAll(".mk-err"); e=e[e.length-1]; e.textContent=t; e.hidden=!t; };
+  var btn=q(".mk-save");
+  btn.onclick=function(){
+    var de=q(".mk-de").value, ha=q(".mk-ha").value, dv=q(".mk-dv").value.trim();
+    if(!de || !ha || ha<de){ err("Revisa las fechas: «hasta» no puede ser antes de «desde»."); return; }
+    if(sel==="destacada" && !dv){ err("Indica a qué área o proyecto está destacada."); return; }
+    var body={ action:"novedad_guardar", division:o.division, unidad:o.unidad, etiqueta:o.etiqueta, motivo:sel, destino:(sel==="destacada"?dv:""), desde:de, hasta:ha, comentario:q(".mk-cm").value.trim() };
+    var listo=function(){ cerrar(); refrescarTrasNovedad();
+      toast(sel==="activa"?(o.etiqueta+": marca quitada en esas fechas; vuelve a contar en el total."):(o.etiqueta+": "+(sel==="destacada"?"destacada":"vacaciones")+" del "+fmt(de)+" al "+fmt(ha)+". No cuenta en el total."),"ok"); };
+    if(!tieneEndpoint()){ demoGuardarNov(body); listo(); return; }
+    btn.disabled=true; btn.textContent="Guardando…"; err("");
+    apiPost(body).then(function(res){
+      if(res && res.ok){ novIndexar(res.novedades); APP._novOK=true; APP._novSinServidor=false; listo(); return; }
+      btn.disabled=false; btn.textContent="Guardar";
+      var e=String(res&&res.error||"");
+      err(e==="no_autorizado"?"No tienes permiso para marcar en esta división.":
+          /accion_no_reconocida/.test(e)?"El servidor aún no tiene esta función: falta publicar la actualización del Apps Script.":
+          e==="fechas_invalidas"?"Fechas inválidas.":e==="rango_muy_largo"?"El rango no puede pasar de un año.":
+          e==="sesion_invalida"?"Tu sesión expiró. Vuelve a ingresar.":"No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
+    });
+  };
+  setTimeout(function(){ var b=q(".mk-op.on"); if(b) b.focus(); },0);
+}
+
 // Cobertura de UNA semana → una fila por división en alcance.
-function coberturaDeSemana(weekItems){
+// sab = sábado que abre la semana: las cuadrillas de vacaciones o destacadas esa semana salen del total.
+function coberturaDeSemana(weekItems, sab){
   var meta=metaCuadrillas(), porDiv={};
   Object.keys(meta).forEach(function(comp){
     if(!divEnAlcanceCob(comp)) return;
@@ -1878,19 +2083,19 @@ function coberturaDeSemana(weekItems){
     d.nums[num]=1;                                      // dedup: misma cuadrilla no suma 2 veces
   });
   return Object.keys(porDiv).map(function(k){
-    var d=porDiv[k], reg=Object.keys(d.nums).sort(porNumero), lista, fuera=[], dentro;
+    var d=porDiv[k], reg=Object.keys(d.nums).sort(porNumero), lista, fuera=[], dentro, nD=0;
     if(esDivRotativa(d.comp)){
       // Sin lista fija: cuentan las cuadrillas distintas que registraron (tope al total).
       lista=reg.map(function(n){ return { num:n, ok:true }; });
       dentro=Math.min(reg.length,d.total);
     } else {
-      lista=[]; for(var i=1;i<=d.total;i++) lista.push({ num:String(i), ok:!!d.nums[String(i)] });
+      lista=[]; for(var i=1;i<=d.total;i++){ var nv=novSemana(d.comp,String(i),sab); if(nv) nD++; lista.push({ num:String(i), ok:!!d.nums[String(i)], nov:nv }); }
       fuera=reg.filter(function(n){ return !(/^\d+$/.test(n) && +n>=1 && +n<=d.total); });
-      dentro=lista.filter(function(c){ return c.ok; }).length;
+      dentro=lista.filter(function(c){ return c.ok && !c.nov; }).length;
     }
-    var faltan=Math.max(d.total-dentro,0);
-    var pct=d.total?Math.round(dentro/d.total*100):0;
-    return { tipo:"cuadrilla", comp:d.comp, total:d.total, dentro:dentro, faltan:faltan, pct:pct,
+    var act=d.total-nD, faltan=Math.max(act-dentro,0);
+    var pct=act?Math.round(dentro/act*100):(nD?100:0);
+    return { tipo:"cuadrilla", comp:d.comp, total:act, totalBase:d.total, noDisp:nD, dentro:dentro, faltan:faltan, pct:pct,
              lista:lista, fuera:fuera, rotativa:esDivRotativa(d.comp) };
   });
 }
@@ -2014,7 +2219,7 @@ function dnisDeInspeccion(r, padron){
 // Cobertura de UNA semana para UNA unidad (área completa o subdivisión):
 // personas de su padrón con ≥1 inspección en CUALQUIER división del área.
 // Los inspeccionados fuera del padrón del área se anotan en la unidad de su división.
-function coberturaIndividual(u, weekItems){
+function coberturaIndividual(u, weekItems, sab){
   var areaBig=u.areaBig, padArea=padronDe(areaBig)||[], padron=u.padron, total=padron.length, set={}, aprox=false;
   var padAreaSet={}; padArea.forEach(function(p){ padAreaSet[padDni(p.dni)]=1; });
   var extras={};
@@ -2024,10 +2229,12 @@ function coberturaIndividual(u, weekItems){
     var deEsta=!u.div || norm(divName(r.area))===norm(u.div);
     x.dnis.forEach(function(d){ if(!d) return; set[d]=1; if(deEsta && !padAreaSet[d]) extras[d]=1; });
   });
-  var dentro=padron.filter(function(p){ return set[padDni(p.dni)]; }).length;
-  var faltan=Math.max(total-dentro,0), pct=total?Math.round(dentro/total*100):0;
-  return { tipo:"persona", comp:u.comp, areaBig:areaBig, div:u.div, total:total, dentro:dentro, faltan:faltan, pct:pct,
-           padron:padron, coveredSet:set, extras:Object.keys(extras), aprox:aprox };
+  // Personas de vacaciones o destacadas esa semana: salen del total (no suman aunque tengan inspección).
+  var novP={}, nD=0; padron.forEach(function(p){ var nv=novSemana(u.comp,p.dni,sab); if(nv){ novP[padDni(p.dni)]=nv; nD++; } });
+  var act=total-nD, dentro=padron.filter(function(p){ var k=padDni(p.dni); return set[k] && !novP[k]; }).length;
+  var faltan=Math.max(act-dentro,0), pct=act?Math.round(dentro/act*100):(nD?100:0);
+  return { tipo:"persona", comp:u.comp, areaBig:areaBig, div:u.div, total:act, totalBase:total, noDisp:nD, dentro:dentro, faltan:faltan, pct:pct,
+           padron:padron, coveredSet:set, novP:novP, extras:Object.keys(extras), aprox:aprox };
 }
 
 // Inspecciones del histórico que alimentan la cobertura (respetan alcance y filtro).
@@ -2040,16 +2247,16 @@ function cobItems(){
   });
 }
 // Una fila por unidad de control: divisiones (cuadrillas) + áreas por persona.
-function filasCobertura(weekItems){
-  var filas=coberturaDeSemana(weekItems);
-  unidadesIndividualesEnAlcance().forEach(function(u){ filas.push(coberturaIndividual(u,weekItems)); });
+function filasCobertura(weekItems, sab){
+  var filas=coberturaDeSemana(weekItems, sab);
+  unidadesIndividualesEnAlcance().forEach(function(u){ filas.push(coberturaIndividual(u,weekItems,sab)); });
   return filas;
 }
 // Totales de la semana: cuadrillas + personas = unidades inspeccionables.
 function resumenCob(filas){
-  var g={cT:0,cD:0,pT:0,pD:0};
-  filas.forEach(function(f){ if(f.tipo==="persona"){ g.pT+=f.total; g.pD+=f.dentro; } else { g.cT+=f.total; g.cD+=f.dentro; } });
-  g.total=g.cT+g.pT; g.dentro=g.cD+g.pD; g.pct=g.total?Math.round(g.dentro/g.total*100):0;
+  var g={cT:0,cD:0,pT:0,pD:0,cN:0,pN:0};                // cN/pN = fuera por vacaciones o destaque
+  filas.forEach(function(f){ if(f.tipo==="persona"){ g.pT+=f.total; g.pD+=f.dentro; g.pN+=(f.noDisp||0); } else { g.cT+=f.total; g.cD+=f.dentro; g.cN+=(f.noDisp||0); } });
+  g.total=g.cT+g.pT; g.dentro=g.cD+g.pD; g.nD=g.cN+g.pN; g.pct=g.total?Math.round(g.dentro/g.total*100):(g.nD?100:0);
   return g;
 }
 
@@ -2091,6 +2298,7 @@ function cargarMetasCuadrillas(){
 }
 function cargarCobertura(){
   cargarMetasCuadrillas();          // total de cuadrillas del backend (ON Negocios editable)
+  cargarNovedades(refrescarTrasNovedad);   // vacaciones / destacadas (repinta solo si cambiaron)
   if(!tieneEndpoint()){ APP.historico=APP.historico||historicoDemo(); APP.historicoTotalGlobal=APP.historico.length; renderCobertura(); return; }
   if(APP.historico){ renderCobertura(); return; }
   var cont=document.getElementById("cobContent");
@@ -2191,9 +2399,9 @@ function renderCobertura(){
   var idx=APP.cobSemanaIdx, ultimo=semanas.length-1;
   var sem=semanas[idx]||{sab:sabadoDe(fechaISO(new Date())),items:[]};
   var enCurso=(idx===ultimo);                     // la ventana está anclada a hoy → la última es la semana en curso
-  var filas=filasCobertura(sem.items).sort(function(a,b){ return a.pct-b.pct || b.total-a.total || String(a.comp).localeCompare(String(b.comp)); });
+  var filas=filasCobertura(sem.items, sem.sab).sort(function(a,b){ return a.pct-b.pct || b.total-a.total || String(a.comp).localeCompare(String(b.comp)); });
   var g=resumenCob(filas);
-  var prev=idx>0?resumenCob(filasCobertura(semanas[idx-1].items)):null;
+  var prev=idx>0?resumenCob(filasCobertura(semanas[idx-1].items, semanas[idx-1].sab)):null;
   var vie=new Date(sem.sab); vie.setDate(vie.getDate()+6);
 
   // ---- KPIs de la semana seleccionada ----
@@ -2208,10 +2416,10 @@ function renderCobertura(){
       '<div class="kpi-sub">'+(enCurso?'En curso · cierra vie '+pad(vie.getDate())+' '+MES3[vie.getMonth()]:'Semana '+esc(rangoSemanaSab(sem.sab)))+'</div>'+trend+'</div>';
   if(hayCrew) h+='<div class="kpi"><div class="ic" style="background:#e0f2fe;color:#0369a1">'+iconTeam()+'</div>'+
       '<div class="v tnum">'+g.cD+'<small> / '+g.cT+'</small></div><div class="l">Cuadrillas inspeccionadas</div>'+
-      '<div class="kpi-sub">Planta Externa · Mantenimiento</div></div>';
+      '<div class="kpi-sub">Planta Externa · Mantenimiento'+(g.cN?' · '+g.cN+' fuera (vac./dest.)':'')+'</div></div>';
   if(indivAreas.length) h+='<div class="kpi"><div class="ic" style="background:#ede9fe;color:#6d28d9">'+iconCobUser()+'</div>'+
       '<div class="v tnum">'+g.pD+'<small> / '+g.pT+'</small></div><div class="l">Personas inspeccionadas</div>'+
-      '<div class="kpi-sub">'+indivAreas.map(function(a){ return a==="INSPECCIÓN Y DISEÑO"?"Inspección y Diseño":(a.charAt(0)+a.slice(1).toLowerCase()); }).join(" · ")+'</div></div>';
+      '<div class="kpi-sub">'+indivAreas.map(function(a){ return a==="INSPECCIÓN Y DISEÑO"?"Inspección y Diseño":(a.charAt(0)+a.slice(1).toLowerCase()); }).join(" · ")+(g.pN?' · '+g.pN+' fuera (vac./dest.)':'')+'</div></div>';
   var fC=g.cT-g.cD, fP=g.pT-g.pD, partes=[];
   if(hayCrew) partes.push(plural(fC,"cuadrilla","cuadrillas"));
   if(indivAreas.length) partes.push(plural(fP,"persona","personas"));
@@ -2221,7 +2429,7 @@ function renderCobertura(){
   h+='</div>';
 
   // ---- Un solo gráfico semanal: línea (mismo lenguaje que la tendencia del ATS) + resumen ----
-  var pcts=semanas.map(function(s){ return resumenCob(filasCobertura(s.items)).pct; });
+  var pcts=semanas.map(function(s){ return resumenCob(filasCobertura(s.items, s.sab)).pct; });
   var cerr=pcts.slice(0,ultimo), promC=cerr.length?Math.round(cerr.reduce(function(a,b){ return a+b; },0)/cerr.length):null;
   var dSel=(idx>0)?pcts[idx]-pcts[idx-1]:null;
   var chipsC='<div class="tp-chips">'+
@@ -2229,7 +2437,7 @@ function renderCobertura(){
     '<div class="tp-chip"><div class="tp-l">'+(enCurso?'Semana en curso · cierra vie '+pad(vie.getDate())+' '+MES3[vie.getMonth()]:'Semana '+esc(rangoSemanaSab(sem.sab))+' (elegida)')+'</div>'+
       '<div class="tp-v"><b>'+g.pct+'%</b>'+(dSel!=null && !enCurso?' <span class="'+(dSel>=0?'tp-up':'tp-down')+'">'+(dSel>=0?'▲ ':'▼ ')+plural(Math.abs(dSel),"pt","pts")+'</span> vs. anterior':'')+'</div></div>'+
     (!enCurso?'<div class="tp-chip"><div class="tp-l">Semana en curso</div><div class="tp-v"><b>'+pcts[ultimo]+'%</b> hasta hoy</div></div>':'')+
-    '<div class="tp-chip meta"><div class="tp-l">Meta semanal</div><div class="tp-v"><b>100%</b> <span>'+[hayCrew?plural(g.cT,"cuadrilla","cuadrillas"):"",indivAreas.length?plural(g.pT,"persona","personas"):""].filter(Boolean).join(" + ")+'</span></div></div>'+
+    '<div class="tp-chip meta"><div class="tp-l">Meta semanal</div><div class="tp-v"><b>100%</b> <span>'+[hayCrew?plural(g.cT,"cuadrilla","cuadrillas"):"",indivAreas.length?plural(g.pT,"persona","personas"):""].filter(Boolean).join(" + ")+(g.nD?' activas':'')+'</span></div></div>'+
   '</div>';
   var cfgC={ pts:semanas.map(function(s,i){ var lbl=pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1);
       return { x:lbl, y:pcts[i], tip:"Semana "+rangoSemanaSab(s.sab)+": "+pcts[i]+"%"+(i===ultimo?" (en curso)":"") }; }), sel:idx, cur:ultimo };
@@ -2246,16 +2454,16 @@ function renderCobertura(){
      ' <span>unidades con ≥1 inspección ÷ total · toca una fila para ver el detalle</span></div>';
   h+='<div class="cob-list">';
   filas.forEach(function(f){
-    var col=colorPct(f.pct), esP=(f.tipo==="persona"), k="cob:"+f.comp, op=!!APP.openSecs[k];
+    var todosFuera=(!f.total && f.noDisp), col=todosFuera?"#94a3b8":colorPct(f.pct), esP=(f.tipo==="persona"), k="cob:"+f.comp, op=!!APP.openSecs[k];
     var nomArea=esP?(f.areaBig==="INSPECCIÓN Y DISEÑO"?"Inspección y Diseño":(f.areaBig.charAt(0)+f.areaBig.slice(1).toLowerCase())):"";
     var nom=esP?(f.div||nomArea):divName(f.comp);
     var sub=esP?'<span class="cb-unit cb-unit-p">Por persona</span>'+(f.div?esc(f.areaBig):'Padrón del área'):'<span class="cb-unit">Por cuadrilla</span>'+esc(parentArea(f.comp));
     h+='<div class="cb-item'+(op?' open':'')+'" data-k="'+esc(k)+'">'+
        '<button class="cb-row" type="button" aria-expanded="'+(op?'true':'false')+'">'+
          '<div class="cb-name"><b>'+esc(nom)+'</b><span>'+sub+'</span></div>'+
-         '<div class="cb-bar" aria-hidden="true"><i style="width:'+f.pct+'%;background:'+col+'"></i></div>'+
-         '<div class="cb-pct" style="color:'+col+'">'+f.pct+'%</div>'+
-         '<div class="cb-frac"><b>'+f.dentro+'/'+f.total+'</b><small>'+(esP?'personas':'cuadrillas')+'</small></div>'+
+         '<div class="cb-bar" aria-hidden="true"><i style="width:'+(todosFuera?0:f.pct)+'%;background:'+col+'"></i></div>'+
+         '<div class="cb-pct" style="color:'+col+'">'+(todosFuera?'—':f.pct+'%')+'</div>'+
+         '<div class="cb-frac"><b>'+f.dentro+'/'+f.total+'</b><small>'+(esP?'personas':'cuadrillas')+'</small>'+(f.noDisp?'<small class="cb-fz">+'+f.noDisp+' vac./dest.</small>':'')+'</div>'+
          '<span class="cb-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></span>'+
        '</button>'+
        '<div class="cb-detail"'+(op?'':' hidden')+'>'+(esP?coberturaIndDetalleHTML(f,enCurso):coberturaDetalleHTML(f,enCurso))+'</div>'+
@@ -2263,6 +2471,7 @@ function renderCobertura(){
   });
   h+='</div>';
   cont.innerHTML=h;
+  wireMarcas(cont);                 // fichas CU n / personas → marcar vacaciones o destacada
 
   // Puntos de semana → cambia la semana de TODA la vista (KPIs + detalle).
   (function(){
@@ -2290,18 +2499,22 @@ function renderCobertura(){
 }
 
 function coberturaIndDetalleHTML(f,enCurso){
+  var nv=f.novP||{}, mk=false;
   var h='<div class="cb-det-grid">'+
     '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>inspeccionadas</span></div>'+
     '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin inspección</span></div>'+
-    '<div class="cb-stat"><b>'+f.total+'</b><span>total del padrón</span></div>'+
+    '<div class="cb-stat"><b>'+f.total+'</b><span>'+(f.noDisp?'activas de '+f.totalBase+' del padrón':'total del padrón')+'</span></div>'+
+    (f.noDisp?'<div class="cb-stat cb-nov"><b>'+f.noDisp+'</b><span>vacaciones / destacadas</span></div>':'')+
   '</div>';
   var lista=f.padron.slice().sort(function(a,b){
-    var ca=f.coveredSet[padDni(a.dni)]?0:1, cb=f.coveredSet[padDni(b.dni)]?0:1;
+    var ka=padDni(a.dni), kb=padDni(b.dni);
+    var ca=nv[ka]?2:(f.coveredSet[ka]?0:1), cb=nv[kb]?2:(f.coveredSet[kb]?0:1);
     return ca-cb || String(a.nombre||"").localeCompare(String(b.nombre||""));
   }).map(function(p){
-    var ok=!!f.coveredSet[padDni(p.dni)];
-    return '<div class="cb-person'+(ok?' ok':'')+'" title="'+(ok?'Con inspección esta semana':'Sin inspección esta semana')+'"><span class="cb-dot">'+(ok?'✓':'○')+'</span><span class="cb-pn">'+esc(p.nombre||p.dni)+'</span></div>';
+    var k=padDni(p.dni), dv=personaDiv(f.areaBig,p), m=puedeMarcar(dv); if(m) mk=true;
+    return chipUnidad({ texto:p.nombre||p.dni, ok:!!f.coveredSet[k], nov:nv[k]||null, marcable:m, div:dv, unidad:k, etiqueta:p.nombre||p.dni });
   }).join("");
+  if(mk) h+='<div class="cb-mk-hint">Toca a una persona para marcarla de <b>vacaciones</b> o <b>destacada</b> a otra área: mientras dure, no cuenta en el total ni en el mínimo de ATS.</div>';
   h+='<div class="cb-people">'+lista+'</div>';
   if(f.extras && f.extras.length){
     h+='<div class="cb-miss"><span class="cb-note">+ '+plural(f.extras.length,"persona","personas")+' fuera del padrón '+(f.extras.length===1?'fue inspeccionada':'fueron inspeccionadas')+' esta semana (no suma al %).</span></div>';
@@ -2319,7 +2532,8 @@ function coberturaDetalleHTML(f,enCurso){
   var h='<div class="cb-det-grid">'+
     '<div class="cb-stat cb-ok"><b>'+f.dentro+'</b><span>inspeccionadas</span></div>'+
     '<div class="cb-stat cb-bad"><b>'+f.faltan+'</b><span>sin inspección</span></div>'+
-    '<div class="cb-stat"><b>'+f.total+'</b><span>total cuadrillas</span></div>'+
+    '<div class="cb-stat"><b>'+f.total+'</b><span>'+(f.noDisp?'activas de '+f.totalBase+' cuadrillas':'total cuadrillas')+'</span></div>'+
+    (f.noDisp?'<div class="cb-stat cb-nov"><b>'+f.noDisp+'</b><span>vacaciones / destacadas</span></div>':'')+
   '</div>';
   // ON Negocios: su jefe/coordinador (o SSOMA) ajusta el total de cuadrillas
   // habilitadas de la semana. Cambia el denominador de cobertura en todo el panel.
@@ -2333,8 +2547,10 @@ function coberturaDetalleHTML(f,enCurso){
   }
   // Chips CU 1, CU 2… (✓ con inspección en la semana · ○ sin inspección), como el padrón por persona.
   if(f.lista && f.lista.length){
+    var mk=!f.rotativa && puedeMarcar(f.comp);       // rotativas: el N° cambia cada semana → no se marcan
+    if(mk) h+='<div class="cb-mk-hint">Toca una cuadrilla para marcarla de <b>vacaciones</b> o <b>destacada</b> a otra área: mientras dure, no cuenta en el total ni en el mínimo de ATS.</div>';
     h+='<div class="cb-people">'+f.lista.map(function(c){
-      return '<div class="cb-person'+(c.ok?' ok':'')+'" title="'+(c.ok?'Con inspección esta semana':'Sin inspección esta semana')+'"><span class="cb-dot">'+(c.ok?'✓':'○')+'</span><span class="cb-pn">CU '+esc(c.num)+'</span></div>';
+      return chipUnidad({ texto:"CU "+c.num, ok:c.ok, nov:c.nov||null, marcable:mk, div:f.comp, unidad:c.num, etiqueta:"CU "+c.num });
     }).join("")+'</div>';
   }
   if(f.fuera && f.fuera.length){
@@ -2344,8 +2560,10 @@ function coberturaDetalleHTML(f,enCurso){
   if(f.faltan>0){
     h+='<div class="cb-miss"><span class="cb-miss-lbl">Faltan '+f.faltan+' de '+f.total+' cuadrilla'+(f.total===1?'':'s')+' por registrar su inspección '+(enCurso?'(semana en curso: hasta el viernes)':'en esa semana')+'.</span>'+
        (f.rotativa?'<span class="cb-note">En esta división el N° de cuadrilla cambia de semana a semana (rotan o se habilitan por semana): se muestran las que registraron y cuántas faltan.</span>':'')+'</div>';
+  } else if(!f.total && f.noDisp){
+    h+='<div class="cb-miss"><span class="cb-miss-lbl">Todas las cuadrillas de la división están de vacaciones o destacadas esa semana.</span></div>';
   } else {
-    h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Se registró inspección de todas las cuadrillas de la división en la semana.</span></div>';
+    h+='<div class="cb-miss cb-all"><span class="cb-miss-lbl">✓ Se registró inspección de todas las cuadrillas '+(f.noDisp?'activas ':'')+'de la división en la semana.</span></div>';
   }
   return h;
 }
@@ -3062,14 +3280,16 @@ function renderProduccion(){
   prodIndice(docs, divs);
   APP._prodDivs=divs;
   var R=prodRango(APP.prodPer), dias=diasLaborables(R.desde,R.hasta);
-  var G={a:0,c:0,uC:0,uP:0}, cuenta={r:0,g:0,b:0,n:0};
+  var G={a:0,c:0,uC:0,uP:0,ud:0,nov:0}, cuenta={r:0,g:0,b:0,n:0};
   var fichas=divs.map(function(d){
-    var x=prodSumar(d.idx,R.desde,R.hasta), ev=prodEval(x.a,x.c,d.total,dias);
-    G.a+=x.a; G.c+=x.c; if(d.tipo==="persona") G.uP+=d.total; else G.uC+=d.total; cuenta[ev.cls]++;
+    // ud = mínimo por tipo (unidades × días), sin los días de vacaciones o destaque
+    var x=prodSumar(d.idx,R.desde,R.hasta), ud=udDiv(d,R.desde,R.hasta), ev=prodEval(x.a,x.c,ud,1);
+    G.a+=x.a; G.c+=x.c; G.ud+=ud; if(d.tipo==="persona") G.uP+=d.total; else G.uC+=d.total; cuenta[ev.cls]++;
+    if(!d.rotativa) d.unidades.forEach(function(u){ if(novEnRango(d.comp,u.key,R.desde,R.hasta)) G.nov++; });
     return { d:d, x:x, ev:ev };
   }).sort(function(p,q){ return (p.ev.pct==null?1e9:p.ev.pct)-(q.ev.pct==null?1e9:q.ev.pct) || String(p.d.comp).localeCompare(String(q.d.comp)); });
   if(APP.prodSel && !divs.some(function(d){ return d.comp===APP.prodSel; })) APP.prodSel=null;   // salió del alcance
-  var evG=prodEval(G.a,G.c,G.uC+G.uP,dias), uniG=[], est=[];
+  var evG=prodEval(G.a,G.c,G.ud,1), uniG=[], est=[];
   if(G.uC) uniG.push(plural(G.uC,"cuadrilla","cuadrillas")); if(G.uP) uniG.push(plural(G.uP,"persona","personas"));
   if(cuenta.b) est.push('<b style="color:var(--p-b)">'+cuenta.b+'</b> sobresaliente'+(cuenta.b===1?'':'s'));
   if(cuenta.g) est.push('<b style="color:var(--p-g)">'+cuenta.g+'</b> cumple'+(cuenta.g===1?'':'n'));
@@ -3085,7 +3305,8 @@ function renderProduccion(){
     '</button>';
   }).join("");
   var selD=APP.prodSel?divs.filter(function(d){ return d.comp===APP.prodSel; })[0]:null;
-  cont.innerHTML='<div class="prod-sum"><span><b>'+esc(prodRangoTxt(APP.prodPer,R))+'</b> · '+plural(dias,"día laborable","días laborables")+' · '+uniG.join(" + ")+'</span>'+
+  cont.innerHTML='<div class="prod-sum"><span><b>'+esc(prodRangoTxt(APP.prodPer,R))+'</b> · '+plural(dias,"día laborable","días laborables")+' · '+uniG.join(" + ")+
+        (G.nov?' · <span title="No se les exigen los días marcados">'+G.nov+' con vacaciones o destaque</span>':'')+'</span>'+
       '<span>Total: <b class="pv tnum" style="color:'+PROD_COL[evG.cls]+'">'+(evG.pct==null?'—':evG.pct+'%')+'</b> '+
       '<span class="pc-st '+evG.cls+'">'+PROD_ST[evG.cls]+'</span> · ATS '+G.a+' / '+evG.exp+' · Charlas '+G.c+' / '+evG.exp+'</span>'+
       (est.length?'<span>'+est.join(' · ')+'</span>':'')+
@@ -3105,19 +3326,22 @@ function renderProduccion(){
 // Análisis detallado de UNA división en el período elegido (se abre al tocar su ficha).
 function prodAnalisisHTML(d, R, dias, per){
   var esP=(d.tipo==="persona"), uS=esP?"persona":"cuadrilla", uP=esP?"personas":"cuadrillas";
-  var x=prodSumar(d.idx,R.desde,R.hasta), ev=prodEval(x.a,x.c,d.total,dias);
+  var x=prodSumar(d.idx,R.desde,R.hasta), ev=prodEval(x.a,x.c,udDiv(d,R.desde,R.hasta),1);
   var prev=prodRangoPrevio(per,R), evp=null;
-  if(prev){ var xp=prodSumar(d.idx,prev.desde,prev.hasta); evp=prodEval(xp.a,xp.c,d.total,diasLaborables(prev.desde,prev.hasta)); }
-  // por unidad (cuadrilla CU n o persona), peor primero
-  var us=d.unidades.map(function(u){ var y=prodContar(d.idx[u.key],R.desde,R.hasta); return { key:u.key, label:u.label, a:y.a, c:y.c, ev:prodEval(y.a,y.c,1,dias) }; })
+  if(prev){ var xp=prodSumar(d.idx,prev.desde,prev.hasta); evp=prodEval(xp.a,xp.c,udDiv(d,prev.desde,prev.hasta),1); }
+  // por unidad (cuadrilla CU n o persona), peor primero · dd = días exigidos sin los de vacaciones o destaque
+  var us=d.unidades.map(function(u){ var y=prodContar(d.idx[u.key],R.desde,R.hasta), dd=udUnidad(d,u.key,R.desde,R.hasta);
+      return { key:u.key, label:u.label, a:y.a, c:y.c, dd:dd, nov:d.rotativa?null:novEnRango(d.comp,u.key,R.desde,R.hasta), ev:prodEval(y.a,y.c,dd,1) }; })
     .sort(function(p,q){ return (p.ev.pct==null?1e9:p.ev.pct)-(q.ev.pct==null?1e9:q.ev.pct) || String(p.label).localeCompare(String(q.label),undefined,{numeric:true}); });
   var cumplen=us.filter(function(u){ return u.ev.cls==="g"||u.ev.cls==="b"; });
+  var disp=us.filter(function(u){ return u.dd>0; }), marcadas=us.filter(function(u){ return u.nov; });
   var pre=d.comp+"|", selKey=(APP.prodSelU && APP.prodSelU.indexOf(pre)===0)?APP.prodSelU.slice(pre.length):null;
   if(selKey && !d.unidades.some(function(u){ return u.key===selKey; })) selKey=null;
   APP._prodCtx={ d:d, R:R, dias:dias };
   var st={Pendiente:0,Aprobado:0,Anulado:0};
   d.docs.forEach(function(r){ if(r.fecha>=R.desde && r.fecha<=R.hasta){ var k=estadoInfo(r.estado).key; if(st[k]!=null) st[k]++; } });
-  var SR=prodSerie(function(a,b){ return prodSumar(d.idx,a,b); }, d.total, R, dias), serie=SR.serie, largo=SR.largo;
+  var SR=prodSerie(function(a,b){ return prodSumar(d.idx,a,b); }, function(a,b){ return udDiv(d,a,b); }, R, dias);
+  var serie=SR.serie.filter(function(p){ return p.meta>0; }), largo=SR.largo;      // sin días/semanas de toda la división fuera
   var okDias=serie.filter(function(p){ return p.a>=p.meta && p.c>=p.meta; }).length;
   // ---- hallazgos (texto automático) ----
   var H=[], lista=function(arr){ var n=arr.map(function(u){ return '<b>'+esc(u.label)+'</b>'; }); return n.length>5?n.slice(0,5).join(", ")+" y "+(n.length-5)+" más":n.join(", "); };
@@ -3130,11 +3354,13 @@ function prodAnalisisHTML(d, R, dias, per){
     if(falta.length) H.push("Faltan "+falta.join(" y ")+" para llegar al 100%.");
   }
   if(dias && !d.rotativa){
-    var nada=us.filter(function(u){ return !u.a && !u.c; }), sinC=us.filter(function(u){ return u.a && !u.c; }), sinA=us.filter(function(u){ return u.c && !u.a; });
+    var nada=disp.filter(function(u){ return !u.a && !u.c; }), sinC=disp.filter(function(u){ return u.a && !u.c; }), sinA=disp.filter(function(u){ return u.c && !u.a; });
     if(nada.length) H.push("Sin ningún documento en el período: "+lista(nada)+".");
     if(sinC.length) H.push("Subieron ATS pero <b>ninguna charla</b>: "+lista(sinC)+".");
     if(sinA.length) H.push("Subieron charlas pero <b>ningún ATS</b>: "+lista(sinA)+".");
   }
+  if(marcadas.length) H.push("Con vacaciones o destacadas en el período: "+marcadas.slice(0,5).map(function(u){ return '<b>'+esc(u.label)+'</b> ('+esc(novEtiqueta(u.nov))+')'; }).join(", ")+
+    (marcadas.length>5?" y "+(marcadas.length-5)+" más":"")+". No se les exigen esos días.");
   if(serie.length>1) H.push(okDias?("La meta "+(largo?"semanal":"diaria")+" se alcanzó en <b>"+okDias+"</b> de "+serie.length+(largo?" semanas.":" días.")):((largo?"Ninguna semana":"Ningún día")+" alcanzó la meta "+(largo?"semanal":"diaria")+"."));
   if(evp && evp.pct!=null && ev.pct!=null){
     var dl=ev.pct-evp.pct;
@@ -3153,12 +3379,14 @@ function prodAnalisisHTML(d, R, dias, per){
   var pctT=function(n){ return ev.exp?Math.round(n/ev.exp*100):0; };
   var nombresOk=cumplen.slice(0,4).map(function(u){ return esc(u.label); }).join(" · ")+(cumplen.length>4?" y "+(cumplen.length-4)+" más":"");
   var filas=us.map(function(u){
-    var e=u.ev, tx=!u.a&&!u.c?"Sin registros":(!u.c?"Sin charlas":(!u.a?"Sin ATS":PROD_ST[e.cls]));
+    var e=u.ev, dd=u.dd, nc=u.nov?(u.nov.motivo==="destacada"?"des":"vac"):"", fuera=!!(u.nov && !dd);
+    var tx=fuera?(nc==="des"?"Destacada":"Vacaciones"):(!u.a&&!u.c?"Sin registros":(!u.c?"Sin charlas":(!u.a?"Sin ATS":PROD_ST[e.cls])));
     var on=(selKey===u.key);
-    return '<div class="pu'+(on?' sel':'')+'" data-u="'+esc(u.key)+'" role="button" tabindex="0" aria-pressed="'+(on?'true':'false')+'" title="Ver el gráfico de '+esc(u.label)+'"><span class="nm">'+esc(u.label)+'</span>'+
-      '<span><span class="nu">'+u.a+'/'+dias+'</span><span class="mbar"><i style="width:'+(dias?Math.min(100,u.a/dias*100):0)+'%"></i></span></span>'+
-      '<span><span class="nu">'+u.c+'/'+dias+'</span><span class="mbar cv"><i style="width:'+(dias?Math.min(100,u.c/dias*100):0)+'%"></i></span></span>'+
-      '<b class="tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b><span class="pc-st '+e.cls+'">'+tx+'</span></div>';
+    return '<div class="pu'+(on?' sel':'')+'" data-u="'+esc(u.key)+'" role="button" tabindex="0" aria-pressed="'+(on?'true':'false')+'" title="Ver el gráfico de '+esc(u.label)+(u.nov?' · '+esc(novEtiqueta(u.nov)):'')+'"><span class="nm">'+
+        (u.nov && dd?'<em class="pu-nov '+nc+'">'+(nc==="des"?'dest.':'vac.')+'</em>':'')+esc(u.label)+'</span>'+
+      '<span><span class="nu">'+u.a+'/'+dd+'</span><span class="mbar"><i style="width:'+(dd?Math.min(100,u.a/dd*100):0)+'%"></i></span></span>'+
+      '<span><span class="nu">'+u.c+'/'+dd+'</span><span class="mbar cv"><i style="width:'+(dd?Math.min(100,u.c/dd*100):0)+'%"></i></span></span>'+
+      '<b class="tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b><span class="pc-st '+(fuera?nc:e.cls)+'">'+tx+'</span></div>';
   }).join("");
   return '<div class="pan" id="prodAnalisis" role="region" aria-label="Análisis de '+esc(divName(d.comp))+'">'+
     '<div class="pan-h"><div><small>'+esc(parentArea(d.comp))+' · '+plural(d.total,uS,uP)+' · '+esc(prodRangoTxt(per,R))+'</small><h4>Análisis · '+esc(divName(d.comp))+'</h4></div>'+
@@ -3167,32 +3395,32 @@ function prodAnalisisHTML(d, R, dias, per){
     '<div class="pan-k">'+
       '<div><div class="l">ATS</div><div class="v"><b>'+x.a+'</b> / '+ev.exp+' · '+pctT(x.a)+'%</div><span class="mbar"><i style="width:'+Math.min(100,pctT(x.a))+'%"></i></span></div>'+
       '<div><div class="l">Charlas de 5 min</div><div class="v"><b>'+x.c+'</b> / '+ev.exp+' · '+pctT(x.c)+'%</div><span class="mbar cv"><i style="width:'+Math.min(100,pctT(x.c))+'%"></i></span></div>'+
-      '<div><div class="l">'+(esP?"Personas":"Cuadrillas")+' que cumplen</div><div class="v"><b>'+cumplen.length+'</b> de '+(d.rotativa?us.length+' registradas':d.total)+'</div><div class="s">'+(nombresOk||'Ninguna todavía')+'</div></div>'+
+      '<div><div class="l">'+(esP?"Personas":"Cuadrillas")+' que cumplen</div><div class="v"><b>'+cumplen.length+'</b> de '+(d.rotativa?us.length+' registradas':(disp.length<d.total?disp.length+' disponibles':d.total))+'</div><div class="s">'+(nombresOk||'Ninguna todavía')+'</div></div>'+
       '<div><div class="l">Revisión SSOMA</div><div class="v"><b>'+st.Aprobado+'</b> aprobados</div><div class="s">'+st.Pendiente+' por revisar · '+st.Anulado+' anulados</div></div>'+
     '</div>'+
     '<div class="pan-hall"><h5>Hallazgos</h5><ul>'+H.map(function(h){ return '<li>'+h+'</li>'; }).join("")+'</ul></div>'+
     '<div class="pan-cols">'+
-      '<div class="pan-col"><h5>Por '+uS+' <span>peor primero · mínimo '+dias+' ATS + '+dias+' charlas · toca una para ver su gráfico</span></h5>'+
+      '<div class="pan-col"><h5>Por '+uS+' <span>peor primero · mínimo '+dias+' ATS + '+dias+' charlas'+(marcadas.length?' (menos los días marcados)':'')+' · toca una para ver su gráfico</span></h5>'+
         '<div class="pu hd"><span></span><span class="nu">ATS</span><span class="nu">Charlas</span><span>%</span><span></span></div>'+(filas||'<div style="font-size:12px;color:var(--soft);padding:6px 2px">Sin registros en el período.</div>')+'</div>'+
       '<div class="pan-col" id="prodColGraf">'+prodColGrafHTML(d,R,dias,selKey)+'</div>'+
     '</div>'+
   '</div>';
 }
 // Serie del gráfico del análisis: día a día (o semana a semana si el período pasa de 31 días hábiles).
-// sumar(desde,hasta) → {a,c}; unid = cuadrillas/personas exigidas (toda la división o 1 sola).
-function prodSerie(sumar, unid, R, dias){
+// sumar(desde,hasta) → {a,c}; metaFn(desde,hasta) → mínimo por tipo en ese tramo (sin vacaciones ni destaques).
+function prodSerie(sumar, metaFn, R, dias){
   var serie=[], largo=(dias>31);
   if(largo){
     for(var s=sabadoDe(R.desde); s && fechaISO(s)<=R.hasta; s.setDate(s.getDate()+7)){
       var de=fechaISO(s), v=new Date(s); v.setDate(v.getDate()+6); var ha=fechaISO(v); if(ha>R.hasta) ha=R.hasta; if(de<R.desde) de=R.desde;
       var nd=diasLaborables(de,ha); if(!nd) continue; var z=sumar(de,ha);
-      serie.push({ lbl:pad(s.getDate())+"/"+pad(s.getMonth()+1), a:z.a, c:z.c, meta:unid*nd });
+      serie.push({ lbl:pad(s.getDate())+"/"+pad(s.getMonth()+1), a:z.a, c:z.c, meta:metaFn(de,ha) });
     }
   } else {
     var DIAS=["dom","lun","mar","mié","jue","vie","sáb"];
     for(var t=parseISO(R.desde); t && fechaISO(t)<=R.hasta; t.setDate(t.getDate()+1)){
       if(!esDiaLaborable(t)) continue; var k=fechaISO(t), w=sumar(k,k);
-      serie.push({ lbl:DIAS[t.getDay()]+" "+pad(t.getDate()), a:w.a, c:w.c, meta:unid });
+      serie.push({ lbl:DIAS[t.getDay()]+" "+pad(t.getDate()), a:w.a, c:w.c, meta:metaFn(k,k) });
     }
   }
   return { serie:serie, largo:largo };
@@ -3201,28 +3429,30 @@ function prodSerie(sumar, unid, R, dias){
 // cuadrilla/persona sola (con su resumen y hallazgos propios).
 function prodColGrafHTML(d, R, dias, key){
   var u=key?d.unidades.filter(function(x){ return x.key===key; })[0]:null;
-  var SR=u?prodSerie(function(a,b){ return prodContar(d.idx[u.key],a,b); }, 1, R, dias)
-          :prodSerie(function(a,b){ return prodSumar(d.idx,a,b); }, d.total, R, dias);
+  var SR=u?prodSerie(function(a,b){ return prodContar(d.idx[u.key],a,b); }, function(a,b){ return udUnidad(d,u.key,a,b); }, R, dias)
+          :prodSerie(function(a,b){ return prodSumar(d.idx,a,b); }, function(a,b){ return udDiv(d,a,b); }, R, dias);
   var serie=SR.serie, largo=SR.largo, unid=u?1:d.total, per=largo?"semanas":"días";
+  var sv=serie.filter(function(p){ return p.meta>0; });          // días/semanas con mínimo (sin los marcados)
   var PER=[["hoy","Hoy"],["semana","Semana"],["mes","Mes"],["anio","Año"]];
   var h='<div class="pan-gh"><h5>'+(largo?"Semana a semana":"Día a día")+' · '+(u?'<span style="color:var(--brand2);font-weight:800;font-size:13px">'+esc(u.label)+'</span>':'toda la división')+
     ' <span>meta por tipo: '+(largo?unid+' × días hábiles':unid+' ATS + '+unid+' charla'+(unid===1?'':'s'))+'</span></h5>'+
     '<span class="pan-per" role="group" aria-label="Período del gráfico">'+PER.map(function(x){
       return '<button type="button" class="chip-f'+(APP.prodPer===x[0]?' on':'')+'" data-pp="'+x[0]+'" aria-pressed="'+(APP.prodPer===x[0]?'true':'false')+'">'+x[1]+'</button>'; }).join("")+'</span></div>';
   if(u){
-    var y=prodContar(d.idx[u.key],R.desde,R.hasta), e=prodEval(y.a,y.c,1,dias), n=serie.length;
-    var ok=serie.filter(function(p){ return p.a>=p.meta && p.c>=p.meta; }).length;
-    var sinC=serie.filter(function(p){ return !p.c; }).length, sinA=serie.filter(function(p){ return !p.a; }).length;
-    var nada=serie.filter(function(p){ return !p.a && !p.c; }).length;
-    var mejor=null; serie.forEach(function(p){ if(!mejor || p.a+p.c>mejor.a+mejor.c) mejor=p; });
-    var L=[];
+    var ddU=udUnidad(d,u.key,R.desde,R.hasta), y=prodContar(d.idx[u.key],R.desde,R.hasta), e=prodEval(y.a,y.c,ddU,1), n=sv.length;
+    var ok=sv.filter(function(p){ return p.a>=p.meta && p.c>=p.meta; }).length;
+    var sinC=sv.filter(function(p){ return !p.c; }).length, sinA=sv.filter(function(p){ return !p.a; }).length;
+    var nada=sv.filter(function(p){ return !p.a && !p.c; }).length;
+    var mejor=null; sv.forEach(function(p){ if(!mejor || p.a+p.c>mejor.a+mejor.c) mejor=p; });
+    var L=[], nvU=d.rotativa?null:novEnRango(d.comp,u.key,R.desde,R.hasta);
+    if(nvU) L.push('<b>'+esc(novEtiqueta(nvU))+'</b>: los días marcados no se le exigen.');
     if(n>1) L.push(ok?'Alcanzó la meta en <b>'+ok+'</b> de '+n+' '+per+'.':'No alcanzó la meta en '+(largo?'ninguna de las ':'ninguno de los ')+n+' '+per+'.');
     if(nada) L.push('Sin ningún documento en <b>'+nada+'</b> de '+n+' '+per+'.');
     if(sinC>nada) L.push('Sin charlas en <b>'+sinC+'</b> de '+n+' '+per+'.');
     if(sinA>nada) L.push('Sin ATS en <b>'+sinA+'</b> de '+n+' '+per+'.');
     if(mejor && n>1 && mejor.a+mejor.c>0) L.push('Mejor '+(largo?'semana':'día')+': <b>'+esc(mejor.lbl)+'</b> ('+mejor.a+' ATS + '+mejor.c+' charla'+(mejor.c===1?'':'s')+').');
     h+='<div class="pan-u"><span><b class="pp tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b> <span class="pc-st '+e.cls+'">'+PROD_ST[e.cls]+'</span></span>'+
-       '<span>ATS <b>'+y.a+'</b>/'+dias+' · Charlas <b>'+y.c+'</b>/'+dias+'</span>'+
+       '<span>ATS <b>'+y.a+'</b>/'+ddU+' · Charlas <b>'+y.c+'</b>/'+ddU+'</span>'+
        '<button type="button" class="pan-ux" id="prodUnidadX">✕ Ver toda la división</button></div>'+
        (L.length?'<ul class="pan-ul">'+L.map(function(t){ return '<li>'+t+'</li>'; }).join("")+'</ul>':'');
   }
@@ -3271,11 +3501,12 @@ function prodBarrasSVG(serie){
   var step=Math.max(1,Math.ceil(n/12));
   serie.forEach(function(p,i){
     var cx=pL+gw*i+gw/2, ya=Y(p.a), yc=Y(p.c), ym=Y(p.meta), base=pT+ih;
-    var tip=esc(p.lbl)+"\nATS: "+p.a+" / "+p.meta+"\nCHARLA DE 5 MIN: "+p.c+" / "+p.meta;
+    var tip=p.meta ? esc(p.lbl)+"\nATS: "+p.a+" / "+p.meta+"\nCHARLA DE 5 MIN: "+p.c+" / "+p.meta
+                   : esc(p.lbl)+"\nATS: "+p.a+"\nCHARLA DE 5 MIN: "+p.c+"\nSin mínimo: vacaciones o destacada";
     out+='<g><title>'+tip+'</title>'+
       '<rect x="'+(cx-bw-1).toFixed(1)+'" y="'+ya.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,base-ya).toFixed(1)+'" rx="2" fill="#0284c7"/>'+
       '<rect x="'+(cx+1).toFixed(1)+'" y="'+yc.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,base-yc).toFixed(1)+'" rx="2" fill="#7c3aed"/>'+
-      '<line x1="'+(cx-gw/2+2).toFixed(1)+'" y1="'+ym.toFixed(1)+'" x2="'+(cx+gw/2-2).toFixed(1)+'" y2="'+ym.toFixed(1)+'" stroke="#16a34a" stroke-width="2" stroke-dasharray="4 3"/></g>';
+      (p.meta?'<line x1="'+(cx-gw/2+2).toFixed(1)+'" y1="'+ym.toFixed(1)+'" x2="'+(cx+gw/2-2).toFixed(1)+'" y2="'+ym.toFixed(1)+'" stroke="#16a34a" stroke-width="2" stroke-dasharray="4 3"/>':'')+'</g>';
     if(i%step===0||i===n-1) out+='<text x="'+cx.toFixed(1)+'" y="'+(h-7)+'" text-anchor="middle" font-size="10" fill="#94a3b8">'+esc(p.lbl)+'</text>';
   });
   return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" role="img" aria-label="ATS y charlas por período contra la meta" style="display:block;max-width:100%;height:auto">'+out+'</svg>';
@@ -3308,12 +3539,16 @@ function renderProdTabla(){
     var uTxt=plural(d.total, d.tipo==="persona"?"persona":"cuadrilla", d.tipo==="persona"?"personas":"cuadrillas");
     h+='<tr class="pt-div" data-k="'+esc(k)+'" data-open="'+(open?1:0)+'"><td title="Mostrar u ocultar '+esc(uTxt)+'"><span class="pt-chev">'+(open?'▾':'▸')+'</span>'+esc(divName(d.comp))+
        '<small>'+esc(parentArea(d.comp))+' · '+esc(uTxt)+(d.rotativa?' · rotativas':'')+'</small></td>'+
-       sems.map(function(s){ var x=prodSumar(d.idx,s.desde,s.hasta); return '<td>'+prodCelda(prodEval(x.a,x.c,d.total,s.dias),"d|"+d.comp+"|"+s.desde)+'</td>'; }).join("")+'</tr>';
+       sems.map(function(s){ var x=prodSumar(d.idx,s.desde,s.hasta); return '<td>'+prodCelda(prodEval(x.a,x.c,udDiv(d,s.desde,s.hasta),1),"d|"+d.comp+"|"+s.desde)+'</td>'; }).join("")+'</tr>';
     if(!open) return;
     d.unidades.forEach(function(u){
       h+='<tr class="pt-u"><td title="'+esc(u.label)+'">'+esc(u.label)+'</td>'+sems.map(function(s){
-        var x=prodContar(d.idx[u.key],s.desde,s.hasta), ev=prodEval(x.a,x.c,1,s.dias);
+        var dd=udUnidad(d,u.key,s.desde,s.hasta), x=prodContar(d.idx[u.key],s.desde,s.hasta), ev=prodEval(x.a,x.c,dd,1);
         if(d.rotativa && !(x.a+x.c)) ev={ a:0, c:0, tot:0, exp:0, esp:0, pct:null, cls:"n" };   // rotativa: ese N° no trabajó esa semana
+        if(!d.rotativa && !dd && s.dias){                                                      // toda la semana de vacaciones o destacada
+          var nv=novEnRango(d.comp,u.key,s.desde,s.hasta), des=!!(nv && nv.motivo==="destacada");
+          return '<td><span class="pc n nv'+(des?' des':'')+'" title="'+esc(novEtiqueta(nv))+' · sin mínimo esa semana'+((x.a+x.c)?' · subió '+(x.a+x.c):'')+'">'+(des?'DEST.':'VAC.')+'</span></td>';
+        }
         return '<td>'+prodCelda(ev,"u|"+d.comp+"|"+u.key+"|"+s.desde)+'</td>';
       }).join("")+'</tr>';
     });
@@ -3329,6 +3564,7 @@ function renderProdTabla(){
     '<div class="p-legend"><span><i style="border-color:#dc2626;background:#fef2f2"></i>No llegó al mínimo (ATS o charlas)</span>'+
     '<span><i style="border-color:#16a34a;background:#f0fdf4"></i>Cumple (100%)</span>'+
     '<span><i style="border-color:#2563eb;background:#eff6ff"></i>Sobresaliente (más de 100%)</span>'+
+    ((APP.novedades||[]).length?'<span><i style="border-color:#fcd34d;border-style:dashed;background:#fffbeb"></i>Vacaciones / destacada: sin mínimo esos días</span>':'')+
     '<span>Semana en curso: el mínimo cuenta solo los días hasta hoy.</span></div>';
   tb.innerHTML=h;
   tb.querySelectorAll("tr.pt-div td:first-child").forEach(function(td){
@@ -3355,6 +3591,7 @@ function renderTendenciaProd(f){
     return estadoInfo(r.estado).key!=="Archivado" && !(APP.atsArchivadosLocal && APP.atsArchivadosLocal[atsDocKey(r)]);
   });
   prodIndice(docs, divs);
+  var udT=function(de,ha){ return divs.reduce(function(s,dv){ return s+udDiv(dv,de,ha); },0); };   // mínimo por tipo sin vacaciones/destaques
   var tipo=f.tipo||"", porU=tipo?1:2;
   var sumar=function(desde,hasta){ var a=0,c=0; divs.forEach(function(d){ var x=prodSumar(d.idx,desde,hasta); a+=x.a; c+=x.c; }); return {a:a,c:c}; };
   // valor que cuenta según el filtro de tipo y si alcanzó la meta (cada tipo debe cumplir)
@@ -3373,19 +3610,19 @@ function renderTendenciaProd(f){
   var pts=[], chips="", leyPunto, leyOk, leyMeta, cfg;
   if(f.periodo==="7"){
     // ---- vista DIARIA ----
-    var goal=U*porU, totV=0, totG=0, mejor=null;
+    var goal=U*porU, uHoy=U, totV=0, totG=0, mejor=null;
     for(var d=parseISO(cut); d && fechaISO(d)<=hoy; d.setDate(d.getDate()+1)){
       if(!esDiaLaborable(d)) continue;
-      var k=fechaISO(d), x=sumar(k,k), m=medir(x,U);
-      totV+=m.v; totG+=goal;
+      var k=fechaISO(d), x=sumar(k,k), uD=udT(k,k), gD=uD*porU, m=medir(x,uD);       // meta del día sin vacaciones/destaques
+      totV+=m.v; totG+=gD; goal=gD; uHoy=uD;
       if(!mejor || m.v>mejor.v) mejor={v:m.v, k:k};
       pts.push({ x:fechaCorta(k), y:m.v, ok:m.ok,
-        tip:[fechaLarga(k)+" · "+Math.round(m.v/goal*100)+"% de la meta"].concat(detalle(x,U)) });
+        tip:[fechaLarga(k)+" · "+(gD?Math.round(m.v/gD*100):0)+"% de la meta"].concat(detalle(x,uD)) });
     }
     var prom=totG?Math.round(totV/totG*100):0;
     chips=tendChip("Promedio del período", prom+"%", "de la meta", prom)+
       (mejor?tendChip("Mejor día", fechaCorta(mejor.k)+" · "+mejor.v):"")+
-      tendChipMeta("Meta diaria", goal, plural(U,"unidad","unidades")+" × "+metaTxt);
+      tendChipMeta("Meta diaria", goal, plural(uHoy,"unidad","unidades")+" × "+metaTxt+(uHoy<U?" · "+(U-uHoy)+" de vacaciones/destacadas":""));
     cfg={ pts:pts, goal:goal, fmt:function(v){ return String(v); } };
     leyPunto="Producción del día"; leyOk="Día que alcanzó la meta"; leyMeta="Meta "+goal;
     if(sub) sub.textContent=plural(pts.length,"día hábil","días hábiles")+" · por día";
@@ -3396,7 +3633,7 @@ function renderTendenciaProd(f){
       var desde=fechaISO(s), v=new Date(s); v.setDate(v.getDate()+6);
       var hasta=fechaISO(v); if(hasta>hoy) hasta=hoy; if(desde<cut) desde=cut;
       var dias=diasLaborables(desde,hasta); if(!dias) continue;
-      var xs=sumar(desde,hasta), exp=U*dias, ms=medir(xs,exp), pct=Math.round(ms.v/(exp*porU)*100);
+      var xs=sumar(desde,hasta), exp=udT(desde,hasta), ms=medir(xs,exp), pct=exp?Math.round(ms.v/(exp*porU)*100):0;
       sems.push({ sab:new Date(s), pct:pct, v:ms.v, esp:exp*porU, ok:ms.ok, x:xs, exp:exp });
     }
     sems.forEach(function(w){
@@ -3408,7 +3645,8 @@ function renderTendenciaProd(f){
     var delta=(ult&&ant)?ult.pct-ant.pct:null;
     chips=tendChip("Promedio de "+plural(sems.length,"semana","semanas"), promS+"%", "de la meta", promS)+
       (ult?tendChip("Semana en curso", ult.pct+"%", delta==null?"":(delta>=0?'<span class="tp-up">▲ '+delta+' pts</span>':'<span class="tp-down">▼ '+Math.abs(delta)+' pts</span>')+" vs. anterior"):"")+
-      tendChipMeta("Meta semanal", U*6*porU, plural(U,"unidad","unidades")+" × 6 días × "+(tipo?"1":"2"));
+      (function(){ var s0=sabadoDe(hoy), v0=new Date(s0); v0.setDate(v0.getDate()+6); var uS=udT(fechaISO(s0),fechaISO(v0));
+        return tendChipMeta("Meta semanal", uS*porU, plural(U,"unidad","unidades")+" × 6 días × "+(tipo?"1":"2")+(uS<U*6?" − días de vacaciones/destaque":"")); })();
     cfg={ pts:pts, goal:100, fmt:function(v){ return v+"%"; } };
     leyPunto="% de la meta en la semana"; leyOk="Semana que alcanzó la meta"; leyMeta="Meta 100%";
     if(sub) sub.textContent=plural(pts.length,"semana","semanas")+" · % de la meta (sáb→vie)";
