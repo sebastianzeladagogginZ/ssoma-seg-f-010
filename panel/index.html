@@ -549,24 +549,50 @@
       <!-- ===== RESUMEN ===== -->
       <section class="view active" id="view-resumen">
         <div class="kpis" id="kpis"></div>
-        <div class="row2" style="margin-bottom:16px">
+        <style>
+          /* Resumen (V61): mismo lenguaje que ATS/Cobertura/Histórico — azul = detectado, verde = levantado */
+          #view-resumen .rs-row{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:16px}
+          @media(max-width:1040px){#view-resumen .rs-row{grid-template-columns:1fr}}
+          #view-resumen .rs-leg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:var(--muted);margin-top:4px}
+          #view-resumen .rs-leg span{display:inline-flex;align-items:center;gap:6px}
+          #view-resumen .rs-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px solid #0284c7;background:#fff}
+          #view-resumen .rs-dot.ok{border-color:#16a34a}
+          #view-resumen .rs-band{display:inline-block;width:14px;height:10px;border-radius:2px;background:rgba(2,132,199,.14)}
+          #view-resumen .rs-big{display:flex;align-items:baseline;gap:8px;margin:4px 0 2px}
+          #view-resumen .rs-big b{font-size:40px;font-weight:800;color:#15803d;letter-spacing:-1px;line-height:1}
+          #view-resumen .rs-big span{color:var(--muted);font-weight:600}
+          #view-resumen .rs-seg{display:flex;height:14px;border-radius:999px;overflow:hidden;background:#eef2f6;margin:10px 0 12px}
+          #view-resumen .rs-seg.big{height:20px;margin-top:14px}
+          #view-resumen .rs-seg i{display:block;height:100%}
+          #view-resumen .rs-lr{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#334155;padding:5px 0;border-bottom:1px solid #f1f5f9}
+          #view-resumen .rs-lr:last-of-type{border-bottom:0}
+          #view-resumen .rs-lr i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+          #view-resumen .rs-note{font-size:12.5px;color:#475569;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-top:12px;line-height:1.45}
+          #view-resumen .rs-hb{display:grid;grid-template-columns:minmax(90px,170px) minmax(0,1fr) 110px;gap:12px;align-items:center;padding:6px 0;font-size:13px}
+          #view-resumen .rs-hb>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#334155}
+          #view-resumen .rs-hb .t{height:12px;background:#eef2f6;border-radius:999px;overflow:hidden}
+          #view-resumen .rs-hb .t i{display:block;height:100%;background:linear-gradient(90deg,#0284c7,#0ea5e9);border-radius:999px}
+          #view-resumen .rs-hb .n{text-align:right;color:var(--muted)} #view-resumen .rs-hb .n b{color:var(--ink)}
+          #view-resumen .rs-foot{font-size:11.5px;color:var(--muted);margin-top:6px}
+        </style>
+        <div class="rs-row" style="margin-bottom:16px">
           <div class="card">
-            <div class="ch"><h3>Tendencia de observaciones</h3><span class="sub" id="trendSub"></span></div>
+            <div class="ch"><h3>Observaciones por semana</h3><span class="sub" id="trendSub"></span></div>
             <div class="cb" id="trendChart"></div>
-          </div>
-          <div class="card">
-            <div class="ch"><h3>Distribución por estado</h3></div>
-            <div class="cb" id="estadoChart"></div>
-          </div>
-        </div>
-        <div class="row2">
-          <div class="card">
-            <div class="ch"><h3>Observaciones por sección</h3></div>
-            <div class="cb" id="seccionChart"></div>
           </div>
           <div class="card">
             <div class="ch"><h3>Avance de levantamiento</h3><span class="sub" id="avanceSub"></span></div>
             <div class="cb" id="avanceChart"></div>
+          </div>
+        </div>
+        <div class="rs-row">
+          <div class="card">
+            <div class="ch"><h3>Observaciones por sección</h3><span class="sub" id="seccionSub"></span></div>
+            <div class="cb" id="seccionChart"></div>
+          </div>
+          <div class="card">
+            <div class="ch"><h3>Tipo de hallazgo</h3><span class="sub" id="estadoSub"></span></div>
+            <div class="cb" id="estadoChart"></div>
           </div>
         </div>
       </section>
@@ -922,7 +948,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V60";
+var PANEL_VERSION = "V61";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2457,12 +2483,67 @@ function emptyChart(msg){ return '<div class="empty-state" style="padding:34px">
 /* ============================================================
    VISTA: RESUMEN
    ============================================================ */
+/* ---- Resumen · Observaciones por semana (mismo lenguaje que los demás gráficos) ----
+   Azul = observaciones DETECTADAS en la semana (por fecha de inspección).
+   Verde = de esas, las que YA están levantadas. La zona entre ambas = siguen abiertas.
+   Semanas sáb→vie, últimas 12, sin fechas futuras; la semana en curso va punteada. */
+function resumenTrendSVG(cfg, w){
+  var pts=cfg.pts, n=pts.length, cur=cfg.cur; w=Math.max(300,Math.round(w));
+  var h=250, padL=40, padR=16, padT=26, padB=34, ih=h-padT-padB, ins=24;
+  var mx=Math.max(3.7, Math.max.apply(null,pts.map(function(p){ return p.a; }).concat([1])))*1.12;
+  var mag=Math.pow(10,Math.floor(Math.log(mx)/Math.LN10)), maxY=mag*10;
+  [1,1.2,1.6,2,2.4,3,4,5,6,8,10].some(function(k){ if(k*mag>=mx){ maxY=k*mag; return true; } return false; });
+  var Y=function(v){ return padT+(1-v/maxY)*ih; };
+  var dx=(w-padL-padR-2*ins)/Math.max(1,n-1);
+  var X=function(i){ return n===1?(padL+w-padR)/2:padL+ins+i*dx; };
+  var A=pts.map(function(p,i){ return {x:X(i), y:Y(p.a)}; }), B=pts.map(function(p,i){ return {x:X(i), y:Y(p.b)}; });
+  var path=function(arr){ return arr.map(function(q,i){ return (i?"L":"M")+q.x.toFixed(1)+" "+q.y.toFixed(1); }).join(" "); };
+  var out=[0,.25,.5,.75,1].map(function(g){ var v=maxY*g, y=Y(v);
+    return '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(1)+'" stroke="#eef2f6"/>'+
+      '<text x="'+(padL-7)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="#94a3b8">'+Math.round(v)+'</text>'; }).join("");
+  // franja entre detectadas y levantadas (= abiertas)
+  var banda=path(A)+" "+B.slice().reverse().map(function(q){ return "L"+q.x.toFixed(1)+" "+q.y.toFixed(1); }).join(" ")+" Z";
+  out+='<path d="'+banda+'" fill="rgba(2,132,199,.12)"/>';
+  var curUlt=(cur===n-1 && n>1);
+  [[A,"#0284c7"],[B,"#16a34a"]].forEach(function(s){
+    out+='<path d="'+path(curUlt?s[0].slice(0,n-1):s[0])+'" fill="none" stroke="'+s[1]+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    if(curUlt) out+='<path d="'+path(s[0].slice(n-2))+'" fill="none" stroke="'+s[1]+'" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round"/>';
+  });
+  var vStep=(n===1)?1:Math.max(1,Math.ceil(30/dx));
+  pts.forEach(function(p,i){
+    var esCur=(i===cur), dash=esCur?' stroke-dasharray="3 2"':'';
+    out+='<circle cx="'+A[i].x.toFixed(1)+'" cy="'+A[i].y.toFixed(1)+'" r="4.5" fill="#fff" stroke="#0284c7" stroke-width="2.5"'+dash+'/>'+
+         '<circle cx="'+B[i].x.toFixed(1)+'" cy="'+B[i].y.toFixed(1)+'" r="4.5" fill="#fff" stroke="#16a34a" stroke-width="2.5"'+dash+'/>';
+    if(i===n-1 || (i%vStep===0 && n-1-i>=vStep)){
+      var ya=A[i].y<padT+8?A[i].y+20:A[i].y-11, yb=Math.min(B[i].y+19, padT+ih-3);
+      if(Math.abs(yb-ya)<12) yb=ya+13;
+      out+='<text x="'+A[i].x.toFixed(1)+'" y="'+ya.toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0369a1" stroke="#fff" stroke-width="3" paint-order="stroke">'+p.a+'</text>';
+      if(p.a) out+='<text x="'+B[i].x.toFixed(1)+'" y="'+yb.toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#15803d" stroke="#fff" stroke-width="3" paint-order="stroke">'+p.b+'</text>';
+    }
+  });
+  var xStep=Math.max(1,Math.ceil(n/Math.max(2,Math.floor((w-padL-padR)/52))));
+  pts.forEach(function(p,i){
+    if(!(i%xStep===0 || i===cur)) return;
+    out+='<text x="'+X(i).toFixed(1)+'" y="'+(padT+ih+15)+'" text-anchor="middle" font-size="10.5" fill="#94a3b8">'+esc(p.x)+'</text>';
+    if(i===cur) out+='<text x="'+X(i).toFixed(1)+'" y="'+(padT+ih+27)+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="#b45309">en curso</text>';
+  });
+  // detalle al pasar el mouse (una columna por semana)
+  pts.forEach(function(p,i){
+    var x0=Math.max(padL,X(i)-dx/2), x1=Math.min(w-padR,X(i)+dx/2);
+    out+='<g><title>'+esc(p.tip)+'</title><rect x="'+x0.toFixed(1)+'" y="'+padT+'" width="'+Math.max(4,x1-x0).toFixed(1)+'" height="'+ih+'" fill="rgba(0,0,0,0)"/></g>';
+  });
+  return '<svg class="lc-svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Observaciones detectadas y levantadas por semana">'+out+'</svg>';
+}
+// Agrupa nombres de sección que son la MISMA sección con otro nombre (antiguo vs nuevo).
+function seccionGrupo(s){ var n=norm(s); return n.indexOf("escalera")===0 ? "Escaleras" : (s||"(sin sección)"); }
 function renderResumen(){
   var d=datosArea();
   var req=d.filter(function(o){return o.estado==="Requiere cambio";}).length;
   var not=d.filter(function(o){return o.estado==="No tiene";}).length;
   var lev=d.filter(function(o){return o.levantamiento==="levantado";}).length;
-  var pend=d.filter(function(o){return o.levantamiento==="pendiente"||o.levantamiento==="en_proceso";}).length;
+  var enRev=d.filter(function(o){return o.levantamiento==="en_proceso";}).length;
+  var soloPend=d.filter(function(o){return o.levantamiento==="pendiente";}).length;
+  var pend=soloPend+enRev;
   var rech=d.filter(function(o){return o.levantamiento==="rechazado";}).length;
   var avance=d.length?Math.round(lev/d.length*100):0;
 
@@ -2480,32 +2561,59 @@ function renderResumen(){
     el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); ir(); } };
   });
 
-  // tendencia: observaciones por fecha
-  var porFecha={};
-  d.forEach(function(o){ porFecha[o.fecha]=(porFecha[o.fecha]||0)+1; });
-  var fechas=Object.keys(porFecha).sort();
-  document.getElementById("trendChart").innerHTML=lineChart(fechas.map(function(f){return {x:fechaCorta(f),y:porFecha[f]};}));
-  document.getElementById("trendSub").textContent=fechas.length+" fechas de inspección";
+  // ---- Observaciones por semana: detectadas vs. ya levantadas (últimas 12 semanas) ----
+  var hoy=fechaISO(new Date()), sems=cobPorSemana(d.filter(function(o){ return o.fecha && o.fecha<=hoy; })), ult=sems.length-1;
+  var tPts=sems.map(function(s,i){
+    var a=s.items.length, b=s.items.filter(function(o){ return o.levantamiento==="levantado"; }).length;
+    return { x:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), a:a, b:b,
+      tip:"Semana "+rangoSemanaSab(s.sab)+(i===ult?" (en curso)":"")+"\nDetectadas: "+a+"\nYa levantadas: "+b+"\nSiguen abiertas: "+(a-b) };
+  });
+  var tc=document.getElementById("trendChart");
+  if(!tPts.length){ tc.innerHTML=emptyChart("Sin observaciones en este alcance."); }
+  else {
+    var cfgR={ pts:tPts, cur:ult }, idR="lc"+(++_LC.n); _LC.data[idR]=function(w){ return resumenTrendSVG(cfgR,w); };
+    tc.innerHTML='<div class="lchart" data-lc="'+idR+'">'+resumenTrendSVG(cfgR,560)+'</div>'+
+      '<div class="rs-leg"><span><i class="rs-dot"></i>Detectadas en la semana</span><span><i class="rs-dot ok"></i>De ellas, ya levantadas</span><span><i class="rs-band"></i>Distancia = siguen abiertas</span></div>';
+  }
+  document.getElementById("trendSub").textContent="sábado → viernes · últimas "+plural(tPts.length,"semana","semanas");
 
-  document.getElementById("estadoChart").innerHTML=donut(
-    [{label:"Requiere cambio",value:req,color:COL["Requiere cambio"]},{label:"No tiene",value:not,color:COL["No tiene"]}],
-    d.length, "hallazgos");
-
-  // por sección
-  var porSec={};
-  d.forEach(function(o){ porSec[o.seccion]=(porSec[o.seccion]||0)+1; });
-  var secData=seccionesVigentes().filter(function(s){return porSec[s];}).map(function(s){return {label:s,short:s.split(" ")[0],value:porSec[s],color:"#0284c7"};})
-    .sort(function(a,b){return b.value-a.value;});
-  document.getElementById("seccionChart").innerHTML=barChart(secData);
-
-  // avance: estado de levantamiento
-  document.getElementById("avanceChart").innerHTML=donut(
-    [{label:"Levantado",value:lev,color:COL.levantado},
-     {label:"En revisión",value:d.filter(function(o){return o.levantamiento==="en_proceso";}).length,color:COL.en_proceso},
-     {label:"Pendiente",value:d.filter(function(o){return o.levantamiento==="pendiente";}).length,color:COL.pendiente},
-     {label:"Rechazado",value:rech,color:COL.rechazado}],
-    avance+"%","levantado");
+  // ---- Avance de levantamiento: % grande + barra dividida ----
+  var pc=function(n){ return d.length?(n/d.length*100):0; };
+  document.getElementById("avanceChart").innerHTML=
+    '<div class="rs-big"><b class="tnum">'+avance+'%</b><span>levantado</span></div>'+
+    '<div class="rs-seg" role="img" aria-label="Levantado '+lev+', pendiente '+soloPend+', en revisión '+enRev+', rechazado '+rech+'">'+
+      '<i style="width:'+pc(lev).toFixed(2)+'%;background:#16a34a"></i><i style="width:'+pc(enRev).toFixed(2)+'%;background:#0284c7"></i>'+
+      '<i style="width:'+pc(soloPend).toFixed(2)+'%;background:#94a3b8"></i><i style="width:'+pc(rech).toFixed(2)+'%;background:#dc2626"></i></div>'+
+    '<div class="rs-lr"><span><i style="background:#16a34a"></i>Levantado</span><b class="tnum">'+lev+'</b></div>'+
+    '<div class="rs-lr"><span><i style="background:#94a3b8"></i>Pendiente</span><b class="tnum">'+soloPend+'</b></div>'+
+    '<div class="rs-lr"><span><i style="background:#dc2626"></i>Rechazado por SSOMA</span><b class="tnum">'+rech+'</b></div>'+
+    '<div class="rs-lr"><span><i style="background:#0284c7"></i>En revisión</span><b class="tnum">'+enRev+'</b></div>';
   document.getElementById("avanceSub").textContent=lev+" de "+d.length+" cerradas";
+
+  // ---- Tipo de hallazgo: No tiene vs. Requiere cambio ----
+  var tot=req+not, pN=tot?Math.round(not/tot*100):0, pR=tot?100-pN:0;
+  var frase=!tot?"Sin hallazgos en este alcance.":
+    (pN>=60?'La mayoría de los hallazgos (<b>'+pN+'%</b>) son <b>faltantes</b>: el foco está en dotar, más que en reponer.':
+     pN<=40?'La mayoría de los hallazgos (<b>'+pR+'%</b>) son recursos <b>en mal estado</b>: el foco está en reponer.':
+     'Faltantes y recursos en mal estado se reparten parecido ('+pN+'% / '+pR+'%).');
+  document.getElementById("estadoChart").innerHTML=
+    '<div class="rs-seg big" role="img" aria-label="No tiene '+not+', requiere cambio '+req+'"><i style="width:'+(tot?not/tot*100:0).toFixed(2)+'%;background:#0369a1"></i><i style="width:'+(tot?req/tot*100:0).toFixed(2)+'%;background:#7dd3fc"></i></div>'+
+    '<div class="rs-lr"><span><i style="background:#0369a1"></i>No tiene (falta el recurso)</span><b class="tnum">'+not+' · '+pN+'%</b></div>'+
+    '<div class="rs-lr"><span><i style="background:#7dd3fc"></i>Requiere cambio (está, pero mal)</span><b class="tnum">'+req+' · '+pR+'%</b></div>'+
+    '<div class="rs-note">'+frase+'</div>';
+  document.getElementById("estadoSub").textContent=plural(tot,"hallazgo","hallazgos");
+
+  // ---- Observaciones por sección: barras horizontales, mayor a menor, % del total ----
+  var porSec={}, nombres={};
+  d.forEach(function(o){ var g=seccionGrupo(o.seccion); porSec[g]=(porSec[g]||0)+1; (nombres[g]=nombres[g]||{})[o.seccion]=1; });
+  var secs=Object.keys(porSec).sort(function(a,b){ return porSec[b]-porSec[a] || a.localeCompare(b); });
+  var maxS=secs.length?porSec[secs[0]]:1, unidas=secs.filter(function(g){ return Object.keys(nombres[g]).length>1; });
+  document.getElementById("seccionChart").innerHTML=secs.length?
+    secs.map(function(g){ return '<div class="rs-hb"><span title="'+esc(Object.keys(nombres[g]).join(" + "))+'">'+esc(g)+'</span><span class="t"><i style="width:'+(porSec[g]/maxS*100).toFixed(1)+'%"></i></span>'+
+      '<span class="n"><b class="tnum">'+porSec[g]+'</b> · '+(d.length?Math.round(porSec[g]/d.length*100):0)+'%</span></div>'; }).join("")+
+    (unidas.length?'<div class="rs-foot">'+unidas.map(function(g){ return '"'+esc(g)+'" suma: '+esc(Object.keys(nombres[g]).join(" + ")); }).join(" · ")+' (misma sección con nombre antiguo y nuevo).</div>':'')
+    : emptyChart("Sin datos");
+  document.getElementById("seccionSub").textContent="mayor a menor · % del total";
 }
 function kpi(bg,fg,icon,val,label,trend,goto){
   var clk=goto?' clk':'';
