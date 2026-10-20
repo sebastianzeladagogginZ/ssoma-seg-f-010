@@ -614,6 +614,15 @@
           #view-historico .pdf-link:hover{text-decoration:underline}
           #view-historico .muted-sm{color:var(--soft)}
           #view-historico .hist-obs{display:inline-block;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;color:var(--muted);cursor:help}
+          #view-historico .tp-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:var(--muted);margin-top:4px}
+          #view-historico .tp-legend span{display:inline-flex;align-items:center;gap:6px}
+          #view-historico .tp-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px solid #0284c7;background:#fff}
+          #view-historico .tp-dot.cur{border-style:dashed}
+          #view-historico .tp-dash{display:inline-block;width:18px;border-top:2px dashed #16a34a}
+          #view-historico .tp-dash.ref{border-top-color:#94a3b8}
+          #view-historico .cob-pt{cursor:pointer;outline:none}
+          #view-historico .cob-pt:hover rect{fill:rgba(2,132,199,.06)}
+          #view-historico .cob-pt:focus-visible rect{stroke:#0284c7;stroke-width:1.5}
           #view-historico .hist-week{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 16px 10px;box-shadow:var(--shadow);margin-bottom:6px}
           #view-historico .hist-subt{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 2px 12px}
           #view-historico .hist-subt span{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--soft)}
@@ -913,7 +922,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V59";
+var PANEL_VERSION = "V60";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1642,11 +1651,20 @@ function renderHistorico(){
 
   // Inspecciones por semana (barras) — respeta el filtro de Área/División activo.
   if(semanas.length){
-    h+='<div class="hist-subt">Inspecciones por semana <span>sábado → viernes · últimas '+semanas.length+' semana(s) · toca una barra para ver el detalle</span></div>';
-    h+='<div class="hist-week">'+barChart(semanas.map(function(s,i){
-      return { label:"Semana "+rangoSemanaSab(s.sab), short:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), value:s.value, enCurso:(i===semanas.length-1) };
-    }),{clickable:true})+'</div>';
-    h+='<div id="weekDetail" class="week-detail" hidden></div>';
+    h+='<div class="hist-subt">Inspecciones por semana <span>sábado → viernes · últimas '+semanas.length+' semana(s) · toca un punto para ver el detalle</span></div>';
+    // Línea (mismo lenguaje que ATS y Cobertura) con el PROMEDIO de las semanas cerradas como referencia.
+    if(APP.histSel!=null && APP.histSel>=semanas.length) APP.histSel=null;
+    var ultH=semanas.length-1;
+    var cfgH={ pts:semanas.map(function(s,i){ return { x:pad(s.sab.getDate())+"/"+pad(s.sab.getMonth()+1), y:s.value,
+        tip:"Semana "+rangoSemanaSab(s.sab)+": "+plural(s.value,"inspección","inspecciones")+(i===ultH?" (en curso)":"") }; }),
+      sel:APP.histSel, cur:ultH, goal:null, minMax:3.7, ref:(cerradas.length && semanas.length>1 && promSem>0)?{ v:promSem, label:"promedio "+promSem }:null,
+      fmt:function(v){ return String(v); }, axf:function(v){ return String(v); } };
+    APP._histCfg=cfgH;
+    var idH="lc"+(++_LC.n); _LC.data[idH]=function(w){ return cobTrendSVG(cfgH,w); };
+    h+='<div class="hist-week"><div class="lchart" data-lc="'+idH+'">'+cobTrendSVG(cfgH,560)+'</div>'+
+       '<div class="tp-legend"><span><i class="tp-dot"></i>Inspecciones de la semana</span><span><i class="tp-dot cur"></i>Semana en curso</span>'+
+       (cfgH.ref?'<span><i class="tp-dash ref"></i>Promedio '+promSem+' ('+plural(cerradas.length,"semana cerrada","semanas cerradas")+')</span>':'')+'</div></div>';
+    h+='<div id="weekDetail" class="week-detail"'+(APP.histSel!=null?'':' hidden')+'>'+(APP.histSel!=null?detalleSemanaHTML(semanas[APP.histSel]):'')+'</div>';
   }
 
   // Desglose por área (compuesto), ordenado por cantidad desc, con barra proporcional.
@@ -1672,21 +1690,20 @@ function renderHistorico(){
   h+='</div>';
   cont.innerHTML=h;
 
-  // Detalle por semana: al tocar una barra se despliega la lista de inspecciones de esa semana.
+  // Detalle por semana: al tocar un punto (o su columna) se despliega la lista de inspecciones de
+  // esa semana; otro toque en la misma semana lo cierra. Clic delegado: sobrevive al redibujado.
   (function(){
-    var wd=document.getElementById("weekDetail"); if(!wd) return;
-    var bars=cont.querySelectorAll(".hist-week .bar-click");
-    bars.forEach(function(g){
-      g.onclick=function(){
-        var i=+g.getAttribute("data-i"), sel=g.classList.contains("sel");
-        bars.forEach(function(b){ b.classList.remove("sel"); });
-        if(sel){ wd.hidden=true; wd.innerHTML=""; return; }   // segundo click sobre la misma barra: cerrar
-        g.classList.add("sel");
-        wd.innerHTML=detalleSemanaHTML(semanas[i]);
-        wd.hidden=false;
-        wd.scrollIntoView({behavior:"smooth",block:"nearest"});
-      };
-    });
+    var wd=document.getElementById("weekDetail"), hw=cont.querySelector(".hist-week"); if(!wd || !hw) return;
+    hw.onclick=function(e){
+      var t=e.target && e.target.closest ? e.target.closest("[data-i]") : null; if(!t || !hw.contains(t)) return;
+      var i=+t.getAttribute("data-i");
+      APP.histSel=(APP.histSel===i)?null:i;
+      var cfg=APP._histCfg, lc=hw.querySelector(".lchart");
+      if(cfg && lc){ cfg.sel=APP.histSel; lc.innerHTML=cobTrendSVG(cfg, lc.clientWidth||560); lc.setAttribute("data-w", lc.clientWidth||0); }
+      if(APP.histSel==null){ wd.hidden=true; wd.innerHTML=""; return; }
+      wd.innerHTML=detalleSemanaHTML(semanas[i]); wd.hidden=false;
+      wd.scrollIntoView({behavior:"smooth",block:"nearest"});
+    };
   })();
 
   // Acordeón de una sola fila abierta.
@@ -2088,8 +2105,10 @@ function plural(n,s,p){ return n+" "+(n===1?s:p); }
    funcionando cuando el gráfico se redibuja al cambiar el ancho de la ventana. */
 function cobTrendSVG(cfg, w){
   var pts=cfg.pts, n=pts.length, sel=cfg.sel, cur=cfg.cur; w=Math.max(300,Math.round(w));
+  var goal=(cfg.goal===undefined)?100:cfg.goal, ref=cfg.ref||null;            // goal=null → sin meta (p. ej. Histórico)
+  var fmt=cfg.fmt||function(v){ return v+"%"; }, axf=cfg.axf||fmt;
   var h=240, padL=40, padR=16, padT=28, padB=34, ih=h-padT-padB, ins=24;
-  var mx=Math.max(100, Math.max.apply(null,pts.map(function(p){ return p.y; }).concat([1])))*1.08;
+  var mx=Math.max(goal||0, ref?ref.v:0, cfg.minMax||0, Math.max.apply(null,pts.map(function(p){ return p.y; }).concat([1])))*1.08;
   var mag=Math.pow(10,Math.floor(Math.log(mx)/Math.LN10)), maxY=mag*10;
   [1,1.2,1.6,2,2.4,3,4,5,6,8,10].some(function(k){ if(k*mag>=mx){ maxY=k*mag; return true; } return false; });
   var Y=function(v){ return padT+(1-v/maxY)*ih; };
@@ -2098,24 +2117,26 @@ function cobTrendSVG(cfg, w){
   var colW=(n===1?120:dx), bw=Math.min(colW*0.84,96);
   var out=[0,.25,.5,.75,1].map(function(g){ var v=maxY*g, y=Y(v);
     return '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(1)+'" stroke="#eef2f6"/>'+
-      '<text x="'+(padL-7)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="#94a3b8">'+Math.round(v)+'%</text>'; }).join("");
+      '<text x="'+(padL-7)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="#94a3b8">'+esc(axf(Math.round(v)))+'</text>'; }).join("");
   if(sel!=null && c[sel]) out+='<rect x="'+(c[sel].x-bw/2).toFixed(1)+'" y="'+(padT-18)+'" width="'+bw.toFixed(1)+'" height="'+(ih+18+padB-4)+'" rx="10" fill="rgba(2,132,199,.10)"/>';
   var path=function(arr){ return arr.map(function(q,i){ return (i?"L":"M")+q.x.toFixed(1)+" "+q.y.toFixed(1); }).join(" "); };
   var area=path(c)+" L"+c[n-1].x.toFixed(1)+" "+(padT+ih)+" L"+c[0].x.toFixed(1)+" "+(padT+ih)+" Z";
   var gid="cg"+Math.random().toString(36).slice(2,7);
   out+='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".2"/><stop offset="1" stop-color="#0284c7" stop-opacity="0"/></linearGradient></defs>'+
     '<path d="'+area+'" fill="url(#'+gid+')"/>'+
-    '<line x1="'+padL+'" y1="'+Y(100).toFixed(1)+'" x2="'+(w-padR)+'" y2="'+Y(100).toFixed(1)+'" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 4"/>';
+    (goal!=null?'<line x1="'+padL+'" y1="'+Y(goal).toFixed(1)+'" x2="'+(w-padR)+'" y2="'+Y(goal).toFixed(1)+'" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 4"/>':'')+
+    (ref?'<line x1="'+padL+'" y1="'+Y(ref.v).toFixed(1)+'" x2="'+(w-padR)+'" y2="'+Y(ref.v).toFixed(1)+'" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4"/>'+
+      '<text x="'+(w-padR)+'" y="'+(Y(ref.v)-5).toFixed(1)+'" text-anchor="end" font-size="10.5" font-weight="700" fill="#64748b" stroke="#fff" stroke-width="3" paint-order="stroke">'+esc(ref.label)+'</text>':'');
   var curUlt=(cur===n-1 && n>1);
   out+='<path d="'+path(curUlt?c.slice(0,n-1):c)+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
   if(curUlt) out+='<path d="'+path(c.slice(n-2))+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round"/>';
   var vStep=(n===1)?1:Math.max(1,Math.ceil(30/dx));
   c.forEach(function(q){
-    var ok=q.p.y>=100, esSel=(q.i===sel), esCur=(q.i===cur);
+    var ok=(goal!=null && q.p.y>=goal), esSel=(q.i===sel), esCur=(q.i===cur);
     out+='<circle cx="'+q.x.toFixed(1)+'" cy="'+q.y.toFixed(1)+'" r="'+(esSel?7:5)+'" fill="'+(ok?"#16a34a":"#fff")+'" stroke="'+(ok?"#fff":"#0284c7")+'" stroke-width="2.5"'+(esCur&&!ok?' stroke-dasharray="3 2"':'')+'/>';
     if(esSel || q.i===n-1 || (q.i%vStep===0 && n-1-q.i>=vStep)){
       var ty=q.y<padT+8?q.y+20:q.y-12;
-      out+='<text x="'+q.x.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="'+(ok?"#15803d":(esSel?"#0c4a6e":"#0369a1"))+'" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">'+q.p.y+'%</text>';
+      out+='<text x="'+q.x.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="'+(ok?"#15803d":(esSel?"#0c4a6e":"#0369a1"))+'" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">'+esc(fmt(q.p.y))+'</text>';
     }
   });
   var xStep=Math.max(1,Math.ceil(n/Math.max(2,Math.floor((w-padL-padR)/52))));
