@@ -436,11 +436,15 @@
   .mk-act{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:12px;line-height:1.7}
   .mk-act b{display:block;font-size:11px;color:var(--muted)}
   .mk-act span{color:var(--soft)}
-  .mk-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+  .mk-opts{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
   .mk-op{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:9px 10px;font:inherit;font-weight:700;font-size:12.5px;color:var(--muted);cursor:pointer}
   .mk-op[data-m=activa].on{border-color:#16a34a;background:#f0fdf4;color:#166534}
   .mk-op[data-m=vacaciones].on{border-color:#f59e0b;background:#fffbeb;color:#92400e}
   .mk-op[data-m=destacada].on{border-color:#8b5cf6;background:#f5f3ff;color:#5b21b6}
+  .mk-op[data-m=sin_campo].on{border-color:#0d9488;background:#f0fdfa;color:#115e59}
+  .mk-box select{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font:inherit;font-size:13px;color:var(--ink);background:#fff}
+  .mk-box select:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(2,132,199,.15)}
+  .mk-opc{font-weight:500}
   .mk-box label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:10px}
   .mk-box input,.mk-box textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font:inherit;font-size:13px;color:var(--ink);background:#fff;resize:vertical}
   .mk-box input:focus,.mk-box textarea:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(2,132,199,.15)}
@@ -791,6 +795,7 @@
           #view-cobertura .cb-person.nov{border-style:dashed}
           #view-cobertura .cb-person.nov.vac{color:#92400e;background:#fffbeb;border-color:#fcd34d}
           #view-cobertura .cb-person.nov.des{color:#5b21b6;background:#f5f3ff;border-color:#c4b5fd}
+          #view-cobertura .cb-person.nov.sc{color:#115e59;background:#f0fdfa;border-color:#99f6e4}
           #view-cobertura .cb-person.nov .cb-dot{color:inherit}
           #view-cobertura .cb-stat.cb-nov b{color:#b45309}
           #view-cobertura .cb-mk-hint{font-size:11.5px;color:var(--soft);margin:0 0 8px;line-height:1.5}
@@ -844,7 +849,10 @@
           #view-ats .mbar.cv i{background:#7c3aed}
           #view-ats .pc-st{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
           #view-ats .pc-st.r{background:var(--p-rbg);color:var(--p-r)} #view-ats .pc-st.g{background:var(--p-gbg);color:var(--p-g)} #view-ats .pc-st.b{background:var(--p-bbg);color:var(--p-b)} #view-ats .pc-st.n{background:#f1f5f9;color:#64748b}
-          #view-ats .pc-st.vac{background:#fffbeb;color:#92400e} #view-ats .pc-st.des{background:#f5f3ff;color:#5b21b6}
+          #view-ats .pc-st.vac{background:#fffbeb;color:#92400e} #view-ats .pc-st.des{background:#f5f3ff;color:#5b21b6} #view-ats .pc-st.sc{background:#f0fdfa;color:#115e59}
+          #view-ats .pu-nov.sc{color:#115e59;background:#f0fdfa}
+          #view-ats .pan-just{font:inherit;font-size:11.5px;font-weight:700;color:#115e59;background:#f0fdfa;border:1px solid #99f6e4;border-radius:999px;padding:3px 10px;cursor:pointer}
+          #view-ats .pan-just:hover{background:#ccfbf1}
           #view-ats .pu-nov{font-style:normal;font-size:10px;font-weight:800;color:#92400e;background:#fffbeb;border-radius:99px;padding:1px 6px;margin-right:5px}
           #view-ats .pu-nov.des{color:#5b21b6;background:#f5f3ff}
           #view-ats .pan{margin-top:12px;border:2px solid var(--brand2);border-radius:14px;padding:14px 16px;background:#fff}
@@ -908,6 +916,7 @@
           #view-ats .pc.open .pd{display:block} #view-ats .pc.open b,#view-ats .pc.open i{display:none}
           #view-ats .pc.nv{border-style:dashed;border-color:#fcd34d;background:#fffbeb;color:#92400e;font-size:10.5px;font-weight:800;letter-spacing:.03em;padding:7px 6px}
           #view-ats .pc.nv.des{border-color:#c4b5fd;background:#f5f3ff;color:#5b21b6}
+          #view-ats .pc.nv.sc{border-color:#99f6e4;background:#f0fdfa;color:#115e59}
           #view-ats .p-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:11.5px;color:var(--muted)}
           #view-ats .p-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;border:2px solid;vertical-align:-2px;margin-right:5px}
           /* Tendencia de llenado vs. meta (azul = producido · verde = meta) */
@@ -993,7 +1002,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V63";
+var PANEL_VERSION = "V64";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1943,8 +1952,16 @@ function novSemana(div, unidad, sab){
   var tot=diasLaborables(de,ha), no=diasNoDisp(div,unidad,de,ha);
   return (no && no*2>=tot) ? novEnRango(div,unidad,de,ha) : null;
 }
+// "No salió a campo": causas de campo que justifican no exigir ATS ni charla esos días.
+var NOV_CAUSAS=["Trabajo en oficina / gabinete","Capacitación o inducción","Descanso médico","Permiso o licencia",
+  "Sin vehículo o falla de movilidad","Sin materiales o equipos","Lluvia o clima adverso",
+  "Paralización por el cliente","Paralización por seguridad","Otro (detallar en el comentario)"];
+function novCls(n){ return !n?"":(n.motivo==="destacada"?"des":(n.motivo==="sin_campo"?"sc":"vac")); }
+function novNombre(n){ var c=novCls(n); return c==="des"?"Destacada":(c==="sc"?"No salió a campo":"Vacaciones"); }
+function novCorto(n){ var c=novCls(n); return c==="des"?"dest.":(c==="sc"?"s/campo":"vac."); }
 function novEtiqueta(n){
-  if(!n) return ""; var h=parseISO(n.hasta), f=h?pad(h.getDate())+" "+MES3[h.getMonth()]:n.hasta;
+  if(!n) return ""; var fd=function(iso){ var d=parseISO(iso); return d?pad(d.getDate())+" "+MES3[d.getMonth()]:iso; }, f=fd(n.hasta);
+  if(n.motivo==="sin_campo") return "Sin campo"+(n.destino?" · "+n.destino:"")+(n.desde===n.hasta?" · "+f:" · hasta "+f);
   return n.motivo==="destacada" ? ("Destacada"+(n.destino?" → "+divName(n.destino):"")+" · hasta "+f) : ("Vacaciones hasta "+f);
 }
 // División de una persona del padrón (Networking por subdivisión; I&D su única división).
@@ -1985,10 +2002,10 @@ function refrescarTrasNovedad(){
 }
 // Ficha (chip) de cuadrilla o persona en la Cobertura: ✓ / ○ / marcada; clicable si se puede marcar.
 function chipUnidad(o){
-  var cls='cb-person'+(o.nov?(' nov '+(o.nov.motivo==="destacada"?'des':'vac')):(o.ok?' ok':''))+(o.marcable?' mk':'');
+  var cls='cb-person'+(o.nov?(' nov '+novCls(o.nov)):(o.ok?' ok':''))+(o.marcable?' mk':'');
   var tit=o.nov ? (novEtiqueta(o.nov)+(o.nov.comentario?' · '+o.nov.comentario:'')+(o.nov.por?' · marcó '+o.nov.por:'')+' · no cuenta en el total')
                 : (o.ok?'Con inspección esta semana':'Sin inspección esta semana');
-  if(o.marcable) tit+=' · toca para marcar vacaciones o destaque';
+  if(o.marcable) tit+=' · toca para marcar vacaciones, destaque o no salida a campo';
   var at=o.marcable?' role="button" tabindex="0" data-mk-div="'+esc(o.div)+'" data-mk-u="'+esc(o.unidad)+'" data-mk-l="'+esc(o.etiqueta)+'"':'';
   return '<div class="'+cls+'" title="'+esc(tit)+'"'+at+'><span class="cb-dot">'+(o.nov?'—':(o.ok?'✓':'○'))+'</span><span class="cb-pn">'+esc(o.texto)+(o.nov?' · '+esc(novEtiqueta(o.nov)):'')+'</span></div>';
 }
@@ -2009,25 +2026,31 @@ function demoGuardarNov(b){
   if(b.motivo!=="activa") out.push({ id:"demo"+Date.now(), division:b.division, unidad:b.unidad, etiqueta:b.etiqueta, motivo:b.motivo, destino:b.destino, desde:b.desde, hasta:b.hasta, comentario:b.comentario, por:(APP.user&&APP.user.nombre)||"", en:new Date().toISOString() });
   novIndexar(out);
 }
-// Formulario para marcar una cuadrilla o persona (vacaciones / destacada / volver a activa).
+// Formulario para marcar una cuadrilla o persona (vacaciones / destacada / no salió a campo / volver a activa).
+// o.motivo, o.desde y o.hasta (opcionales) dejan la marca preelegida, p. ej. al justificar un día desde el ATS.
 function abrirMarcar(o){
   var hoy=fechaISO(new Date()), s0=sabadoDe(hoy), f0=new Date(s0); f0.setDate(f0.getDate()+6); var vie=fechaISO(f0);
   var prox=novDe(o.division,o.unidad).filter(function(n){ return n.hasta>=hoy; }).sort(function(a,b){ return a.desde<b.desde?-1:1; });
-  var vig=prox.filter(function(n){ return n.desde<=hoy; })[0]||null;
-  var mot=vig?vig.motivo:"vacaciones";
+  var vig=o.motivo?null:(prox.filter(function(n){ return n.desde<=hoy; })[0]||null);
+  var mot=o.motivo||(vig?vig.motivo:"vacaciones"), dia0=o.desde||hoy, dia1=o.hasta||dia0;
+  var de0=vig?vig.desde:(mot==="sin_campo"?dia0:hoy), ha0=vig?vig.hasta:(mot==="sin_campo"?dia1:vie);
   var fmt=function(iso){ var d=parseISO(iso); return d?pad(d.getDate())+" "+MES3[d.getMonth()]:iso; };
   var dests=allCatalogComposites().filter(function(c){ return norm(c)!==norm(o.division); });
+  var causa0=(vig && vig.motivo==="sin_campo")?vig.destino:"";
+  var causas=NOV_CAUSAS.slice(); if(causa0 && causas.indexOf(causa0)<0) causas.unshift(causa0);
   var wrap=document.createElement("div"); wrap.className="mk-wrap";
   wrap.innerHTML='<div class="mk-box" role="dialog" aria-modal="true" aria-labelledby="mkTit">'+
     '<div class="mk-h"><div><small>'+esc(parentArea(o.division))+' · '+esc(divName(o.division))+'</small><h4 id="mkTit">Marcar '+esc(o.etiqueta)+'</h4></div><button type="button" class="mk-x" aria-label="Cerrar">✕</button></div>'+
-    (prox.length?'<div class="mk-act"><b>Marcas vigentes o próximas</b>'+prox.map(function(n){ return '<div>'+(n.motivo==="destacada"?'Destacada'+(n.destino?' → '+esc(n.destino):''):'Vacaciones')+' · '+fmt(n.desde)+' – '+fmt(n.hasta)+(n.por?' · <span>'+esc(n.por)+'</span>':'')+'</div>'; }).join("")+'</div>':'')+
-    '<div class="mk-opts" role="radiogroup">'+[["activa","Activa"],["vacaciones","Vacaciones"],["destacada","Destacada"]].map(function(x){
+    (prox.length?'<div class="mk-act"><b>Marcas vigentes o próximas</b>'+prox.map(function(n){ return '<div>'+esc(novNombre(n))+(n.destino?(n.motivo==="destacada"?' → ':' · ')+esc(n.destino):'')+' · '+fmt(n.desde)+(n.hasta!==n.desde?' – '+fmt(n.hasta):'')+(n.por?' · <span>'+esc(n.por)+'</span>':'')+'</div>'; }).join("")+'</div>':'')+
+    '<div class="mk-opts" role="radiogroup" aria-label="Tipo de marca">'+[["activa","Activa"],["vacaciones","Vacaciones"],["destacada","Destacada"],["sin_campo","No salió a campo"]].map(function(x){
       return '<button type="button" class="mk-op'+(x[0]===mot?' on':'')+'" data-m="'+x[0]+'" role="radio" aria-checked="'+(x[0]===mot)+'">'+x[1]+'</button>'; }).join("")+'</div>'+
-    '<div class="mk-f2"><label>Desde<input type="date" class="mk-de" value="'+(vig?vig.desde:hoy)+'"></label><label>Hasta<input type="date" class="mk-ha" value="'+(vig?vig.hasta:vie)+'"></label></div>'+
-    '<label class="mk-dest"'+(mot==="destacada"?'':' hidden')+'>¿A qué área o proyecto?<input type="text" class="mk-dv" list="mkDests" maxlength="80" value="'+esc(vig&&vig.destino||"")+'" placeholder="Ej: MANTENIMIENTO ▸ Normalización de Red"></label>'+
+    '<label class="mk-causa"'+(mot==="sin_campo"?'':' hidden')+'>¿Por qué no salió a campo?<select class="mk-cs"><option value="">— Elige la causa —</option>'+
+      causas.map(function(c){ return '<option'+(c===causa0?' selected':'')+'>'+esc(c)+'</option>'; }).join("")+'</select></label>'+
+    '<div class="mk-f2"><label>Desde<input type="date" class="mk-de" value="'+de0+'"></label><label>Hasta<input type="date" class="mk-ha" value="'+ha0+'"></label></div>'+
+    '<label class="mk-dest"'+(mot==="destacada"?'':' hidden')+'>¿A qué área o proyecto?<input type="text" class="mk-dv" list="mkDests" maxlength="80" value="'+esc(vig&&vig.motivo==="destacada"&&vig.destino||"")+'" placeholder="Ej: MANTENIMIENTO ▸ Normalización de Red"></label>'+
     '<datalist id="mkDests">'+dests.map(function(c){ return '<option value="'+esc(c)+'">'; }).join("")+'</datalist>'+
-    '<label class="mk-com">Comentario (opcional)<textarea class="mk-cm" maxlength="300" rows="2" placeholder="Ej: vacaciones del líder; cuadrilla sin personal">'+esc(vig&&vig.comentario||"")+'</textarea></label>'+
-    '<div class="mk-hint"><b>Destacada</b> = apoya a otra área (solo sale de la suya). <b>Activa</b> quita la marca en esas fechas (sirve para terminar antes unas vacaciones). Queda registrado quién marcó y cuándo.</div>'+
+    '<label class="mk-com">Comentario <span class="mk-opc">(opcional)</span><textarea class="mk-cm" maxlength="300" rows="2" placeholder="Ej: cierre de expedientes en oficina; vacaciones del líder">'+esc(vig&&vig.comentario||"")+'</textarea></label>'+
+    '<div class="mk-hint"><b>No salió a campo</b> = oficina, capacitación, descanso médico, lluvia, sin vehículo…: esos días no se le exige ATS ni charla. <b>Destacada</b> = apoya a otra área (solo sale de la suya). <b>Activa</b> quita la marca en esas fechas. Queda registrado quién marcó y cuándo.</div>'+
     (APP._novSinServidor?'<div class="mk-err">El servidor aún no tiene esta función: falta publicar la actualización del Apps Script.</div>':'')+
     '<div class="mk-err" hidden></div>'+
     '<div class="mk-btns"><button type="button" class="mk-cancel">Cancelar</button><button type="button" class="mk-save">Guardar</button></div>'+
@@ -2039,20 +2062,31 @@ function abrirMarcar(o){
   document.addEventListener("keydown",esc1);
   wrap.onclick=function(e){ if(e.target===wrap) cerrar(); };
   q(".mk-x").onclick=cerrar; q(".mk-cancel").onclick=cerrar;
+  var tocadas=false; [".mk-de",".mk-ha"].forEach(function(s){ q(s).addEventListener("input",function(){ tocadas=true; }); });
+  var opcional=function(){ var otro=(sel==="sin_campo" && /^Otro/.test(q(".mk-cs").value)); q(".mk-opc").textContent=otro?"(obligatorio: describe la causa)":"(opcional)"; };
+  q(".mk-cs").addEventListener("change",opcional);
   wrap.querySelectorAll(".mk-op").forEach(function(b){ b.onclick=function(){
     sel=b.getAttribute("data-m");
     wrap.querySelectorAll(".mk-op").forEach(function(x){ var on=(x===b); x.classList.toggle("on",on); x.setAttribute("aria-checked",on?"true":"false"); });
-    q(".mk-dest").hidden=(sel!=="destacada");
+    q(".mk-dest").hidden=(sel!=="destacada"); q(".mk-causa").hidden=(sel!=="sin_campo"); opcional();
+    // Sin campo suele ser un día puntual; vacaciones y destaques, la semana. Solo si no se tocaron las fechas.
+    if(!tocadas && !vig){ q(".mk-de").value=(sel==="sin_campo")?dia0:hoy; q(".mk-ha").value=(sel==="sin_campo")?dia1:vie; }
+    if(sel==="sin_campo" && !q(".mk-cs").value) setTimeout(function(){ q(".mk-cs").focus(); },0);
   }; });
   var err=function(t){ var e=wrap.querySelectorAll(".mk-err"); e=e[e.length-1]; e.textContent=t; e.hidden=!t; };
   var btn=q(".mk-save");
   btn.onclick=function(){
-    var de=q(".mk-de").value, ha=q(".mk-ha").value, dv=q(".mk-dv").value.trim();
+    var de=q(".mk-de").value, ha=q(".mk-ha").value, dv=q(".mk-dv").value.trim(), cs=q(".mk-cs").value, cm=q(".mk-cm").value.trim();
     if(!de || !ha || ha<de){ err("Revisa las fechas: «hasta» no puede ser antes de «desde»."); return; }
     if(sel==="destacada" && !dv){ err("Indica a qué área o proyecto está destacada."); return; }
-    var body={ action:"novedad_guardar", division:o.division, unidad:o.unidad, etiqueta:o.etiqueta, motivo:sel, destino:(sel==="destacada"?dv:""), desde:de, hasta:ha, comentario:q(".mk-cm").value.trim() };
+    if(sel==="sin_campo" && !cs){ err("Elige la causa por la que no salió a campo."); q(".mk-cs").focus(); return; }
+    if(sel==="sin_campo" && /^Otro/.test(cs) && !cm){ err("Describe la causa en el comentario."); q(".mk-cm").focus(); return; }
+    var body={ action:"novedad_guardar", division:o.division, unidad:o.unidad, etiqueta:o.etiqueta, motivo:sel, destino:(sel==="destacada"?dv:(sel==="sin_campo"?cs:"")), desde:de, hasta:ha, comentario:cm };
+    var rango=(de===ha)?"el "+fmt(de):"del "+fmt(de)+" al "+fmt(ha);
     var listo=function(){ cerrar(); refrescarTrasNovedad();
-      toast(sel==="activa"?(o.etiqueta+": marca quitada en esas fechas; vuelve a contar en el total."):(o.etiqueta+": "+(sel==="destacada"?"destacada":"vacaciones")+" del "+fmt(de)+" al "+fmt(ha)+". No cuenta en el total."),"ok"); };
+      toast(sel==="activa"?(o.etiqueta+": marca quitada en esas fechas; vuelve a contar en el total."):
+            sel==="sin_campo"?(o.etiqueta+": no salió a campo "+rango+" ("+cs+"). No se le exige ATS ni charla esos días."):
+            (o.etiqueta+": "+(sel==="destacada"?"destacada":"vacaciones")+" "+rango+". No cuenta en el total."),"ok"); };
     if(!tieneEndpoint()){ demoGuardarNov(body); listo(); return; }
     btn.disabled=true; btn.textContent="Guardando…"; err("");
     apiPost(body).then(function(res){
@@ -2061,6 +2095,8 @@ function abrirMarcar(o){
       var e=String(res&&res.error||"");
       err(e==="no_autorizado"?"No tienes permiso para marcar en esta división.":
           /accion_no_reconocida/.test(e)?"El servidor aún no tiene esta función: falta publicar la actualización del Apps Script.":
+          e==="causa_requerida"?"Elige la causa por la que no salió a campo.":
+          (e==="valor_invalido" && sel==="sin_campo")?"El servidor aún no acepta «No salió a campo»: falta publicar el Apps Script actualizado.":
           e==="fechas_invalidas"?"Fechas inválidas.":e==="rango_muy_largo"?"El rango no puede pasar de un año.":
           e==="sesion_invalida"?"Tu sesión expiró. Vuelve a ingresar.":"No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
     });
@@ -2514,7 +2550,7 @@ function coberturaIndDetalleHTML(f,enCurso){
     var k=padDni(p.dni), dv=personaDiv(f.areaBig,p), m=puedeMarcar(dv); if(m) mk=true;
     return chipUnidad({ texto:p.nombre||p.dni, ok:!!f.coveredSet[k], nov:nv[k]||null, marcable:m, div:dv, unidad:k, etiqueta:p.nombre||p.dni });
   }).join("");
-  if(mk) h+='<div class="cb-mk-hint">Toca a una persona para marcarla de <b>vacaciones</b> o <b>destacada</b> a otra área: mientras dure, no cuenta en el total ni en el mínimo de ATS.</div>';
+  if(mk) h+='<div class="cb-mk-hint">Toca a una persona para marcarla de <b>vacaciones</b>, <b>destacada</b> a otra área o <b>no salió a campo</b> (oficina, capacitación, descanso médico…): esos días no cuentan en el mínimo de ATS.</div>';
   h+='<div class="cb-people">'+lista+'</div>';
   if(f.extras && f.extras.length){
     h+='<div class="cb-miss"><span class="cb-note">+ '+plural(f.extras.length,"persona","personas")+' fuera del padrón '+(f.extras.length===1?'fue inspeccionada':'fueron inspeccionadas')+' esta semana (no suma al %).</span></div>';
@@ -2548,7 +2584,7 @@ function coberturaDetalleHTML(f,enCurso){
   // Chips CU 1, CU 2… (✓ con inspección en la semana · ○ sin inspección), como el padrón por persona.
   if(f.lista && f.lista.length){
     var mk=!f.rotativa && puedeMarcar(f.comp);       // rotativas: el N° cambia cada semana → no se marcan
-    if(mk) h+='<div class="cb-mk-hint">Toca una cuadrilla para marcarla de <b>vacaciones</b> o <b>destacada</b> a otra área: mientras dure, no cuenta en el total ni en el mínimo de ATS.</div>';
+    if(mk) h+='<div class="cb-mk-hint">Toca una cuadrilla para marcarla de <b>vacaciones</b>, <b>destacada</b> a otra área o <b>no salió a campo</b> (oficina, capacitación, lluvia…): esos días no cuentan en el mínimo de ATS.</div>';
     h+='<div class="cb-people">'+f.lista.map(function(c){
       return chipUnidad({ texto:"CU "+c.num, ok:c.ok, nov:c.nov||null, marcable:mk, div:f.comp, unidad:c.num, etiqueta:"CU "+c.num });
     }).join("")+'</div>';
@@ -3306,7 +3342,7 @@ function renderProduccion(){
   }).join("");
   var selD=APP.prodSel?divs.filter(function(d){ return d.comp===APP.prodSel; })[0]:null;
   cont.innerHTML='<div class="prod-sum"><span><b>'+esc(prodRangoTxt(APP.prodPer,R))+'</b> · '+plural(dias,"día laborable","días laborables")+' · '+uniG.join(" + ")+
-        (G.nov?' · <span title="No se les exigen los días marcados">'+G.nov+' con vacaciones o destaque</span>':'')+'</span>'+
+        (G.nov?' · <span title="No se les exigen los días marcados">'+G.nov+' con vacaciones, destaque o sin campo</span>':'')+'</span>'+
       '<span>Total: <b class="pv tnum" style="color:'+PROD_COL[evG.cls]+'">'+(evG.pct==null?'—':evG.pct+'%')+'</b> '+
       '<span class="pc-st '+evG.cls+'">'+PROD_ST[evG.cls]+'</span> · ATS '+G.a+' / '+evG.exp+' · Charlas '+G.c+' / '+evG.exp+'</span>'+
       (est.length?'<span>'+est.join(' · ')+'</span>':'')+
@@ -3359,7 +3395,7 @@ function prodAnalisisHTML(d, R, dias, per){
     if(sinC.length) H.push("Subieron ATS pero <b>ninguna charla</b>: "+lista(sinC)+".");
     if(sinA.length) H.push("Subieron charlas pero <b>ningún ATS</b>: "+lista(sinA)+".");
   }
-  if(marcadas.length) H.push("Con vacaciones o destacadas en el período: "+marcadas.slice(0,5).map(function(u){ return '<b>'+esc(u.label)+'</b> ('+esc(novEtiqueta(u.nov))+')'; }).join(", ")+
+  if(marcadas.length) H.push("Con marcas en el período (vacaciones, destaque o no salida a campo): "+marcadas.slice(0,5).map(function(u){ return '<b>'+esc(u.label)+'</b> ('+esc(novEtiqueta(u.nov))+')'; }).join(", ")+
     (marcadas.length>5?" y "+(marcadas.length-5)+" más":"")+". No se les exigen esos días.");
   if(serie.length>1) H.push(okDias?("La meta "+(largo?"semanal":"diaria")+" se alcanzó en <b>"+okDias+"</b> de "+serie.length+(largo?" semanas.":" días.")):((largo?"Ninguna semana":"Ningún día")+" alcanzó la meta "+(largo?"semanal":"diaria")+"."));
   if(evp && evp.pct!=null && ev.pct!=null){
@@ -3379,11 +3415,11 @@ function prodAnalisisHTML(d, R, dias, per){
   var pctT=function(n){ return ev.exp?Math.round(n/ev.exp*100):0; };
   var nombresOk=cumplen.slice(0,4).map(function(u){ return esc(u.label); }).join(" · ")+(cumplen.length>4?" y "+(cumplen.length-4)+" más":"");
   var filas=us.map(function(u){
-    var e=u.ev, dd=u.dd, nc=u.nov?(u.nov.motivo==="destacada"?"des":"vac"):"", fuera=!!(u.nov && !dd);
-    var tx=fuera?(nc==="des"?"Destacada":"Vacaciones"):(!u.a&&!u.c?"Sin registros":(!u.c?"Sin charlas":(!u.a?"Sin ATS":PROD_ST[e.cls])));
+    var e=u.ev, dd=u.dd, nc=novCls(u.nov), fuera=!!(u.nov && !dd);
+    var tx=fuera?(nc==="sc"?"Sin campo":novNombre(u.nov)):(!u.a&&!u.c?"Sin registros":(!u.c?"Sin charlas":(!u.a?"Sin ATS":PROD_ST[e.cls])));
     var on=(selKey===u.key);
     return '<div class="pu'+(on?' sel':'')+'" data-u="'+esc(u.key)+'" role="button" tabindex="0" aria-pressed="'+(on?'true':'false')+'" title="Ver el gráfico de '+esc(u.label)+(u.nov?' · '+esc(novEtiqueta(u.nov)):'')+'"><span class="nm">'+
-        (u.nov && dd?'<em class="pu-nov '+nc+'">'+(nc==="des"?'dest.':'vac.')+'</em>':'')+esc(u.label)+'</span>'+
+        (u.nov && dd?'<em class="pu-nov '+nc+'">'+novCorto(u.nov)+'</em>':'')+esc(u.label)+'</span>'+
       '<span><span class="nu">'+u.a+'/'+dd+'</span><span class="mbar"><i style="width:'+(dd?Math.min(100,u.a/dd*100):0)+'%"></i></span></span>'+
       '<span><span class="nu">'+u.c+'/'+dd+'</span><span class="mbar cv"><i style="width:'+(dd?Math.min(100,u.c/dd*100):0)+'%"></i></span></span>'+
       '<b class="tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b><span class="pc-st '+(fuera?nc:e.cls)+'">'+tx+'</span></div>';
@@ -3400,7 +3436,7 @@ function prodAnalisisHTML(d, R, dias, per){
     '</div>'+
     '<div class="pan-hall"><h5>Hallazgos</h5><ul>'+H.map(function(h){ return '<li>'+h+'</li>'; }).join("")+'</ul></div>'+
     '<div class="pan-cols">'+
-      '<div class="pan-col"><h5>Por '+uS+' <span>peor primero · mínimo '+dias+' ATS + '+dias+' charlas'+(marcadas.length?' (menos los días marcados)':'')+' · toca una para ver su gráfico</span></h5>'+
+      '<div class="pan-col"><h5>Por '+uS+' <span>peor primero · mínimo '+dias+' ATS + '+dias+' charlas'+(marcadas.length?' (menos los días marcados)':'')+' · toca una para ver su gráfico'+(!d.rotativa && puedeMarcar(d.comp)?' o justificar si no salió a campo':'')+'</span></h5>'+
         '<div class="pu hd"><span></span><span class="nu">ATS</span><span class="nu">Charlas</span><span>%</span><span></span></div>'+(filas||'<div style="font-size:12px;color:var(--soft);padding:6px 2px">Sin registros en el período.</div>')+'</div>'+
       '<div class="pan-col" id="prodColGraf">'+prodColGrafHTML(d,R,dias,selKey)+'</div>'+
     '</div>'+
@@ -3451,8 +3487,10 @@ function prodColGrafHTML(d, R, dias, key){
     if(sinC>nada) L.push('Sin charlas en <b>'+sinC+'</b> de '+n+' '+per+'.');
     if(sinA>nada) L.push('Sin ATS en <b>'+sinA+'</b> de '+n+' '+per+'.');
     if(mejor && n>1 && mejor.a+mejor.c>0) L.push('Mejor '+(largo?'semana':'día')+': <b>'+esc(mejor.lbl)+'</b> ('+mejor.a+' ATS + '+mejor.c+' charla'+(mejor.c===1?'':'s')+').');
+    var justif=(!d.rotativa && puedeMarcar(d.comp));
     h+='<div class="pan-u"><span><b class="pp tnum" style="color:'+PROD_COL[e.cls]+'">'+(e.pct==null?'—':e.pct+'%')+'</b> <span class="pc-st '+e.cls+'">'+PROD_ST[e.cls]+'</span></span>'+
        '<span>ATS <b>'+y.a+'</b>/'+ddU+' · Charlas <b>'+y.c+'</b>/'+ddU+'</span>'+
+       (justif?'<button type="button" class="pan-just" id="prodUnidadJust" data-u="'+esc(u.key)+'" data-l="'+esc(u.label)+'">Justificar no salida a campo</button>':'')+
        '<button type="button" class="pan-ux" id="prodUnidadX">✕ Ver toda la división</button></div>'+
        (L.length?'<ul class="pan-ul">'+L.map(function(t){ return '<li>'+t+'</li>'; }).join("")+'</ul>':'');
   }
@@ -3466,6 +3504,12 @@ function wireProdUnidades(){
   var pan=document.getElementById("prodAnalisis"), ctx=APP._prodCtx; if(!pan || !ctx) return;
   var wireX=function(){
     var x=document.getElementById("prodUnidadX"); if(x) x.onclick=function(){ elegir(null); };
+    // Justificar: día del período si es "Hoy" (o un solo día); si no, hoy. Las fechas se pueden cambiar en el formulario.
+    var j=document.getElementById("prodUnidadJust");
+    if(j) j.onclick=function(){
+      var hoy=fechaISO(new Date()), dia=(ctx.R.desde===ctx.R.hasta)?ctx.R.desde:hoy;
+      abrirMarcar({ division:ctx.d.comp, unidad:j.getAttribute("data-u"), etiqueta:j.getAttribute("data-l"), motivo:"sin_campo", desde:dia, hasta:dia });
+    };
     var g0=document.getElementById("prodColGraf");
     if(g0) g0.querySelectorAll("[data-pp]").forEach(function(b){
       b.onclick=function(){
@@ -3546,8 +3590,8 @@ function renderProdTabla(){
         var dd=udUnidad(d,u.key,s.desde,s.hasta), x=prodContar(d.idx[u.key],s.desde,s.hasta), ev=prodEval(x.a,x.c,dd,1);
         if(d.rotativa && !(x.a+x.c)) ev={ a:0, c:0, tot:0, exp:0, esp:0, pct:null, cls:"n" };   // rotativa: ese N° no trabajó esa semana
         if(!d.rotativa && !dd && s.dias){                                                      // toda la semana de vacaciones o destacada
-          var nv=novEnRango(d.comp,u.key,s.desde,s.hasta), des=!!(nv && nv.motivo==="destacada");
-          return '<td><span class="pc n nv'+(des?' des':'')+'" title="'+esc(novEtiqueta(nv))+' · sin mínimo esa semana'+((x.a+x.c)?' · subió '+(x.a+x.c):'')+'">'+(des?'DEST.':'VAC.')+'</span></td>';
+          var nv=novEnRango(d.comp,u.key,s.desde,s.hasta), nc=novCls(nv);
+          return '<td><span class="pc n nv'+(nc==="vac"?'':' '+nc)+'" title="'+esc(novEtiqueta(nv))+' · sin mínimo esa semana'+((x.a+x.c)?' · subió '+(x.a+x.c):'')+'">'+(nc==="des"?'DEST.':(nc==="sc"?'S/CAMPO':'VAC.'))+'</span></td>';
         }
         return '<td>'+prodCelda(ev,"u|"+d.comp+"|"+u.key+"|"+s.desde)+'</td>';
       }).join("")+'</tr>';
