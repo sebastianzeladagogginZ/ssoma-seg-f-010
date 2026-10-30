@@ -1002,7 +1002,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V64";
+var PANEL_VERSION = "V65";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -1530,7 +1530,7 @@ function navTo(v){
   else if(v==="observaciones") renderObservaciones();
   else if(v==="evidencias") renderEvidencias();
   else if(v==="historico") cargarHistorico();
-  else if(v==="cobertura") cargarCobertura();
+  else if(v==="cobertura"){ APP.cobSemanaIdx=null; cargarCobertura(); }   // siempre abre en la semana en curso
   else if(v==="ats"){ cargarMetasCuadrillas(); cargarNovedades(refrescarTrasNovedad); if(APP.atsCargado) renderAts(); else cargarAts(); }
 }
 // Menú lateral en móvil: se abre/cierra con scrim y refleja el estado en aria-expanded.
@@ -2423,6 +2423,9 @@ function cobTrendSVG(cfg, w){
 }
 function renderCobertura(){
   var cont=document.getElementById("cobContent"); if(!cont) return;
+  // Sin inspecciones todavía (p. ej. llegó antes el total de cuadrillas): pintar aquí fijaría la semana 0,
+  // que al llegar los datos sería la más antigua, y mostraría 0% en falso. cargarCobertura vuelve a pintar.
+  if(!APP.historico) return;
   var hayCrew=Object.keys(metaCuadrillas()).some(divEnAlcanceCob);
   var indivAreas=areasIndividualesEnAlcance();
   if(!hayCrew && !indivAreas.length){
