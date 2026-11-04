@@ -253,6 +253,12 @@
   .msg-input{width:100%;min-height:64px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;color:var(--ink)}
   .msg-input:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(2,132,199,.1)}
   .msg-empty{color:var(--muted);font-size:12.5px;margin:4px 0}
+  .retro{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:11px 12px;margin:0 0 10px}
+  .retro-h{font-size:13px;font-weight:700;color:#0c4a6e}
+  .retro-n{margin:3px 0 7px;font-size:11.5px;line-height:1.4;color:#475569}
+  .retro-it{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12.5px;cursor:pointer;border-top:1px solid #e0f2fe;color:var(--ink)}
+  .retro-it input{width:16px;height:16px;flex:none}
+  .retro-it span:nth-child(2){flex:1;min-width:0}
   .file-pick{display:flex;align-items:center;gap:9px;border:1.5px dashed var(--brand2);color:var(--brand);background:#f0f9ff;border-radius:10px;padding:13px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:background .12s}
   .file-pick:hover{background:#e0f2fe}
 
@@ -1002,7 +1008,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V65";
+var PANEL_VERSION = "V66";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -3997,6 +4003,59 @@ document.getElementById("fLev").onchange=function(){ APP.filtros.lev=this.value;
 // ¿El jefe ya gestionó esta observación? = subió evidencia O dejó una justificación
 // escrita (p. ej. "no aplica"). Ambas cuentan como gestión revisable por SSOMA.
 function hayGestionJefe(o){ return !!o.evidencia_lev || !!(o.mensaje_jefe && String(o.mensaje_jefe).trim()); }
+
+/* ---- V66: LEVANTAMIENTO RETROACTIVO ----
+   Las cuadrillas se inspeccionan cada semana y el mismo hallazgo se repite hasta que se
+   corrige. "La misma observación" = misma área + cuadrilla + sección + ítem + técnico
+   (sin técnico = recurso general de la cuadrilla). Los registros SIN cuadrilla no se
+   agrupan (no se puede asegurar que sea el mismo equipo). El estado (Requiere cambio /
+   No tiene) no importa. Cada copia conserva SU fecha: el gráfico semanal no cambia. */
+function _normRetro(v){ return String(v==null?"":v).trim().toLowerCase().replace(/\s+/g," "); }
+function claveRetro(o){
+  var c=_normRetro(o.cuadrilla); if(!c) return null;
+  return [_normRetro(o.area),c,_normRetro(o.seccion),_normRetro(o.item),_normRetro(o.recurso)].join("|");
+}
+function _porFechaDesc(a,b){ return String(b.fecha||"")<String(a.fecha||"")?-1:(String(b.fecha||"")>String(a.fecha||"")?1:0); }
+// Jefe: registros de la MISMA observación de semanas anteriores (o del mismo día) que siguen
+// sin gestionar (pendiente o rechazada). Las "En revisión" ya tienen su evidencia: no se tocan.
+// Solo hacia atrás: una más reciente indica que el problema seguía, por eso no se toca.
+function anterioresAbiertas(o){
+  var k=claveRetro(o); if(!k) return [];
+  return APP.datos.filter(function(x){
+    return x.id!==o.id && (x.levantamiento==="pendiente"||x.levantamiento==="rechazado") &&
+      String(x.fecha||"")<=String(o.fecha||"") && claveRetro(x)===k;
+  }).sort(_porFechaDesc);
+}
+// SSOMA: otros registros de la misma observación que también están "En revisión".
+function hermanasEnRevision(o){
+  var k=claveRetro(o); if(!k) return [];
+  return APP.datos.filter(function(x){ return x.id!==o.id && x.levantamiento==="en_proceso" && claveRetro(x)===k; }).sort(_porFechaDesc);
+}
+// Bloque de casillas del drawer (marcadas por defecto). marcada(x) decide la marca inicial.
+function htmlRetro(lista, titulo, nota, marcada){
+  if(!lista.length) return "";
+  var filas=lista.map(function(x){
+    var l=EST_LEV[x.levantamiento]||EST_LEV.pendiente, on=marcada?marcada(x):true;
+    return '<label class="retro-it"><input type="checkbox" class="retroChk" value="'+esc(x.id)+'"'+(on?' checked':'')+'>'+
+      '<span><b>'+esc(fechaCorta(x.fecha))+'</b> · '+esc(x.estado||"")+'</span>'+
+      '<span class="pill '+l.cls+'" style="font-size:11px"><span class="dot-s" style="background:'+l.dot+'"></span>'+l.label+'</span></label>';
+  }).join("");
+  return '<div class="retro"><div class="retro-h">↺ '+titulo+'</div>'+(nota?'<p class="retro-n">'+nota+'</p>':'')+filas+'</div>';
+}
+function idsRetroMarcados(){ return Array.prototype.filter.call(document.querySelectorAll("#drawer .retroChk"),function(c){ return c.checked; }).map(function(c){ return c.value; }); }
+function obsPorIds(ids){ return ids.map(function(id){ return APP.datos.find(function(x){ return x.id===id; }); }).filter(Boolean); }
+// Acción SSOMA en lote sobre varias observaciones; si el backend no conoce el lote, una por una.
+function loteSSOMA(obs, accionLote, campoOk, accionUna, extra){
+  if(!obs.length) return Promise.resolve({ok:{},err:{}});
+  if(APP.demo || !tieneEndpoint()){ var dm={ok:{},err:{}}; obs.forEach(function(o){ dm.ok[o.id]=1; }); return Promise.resolve(dm); }
+  return enviarLotes(obs, function(ids){ var b={action:accionLote,ids:ids}; if(extra) for(var k in extra) b[k]=extra[k]; return b; },
+    function(r){ return r[campoOk]; }).then(function(r){
+      if(!r.sinSoporte) return r;
+      var res={ok:{},err:{}};
+      return obs.reduce(function(p,o){ return p.then(function(){ return enviarAccion(accionUna,o,extra).then(function(x){ if(x&&x.ok===false) res.err[o.id]=errTxt(x); else res.ok[o.id]=1; }); }); }, Promise.resolve())
+        .then(function(){ return res; });
+    });
+}
 // ¿Esta observación puede seleccionarse para una acción masiva del rol actual?
 function esSeleccionableMasivo(o){
   if(o.levantamiento==="descartado") return false;   // archivadas: fuera del flujo, no accionables en masivo
@@ -4159,25 +4218,35 @@ function finRechMasivo(ok,total,errs){
 function abrirLevantarMasivo(){
   var obs=obsMasivo().filter(function(o){ return o.levantamiento!=="levantado"; });
   if(!obs.length){ toast("No hay observaciones pendientes seleccionadas.","bad"); return; }
+  // V66: semanas anteriores de la misma observación (pendientes/rechazadas, no seleccionadas).
+  var ya={}; obs.forEach(function(o){ ya[o.id]=1; });
+  var extras=[];
+  obs.forEach(function(o){ anterioresAbiertas(o).forEach(function(x){ if(!ya[x.id]){ ya[x.id]=1; extras.push(x); } }); });
   modalMasivo({
     titulo:"Levantar "+obs.length+" observación(es)",
     aviso:"Se adjuntará la MISMA evidencia y el mismo comentario a las "+obs.length+" observaciones seleccionadas. Todas pasarán a 'En revisión' para que SSOMA las valide.",
+    check: extras.length ? {label:"↺ También levantar "+extras.length+" registro(s) de semanas anteriores de estas mismas observaciones (misma evidencia)", checked:true} : null,
     conArchivo:true, requiereArchivoOTexto:true,
     placeholder:"Comentario para SSOMA (qué se hizo)… — opcional si adjuntas evidencia",
     okTxt:"Enviar a SSOMA", okColor:"#0284c7",
-    onOk:function(texto, files){ subirEvidenciaMasiva(obs, files, texto); }
+    onOk:function(texto, files, conRetro){ subirEvidenciaMasiva(conRetro?obs.concat(extras):obs, files, texto); }
   });
 }
-function subirEvidenciaMasiva(obs, files, comentario){
+// opt (V66, opcional): {progreso:fn(texto), fin:fn(ok,total,errs)} — para usarla desde el drawer.
+function subirEvidenciaMasiva(obs, files, comentario, opt){
+  opt=opt||{};
+  var finF=opt.fin||finLevantaMasivo;
+  var prog=opt.progreso||function(t){ barraMasivaOcupada(true,"bbLift",t); };
+  var libre=opt.progreso?function(){}:function(){ barraMasivaOcupada(false); };
   if(APP.demo || !tieneEndpoint()){
     obs.forEach(function(o){ if(files&&files.length) o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; if(comentario) o.mensaje_jefe=comentario; });
-    finLevantaMasivo(obs.length,obs.length,[]); return;
+    finF(obs.length,obs.length,[]); return;
   }
   // Lee los archivos UNA vez. Con el backend V28+ cada archivo viaja UNA sola vez por
   // bloque de observaciones (antes se re-subía N veces): el servidor crea una copia por
   // observación. Si el backend desplegado no conoce los lotes, usa el modo de siempre.
   leerTodos(files, function(err, payloads){
-    if(err){ toast("No se pudo leer la evidencia: "+err,"bad"); return; }
+    if(err){ if(opt.fin) finF(0,obs.length,["No se pudo leer la evidencia: "+err]); else toast("No se pudo leer la evidencia: "+err,"bad"); return; }
     var fallo={};   // id → primer error (no se reintenta esa observación con los demás archivos)
     var anotar=function(r){ Object.keys(r.err).forEach(function(id){ if(!fallo[id]) fallo[id]=r.err[id]; }); return r; };
     var cadena=Promise.resolve({sinSoporte:false});
@@ -4191,7 +4260,7 @@ function subirEvidenciaMasiva(obs, files, comentario){
           if(comentario && idx===0) b.mensaje_jefe=comentario;   // el comentario va una sola vez por observación
           return b;
         }, function(r){ return (r.subidas||[]).map(function(x){ return x.id; }); },
-        function(h,t){ barraMasivaOcupada(true,"bbLift","Enviando "+(payloads.length>1?(idx+1)+"/"+payloads.length+" · ":"")+h+"/"+t+"…"); })
+        function(h,t){ prog("Enviando "+(payloads.length>1?(idx+1)+"/"+payloads.length+" · ":"")+h+"/"+t+"…"); })
         .then(anotar);
       });
     });
@@ -4200,10 +4269,10 @@ function subirEvidenciaMasiva(obs, files, comentario){
         return enviarLotes(obs, function(ids){ return {action:"mensaje_lote",ids:ids,texto:comentario}; }, function(r){ return r.guardadas; }).then(anotar);
       });
     }
-    barraMasivaOcupada(true,"bbLift","Enviando…");
+    prog("Enviando…");
     cadena.then(function(r){
-      barraMasivaOcupada(false);
-      if(r && r.sinSoporte) return subirEvidenciaUnoPorUno(obs, payloads, comentario);
+      libre();
+      if(r && r.sinSoporte) return subirEvidenciaUnoPorUno(obs, payloads, comentario, finF);
       var ok=0, errs=[];
       obs.forEach(function(o){
         if(fallo[o.id]){ errs.push((o.item||o.id)+": "+fallo[o.id]); return; }
@@ -4211,12 +4280,12 @@ function subirEvidenciaMasiva(obs, files, comentario){
         if(payloads.length){ o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; }
         if(comentario){ o.mensaje_jefe=comentario; if(!payloads.length && (o.levantamiento==="pendiente"||o.levantamiento==="rechazado")) o.levantamiento="en_proceso"; }
       });
-      finLevantaMasivo(ok,obs.length,errs);
+      finF(ok,obs.length,errs);
     });
   });
 }
 // Modo de siempre (uno por uno): solo si el backend desplegado no conoce los lotes.
-function subirEvidenciaUnoPorUno(obs, payloads, comentario){
+function subirEvidenciaUnoPorUno(obs, payloads, comentario, finF){
   bulkRun(obs, function(o){
     var chain=Promise.resolve();
     payloads.forEach(function(p,idx){
@@ -4230,7 +4299,7 @@ function subirEvidenciaUnoPorUno(obs, payloads, comentario){
       chain=chain.then(function(){ return enviarAccion("guardar_mensaje",o,{rol:"jefe",texto:comentario}).then(function(res){ if(res&&res.ok===false) throw errTxt(res); }); });
     }
     return chain.then(function(){ if(payloads.length){ o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; } if(comentario) o.mensaje_jefe=comentario; });
-  }, "Enviando", "bbLift", finLevantaMasivo);
+  }, "Enviando", "bbLift", finF||finLevantaMasivo);
 }
 function finLevantaMasivo(ok,total,errs){
   APP.sel={};
@@ -4263,6 +4332,7 @@ function modalMasivo(opt){
   wrap.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:460px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3)">'+
     '<h3 style="margin:0 0 6px;font-size:16px;color:#0f172a">'+esc(opt.titulo)+'</h3>'+
     (opt.aviso?'<p style="margin:0 0 14px;font-size:13px;color:#64748b">'+esc(opt.aviso)+'</p>':'')+
+    (opt.check?'<label class="retro" style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;margin:0 0 12px"><input type="checkbox" id="mmCheck"'+(opt.check.checked?' checked':'')+' style="margin-top:2px;width:16px;height:16px;flex:none"><span style="font-size:13px;font-weight:600;color:#0c4a6e">'+esc(opt.check.label)+'</span></label>':'')+
     fileHtml+
     '<textarea id="mmMsg" class="msg-input" placeholder="'+esc(opt.placeholder||"")+'"></textarea>'+
     '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">'+
@@ -4280,8 +4350,9 @@ function modalMasivo(opt){
     var files=fi?fi.files:null;
     if(opt.requiereTexto && !texto){ toast("Escribe el motivo antes de continuar.","bad"); if(ta) ta.focus(); return; }
     if(opt.requiereArchivoOTexto && (!files||!files.length) && !texto){ toast("Adjunta una evidencia o escribe un comentario.","bad"); return; }
+    var ck=wrap.querySelector("#mmCheck");
     cerrar();
-    opt.onOk(texto, files);
+    opt.onOk(texto, files, ck?ck.checked:false);
   };
   if(ta) ta.focus();
 }
@@ -4296,6 +4367,16 @@ function abrirDrawer(id){
   var puedeAprobar=isSSOMA && !(APP.user && APP.user.puede_aprobar===false);
   var l=EST_LEV[o.levantamiento]||EST_LEV.pendiente;
   var estCls=o.estado==="No tiene"?"bad":"warn";
+  // V66: misma observación en otras semanas (jefe: anteriores sin gestionar; SSOMA: también en revisión).
+  var retroJefe=(!isSSOMA && o.levantamiento!=="levantado")
+    ? htmlRetro(anterioresAbiertas(o),"Esta observación se repite en semanas anteriores",
+        "Se levantarán también con la misma evidencia y comentario. Desmarca las que no correspondan.")
+    : "";
+  var retroSSOMA=(isSSOMA && puedeAprobar && o.levantamiento==="en_proceso")
+    ? htmlRetro(hermanasEnRevision(o),"Misma observación en otras semanas, también en revisión",
+        "Se aprobarán o rechazarán junto con esta. Vienen marcadas las enviadas con el mismo comentario; revisa las demás antes de marcarlas.",
+        function(x){ return _normRetro(x.mensaje_jefe)===_normRetro(o.mensaje_jefe); })
+    : "";
   var evUrl=safeUrl(o.evidencia_url);
   var evLev = o.evidencia_lev
     ? '<div class="ev-thumbs"><div class="t">📷 Evidencia<br>cargada</div></div>'+
@@ -4342,6 +4423,7 @@ function abrirDrawer(id){
       ((!o.mensaje_jefe&&!o.mensaje_ssoma)?'<p class="msg-empty">Aún no hay mensajes.</p>':'')+
       (isSSOMA
         ? '<div class="sect">Revisión SSOMA</div>'+
+          retroSSOMA+
           '<textarea id="aMsg" class="msg-input" placeholder="Indicación para el jefe (obligatoria si vas a rechazar)">'+esc(o.mensaje_ssoma||"")+'</textarea>'+
           '<div class="act-btns" style="margin-top:8px">'+
             (hayGestionJefe(o)
@@ -4354,6 +4436,7 @@ function abrirDrawer(id){
             '<button class="act" id="aMsgSend">✉ Enviar indicación al jefe</button>'+
           '</div>'
         : '<div class="sect">Gestión del levantamiento</div>'+
+          retroJefe+
           '<label class="file-pick"><span style="font-size:16px">📎</span><span id="aFileName">Adjuntar evidencia (foto o PDF)…</span>'+
             '<input type="file" id="aFile" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png" multiple style="display:none"></label>'+
           '<textarea id="aMsg" class="msg-input" style="margin-top:8px" placeholder="Comentario para SSOMA (qué se hizo, detalle del levantamiento)…">'+esc(o.mensaje_jefe||"")+'</textarea>'+
@@ -4460,28 +4543,43 @@ function enviarAccion(action,o,extra){
 }
 function aprobarSSOMA(o){
   var ta=document.getElementById("aMsg"), extra=ta?ta.value.trim():"";
+  var grupo=obsPorIds(idsRetroMarcados());   // V66: otras semanas de la misma observación
   drawerBusy(true);
   // Si el SSOMA escribió una indicación, no la pierdas al aprobar.
   var chain=(extra && extra!==o.mensaje_ssoma)
     ? enviarAccion("guardar_mensaje",o,{rol:"ssoma",texto:extra}).then(function(){ o.mensaje_ssoma=extra; })
     : Promise.resolve();
   chain.then(function(){ return enviarAccion("aprobar_levantamiento",o); }).then(function(res){
-    drawerBusy(false);
-    if(res && res.ok===false){ toast(errTxt(res),"bad"); return; }
+    if(res && res.ok===false){ drawerBusy(false); toast(errTxt(res),"bad"); return; }
     o.levantamiento="levantado"; o.soma_rechazo=false;
-    cerrarDrawer(); toast("Levantamiento aprobado y validado por SSOMA ✓","ok"); recargarTrasAccion();
+    return loteSSOMA(grupo,"aprobar_lote","aprobadas","aprobar_levantamiento").then(function(r){
+      var ok=0, errs=[];
+      grupo.forEach(function(x){ if(r.ok[x.id]){ ok++; x.levantamiento="levantado"; x.soma_rechazo=false; } else errs.push(fechaCorta(x.fecha)+": "+r.err[x.id]); });
+      drawerBusy(false); cerrarDrawer();
+      if(errs.length) toast("Se aprobó esta y "+ok+" de "+grupo.length+" de otras semanas. Revisa: "+errs.slice(0,2).join(" · "),"bad");
+      else toast(grupo.length?("Levantamiento aprobado ✓ (esta + "+ok+" de otras semanas)"):"Levantamiento aprobado y validado por SSOMA ✓","ok");
+      recargarTrasAccion();
+    });
   });
 }
 function rechazarSSOMA(o){
   var ta=document.getElementById("aMsg"), motivo=ta?ta.value.trim():"";
   if(!motivo){ toast("Escribe el motivo del rechazo en el cuadro de indicación.","bad"); if(ta) ta.focus(); return; }
-  if(!confirm("Se eliminará la evidencia de la nube y la observación deberá gestionarse de nuevo.\n\n¿Confirmar el rechazo?")) return;
+  var grupo=obsPorIds(idsRetroMarcados());   // V66: otras semanas de la misma observación
+  if(!confirm("Se eliminará la evidencia de la nube y la observación"+(grupo.length?(" (y "+grupo.length+" de otras semanas)"):"")+" deberá gestionarse de nuevo.\n\n¿Confirmar el rechazo?")) return;
   drawerBusy(true);
   enviarAccion("rechazar_levantamiento",o,{texto:motivo}).then(function(res){
-    drawerBusy(false);
-    if(res && res.ok===false){ toast(errTxt(res),"bad"); return; }
-    o.levantamiento="rechazado"; o.soma_rechazo=true; o.evidencia_lev=false; o.evidencia_url=""; o.mensaje_ssoma=motivo;
-    cerrarDrawer(); toast("Evidencia rechazada y eliminada de la nube 🚫","bad"); recargarTrasAccion();
+    if(res && res.ok===false){ drawerBusy(false); toast(errTxt(res),"bad"); return; }
+    var marcar=function(x){ x.levantamiento="rechazado"; x.soma_rechazo=true; x.evidencia_lev=false; x.evidencia_url=""; x.mensaje_ssoma=motivo; };
+    marcar(o);
+    return loteSSOMA(grupo,"rechazar_lote","rechazadas","rechazar_levantamiento",{texto:motivo}).then(function(r){
+      var ok=0, errs=[];
+      grupo.forEach(function(x){ if(r.ok[x.id]){ ok++; marcar(x); } else errs.push(fechaCorta(x.fecha)+": "+r.err[x.id]); });
+      drawerBusy(false); cerrarDrawer();
+      if(errs.length) toast("Se rechazó esta y "+ok+" de "+grupo.length+" de otras semanas. Revisa: "+errs.slice(0,2).join(" · "),"bad");
+      else toast(grupo.length?("Evidencias rechazadas 🚫 (esta + "+ok+" de otras semanas)"):"Evidencia rechazada y eliminada de la nube 🚫","bad");
+      recargarTrasAccion();
+    });
   });
 }
 function guardarMensaje(o,rol){
@@ -4503,6 +4601,8 @@ function enviarLevantamiento(o){
   var files=fi?fi.files:null, msg=ta?ta.value.trim():"";
   if((!files||!files.length) && !msg){ toast("Adjunta una evidencia o escribe un comentario.","bad"); return; }
   if(msg) o.mensaje_jefe=msg;
+  var extras=obsPorIds(idsRetroMarcados());   // V66: semanas anteriores marcadas
+  if(extras.length){ enviarConRetro(o,extras,files,msg); return; }
   if(APP.demo || !tieneEndpoint()){   // demo: simula
     if(files && files.length){ o.evidencia_lev=true; o.levantamiento="en_proceso"; o.soma_rechazo=false; }
     cerrarDrawer(); refrescar(); toast("Enviado (demo) 📤","ok"); return;
@@ -4519,6 +4619,23 @@ function enviarLevantamiento(o){
       cerrarDrawer(); toast("Gestión enviada a SSOMA · pasó a En revisión ✉","ok"); recargarTrasAccion();
     });
   }
+}
+// V66: la misma evidencia y comentario para esta observación y sus semanas anteriores.
+// Reutiliza el lote: el archivo viaja una vez y el servidor crea una copia por observación,
+// cada una en la carpeta de SU fecha.
+function enviarConRetro(o, extras, files, msg){
+  var btn=document.getElementById("aEnviar"), etiqueta=btn?btn.textContent:"";
+  drawerBusy(true);
+  subirEvidenciaMasiva([o].concat(extras), files, msg, {
+    progreso:function(t){ if(btn) btn.textContent=t; },
+    fin:function(ok,total,errs){
+      drawerBusy(false); if(btn) btn.textContent=etiqueta;
+      if(ok===total){ cerrarDrawer(); toast("✓ Enviado a SSOMA: esta observación + "+(total-1)+" de semanas anteriores","ok"); }
+      else if(ok>0){ cerrarDrawer(); toast("Se enviaron "+ok+" de "+total+". Revisa: "+errs.slice(0,2).join(" · "),"bad"); }
+      else { toast("No se pudo enviar. "+(errs[0]||""),"bad"); }
+      recargarTrasAccion();
+    }
+  });
 }
 function procesarArchivos(o, files, comentario){
   if(!files || !files.length) return;
