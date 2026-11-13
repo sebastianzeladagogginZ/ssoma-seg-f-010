@@ -1008,7 +1008,7 @@ var CONFIG = {
 
 /* Versión del panel — SUBIR con cada modificación publicada (V17, V18, …).
    Se muestra al pie del menú lateral (id="verBadge"). */
-var PANEL_VERSION = "V68";
+var PANEL_VERSION = "V69";
 
 /* ===== Usuarios DEMO (ficticios — solo se usan sin endpoint; el acceso real
    se valida en el servidor contra la pestaña "Jefes" del Sheet) ===== */
@@ -2154,6 +2154,17 @@ function coberturaDeSemana(weekItems, sab){
    Instalaciones) y el panel muestra una fila por cada una. Una persona cuenta
    como inspeccionada aunque la inspección se haya registrado en la otra
    subdivisión (lo que se mide es que la persona fue inspeccionada).
+
+   ALTAS Y BAJAS SIN EFECTO RETROACTIVO (V69). Cada semana se mide con el padrón
+   que había en ESA semana: una semana cerrada no cambia si después entra o sale
+   gente. Por eso a nadie se le borra de esta lista:
+     · Persona nueva  → se agrega con  alta:"AAAA-MM-DD"  (fecha en que se registra).
+     · Sale / cambia de rol → se deja y se le pone  baja:"AAAA-MM-DD".
+     · Cambia de subdivisión → baja en la fila vieja + fila nueva con alta (misma fecha).
+   Un cambio rige desde la semana (sáb→vie) en que se registra: el alta ya cuenta en
+   esa semana y la baja ya no. Sin alta/baja = cuenta en todas las semanas (personal
+   que ya estaba). Corregir un DNI mal tipeado NO es alta/baja: se corrige y listo.
+   Los comentarios «registrado …» son solo referencia; lo que manda es alta/baja.
    ============================================================ */
 var NET_ONSITE="ON-Site - Corporativo", NET_INST="Instalaciones - Corporativo";
 var PADRON_INDIVIDUAL={
@@ -2171,10 +2182,11 @@ var PADRON_INDIVIDUAL={
     {dni:"75131658",nombre:"RAMOS VILLANUEVA JOHN ANGEL",div:NET_ONSITE},
     {dni:"74219379",nombre:"RIVERA RODRIGUEZ CARLOS MANUEL",div:NET_ONSITE},
     {dni:"71765976",nombre:"SOSA ALVA FABIAN BRUNO",div:NET_ONSITE},
-    {dni:"45321581",nombre:"BRAVO VARGAS JAVIER ELLIOT",div:NET_ONSITE},          // alta 2026-10-12
-    {dni:"60753590",nombre:"MAYON RIMACHE GONZALO FRANCO",div:NET_ONSITE},        // alta 2026-10-12
-    {dni:"74552003",nombre:"LLANCO SANTOS LUCAS DANIEL",div:NET_ONSITE},          // alta 2026-11-10
-    {dni:"76212811",nombre:"RIVERA RAMOS ELIAZAR ANTONY",div:NET_ONSITE},         // alta 2026-11-10
+    {dni:"45321581",nombre:"BRAVO VARGAS JAVIER ELLIOT",div:NET_ONSITE},          // registrado 2026-10-12
+    {dni:"60753590",nombre:"MAYON RIMACHE GONZALO FRANCO",div:NET_ONSITE},        // registrado 2026-10-12
+    {dni:"74552003",nombre:"LLANCO SANTOS LUCAS DANIEL",div:NET_ONSITE,alta:"2026-11-10"},
+    {dni:"76212811",nombre:"RIVERA RAMOS ELIAZAR ANTONY",div:NET_ONSITE,alta:"2026-11-10"},
+    {dni:"72028088",nombre:"CARRIZALES RAMIREZ RUSSELL NOE",div:NET_ONSITE,baja:"2026-11-10"},   // pasa a Jefe de Instalaciones
     // ── Instalaciones - Corporativo ──
     {dni:"70507697",nombre:"VALDERRAMA LOCK LUIS ENRIQUE",div:NET_INST},          // DNI corregido 2026-10-12 (antes 70507679)
     {dni:"70895127",nombre:"VIRHUEZ CARRIÓN JHOEL ABELARDO",div:NET_INST},
@@ -2184,9 +2196,11 @@ var PADRON_INDIVIDUAL={
     {dni:"72077927",nombre:"ROJAS YACTAYO RICARDO ANTONIO",div:NET_INST},
     {dni:"73485235",nombre:"PACARI SARMIENTO JOSE NELSON",div:NET_INST},
     {dni:"73865894",nombre:"CARLOS FALCON EDSON RODRIGO",div:NET_INST},
-    {dni:"76029857",nombre:"MINAYA RIVERA BRIAN ALEXANDER",div:NET_INST},         // alta 2026-10-12
-    {dni:"72811243",nombre:"RODRIGUEZ JIMENEZ JOSE MIGUEL",div:NET_INST},         // alta 2026-10-12
-    {dni:"60785002",nombre:"ARIAS ESPICHAN SEBASTIAN",div:NET_INST}               // alta 2026-11-10
+    {dni:"76029857",nombre:"MINAYA RIVERA BRIAN ALEXANDER",div:NET_INST},         // registrado 2026-10-12
+    {dni:"72811243",nombre:"RODRIGUEZ JIMENEZ JOSE MIGUEL",div:NET_INST},         // registrado 2026-10-12
+    {dni:"60785002",nombre:"ARIAS ESPICHAN SEBASTIAN",div:NET_INST,alta:"2026-11-10"},
+    {dni:"75495654",nombre:"ANGULO PILARES MARCIAL JESUS",div:NET_INST,baja:"2026-11-10"},      // retiro del área
+    {dni:"75577082",nombre:"ÑIQUEN ORTEGA ANDERSON",div:NET_INST,baja:"2026-11-10"}             // retiro del área
   ],
   "INSPECCIÓN Y DISEÑO":[
     {dni:"46195003",nombre:"TORIBIO POMA ANTHONY NELSON"},
@@ -2194,10 +2208,21 @@ var PADRON_INDIVIDUAL={
     {dni:"70814374",nombre:"DE LA CRUZ COLLANTES KEVIN JOSEPH"},
     {dni:"16140603",nombre:"RODRIGUEZ OSORIO ANTONIO EDUARDO"},
     {dni:"73277588",nombre:"CALDERÓN DIONISIO ANDRÉ VISARIONOVICH"},
-    {dni:"44588261",nombre:"OJEDA SANCHEZ JOSE LUIS"}            // alta 2026-10-05
+    {dni:"44588261",nombre:"OJEDA SANCHEZ JOSE LUIS"}            // registrado 2026-10-05
   ]
 };
 function padronDe(areaBig){ return PADRON_INDIVIDUAL[areaBig]||null; }
+// ¿La persona estaba en el padrón en la semana que abre el sábado `sab`?
+// El alta cuenta desde su semana; la baja deja de contar desde la suya (ver ALTAS Y BAJAS).
+function enPadronSemana(p, sab){
+  if(!p.alta && !p.baja) return true;
+  if(!sab) sab=sabadoDe(fechaISO(new Date()));
+  var v=new Date(sab); v.setDate(v.getDate()+6); var vie=fechaISO(v);
+  return (!p.alta || p.alta<=vie) && (!p.baja || p.baja>vie);
+}
+function padronEnSemana(lista, sab){ return (lista||[]).filter(function(p){ return enPadronSemana(p,sab); }); }
+// Padrón vigente HOY (sin bajas ni altas futuras): ATS, mínimos y listas del día a día.
+function padronVigente(lista){ return padronEnSemana(lista, sabadoDe(fechaISO(new Date()))); }
 // ¿El área grande (NETWORKING / INSPECCIÓN Y DISEÑO) está dentro del alcance/filtro?
 function areaIndividualEnAlcance(areaBig){
   var fa=norm(APP.fArea), fd=norm(APP.fDiv);
@@ -2262,7 +2287,8 @@ function dnisDeInspeccion(r, padron){
 // personas de su padrón con ≥1 inspección en CUALQUIER división del área.
 // Los inspeccionados fuera del padrón del área se anotan en la unidad de su división.
 function coberturaIndividual(u, weekItems, sab){
-  var areaBig=u.areaBig, padArea=padronDe(areaBig)||[], padron=u.padron, total=padron.length, set={}, aprox=false;
+  // Padrón de ESA semana (altas/bajas no retroactivas): una semana cerrada no cambia.
+  var areaBig=u.areaBig, padArea=padronEnSemana(padronDe(areaBig),sab), padron=padronEnSemana(u.padron,sab), total=padron.length, set={}, aprox=false;
   var padAreaSet={}; padArea.forEach(function(p){ padAreaSet[padDni(p.dni)]=1; });
   var extras={};
   (weekItems||[]).forEach(function(r){
@@ -3218,7 +3244,7 @@ function prodDivisiones(){
   });
   Object.keys(PADRON_INDIVIDUAL).forEach(function(ab){
     var porDiv={}, orden=[];
-    PADRON_INDIVIDUAL[ab].forEach(function(p){
+    padronVigente(PADRON_INDIVIDUAL[ab]).forEach(function(p){
       var dv=p.div||((AREAS_DIV[ab]||[])[0])||"";
       if(!porDiv[dv]){ porDiv[dv]=[]; orden.push(dv); } porDiv[dv].push(p);
     });
