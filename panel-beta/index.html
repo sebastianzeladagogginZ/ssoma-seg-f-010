@@ -970,21 +970,21 @@
           <span class="count-tag" id="atsCount"></span>
         </div>
         <div class="kpis" id="kpisAts"></div>
-        <!-- V70 (maqueta aprobada): mínimo diario por división + cola «Por revisar» -->
+        <!-- V70 · Cuadro fusionado: «Mínimo diario por división» + «Producción por semana» en uno solo -->
+        <div class="ats-fz">
+          <div class="rs-h"><h3>Mínimo de ATS y charlas</h3><span class="ats-md-sub">1 ATS + 1 charla por día laborable · toca una semana para ver el detalle</span><span class="fz-n" id="fzN"></span></div>
+          <div id="atsMinDia"></div>
+          <div class="md-key"><span><span class="strip"><i><u class="y"></u><u class="c"></u></i></span>Día cumplido (ATS · charla)</span><span><span class="strip"><i><u class="y" style="--p:50%"></u><u class="c" style="--p:50%"></u></i></span>Parcial</span><span><span class="strip"><i><u class="n"></u><u class="n"></u></i></span>Faltó</span><span><span class="strip"><i><u class="h"></u><u class="h"></u></i></span>Hoy, aún sin subir</span><span><span class="strip"><i><u class="s"></u><u class="s"></u></i></span>No salió a campo / fuera</span><span class="md-tip">% verde = cumplió · rojo = semana cerrada sin cumplir · naranja = en curso, va atrasada</span></div>
+        </div>
         <div class="ats-top">
-          <div class="ats-md">
-            <div class="rs-h"><h3>Mínimo diario por división</h3><span class="ats-md-sub">1 ATS + 1 charla por día laborable</span><span class="wk-step" id="mdStep"></span></div>
-            <div id="atsMinDia"></div>
-            <div class="md-key"><span><i class="pq y"></i>ATS</span><span><i class="pq c"></i>Charla</span><span><i class="pq y" style="--p:50%"></i>Parcial</span><span><i class="pq n"></i>Faltó</span><span><i class="pq h"></i>Hoy, aún sin subir</span><span><i class="pq s"></i>No salió a campo / fuera</span><span class="md-tip">Toca una división para ver su análisis</span></div>
+          <div class="card" style="margin:0">
+            <div class="ch"><h3>Tendencia de llenado</h3><span class="sub" id="atsTrendSub"></span></div>
+            <div class="cb" id="atsTrend"></div>
           </div>
           <div class="ats-q">
             <div class="rs-h"><h3>Por revisar</h3><a class="rs-more" id="atsQGo" role="button" tabindex="0"></a></div>
             <div id="atsQueue"></div>
           </div>
-        </div>
-        <div class="card" style="margin:16px 0">
-          <div class="ch"><h3>Tendencia de llenado</h3><span class="sub" id="atsTrendSub"></span></div>
-          <div class="cb" id="atsTrend"></div>
         </div>
         <div class="card" id="prodCard" style="margin-bottom:16px">
           <div class="ch prod-ch">
@@ -996,7 +996,7 @@
           </div>
           <div class="cb" id="prodCards"></div>
         </div>
-        <div class="card" id="prodTblCard" style="margin-bottom:16px">
+        <div class="card" id="prodTblCard" style="margin-bottom:16px;display:none"><!-- V70: reemplazado por el cuadro fusionado (se mantiene oculto: renderProduccion lo usa) -->
           <div class="ch"><h3>Producción por semana</h3><span class="sub">sábado → viernes · toca una celda para ver ATS y charlas</span></div>
           <div class="cb" id="prodTabla"></div>
         </div>
@@ -3606,41 +3606,89 @@ function renderMinimoDiario(){
   for(var k=0;k<7;k++){ var x=new Date(s); x.setDate(x.getDate()+k); if(esDiaLaborable(x)) dias.push(fechaISO(x)); }
   var v=new Date(s); v.setDate(v.getDate()+6);
   var desde=dias[0]<ini?ini:dias[0], hasta=fechaISO(v)<hoy?fechaISO(v):hoy;
-  // Selector de semana (‹ S · rango ›)
-  var st=document.getElementById("mdStep");
-  if(st){
-    var puedeAtras=fechaISO(s)>ini;
-    st.innerHTML='<button type="button" data-d="-1"'+(puedeAtras?'':' disabled')+' aria-label="Semana anterior">‹</button>'+
-      '<span class="on">'+pad(s.getDate())+' '+MES3[s.getMonth()]+' – '+pad(v.getDate())+' '+MES3[v.getMonth()]+(APP.mdOff===0?' · en curso':'')+'</span>'+
-      '<button type="button" data-d="1"'+(APP.mdOff<0?'':' disabled')+' aria-label="Semana siguiente">›</button>';
-    st.querySelectorAll("button[data-d]").forEach(function(b){ b.onclick=function(){ APP.mdOff=Math.min(0,APP.mdOff+(+b.getAttribute("data-d"))); renderMinimoDiario(); }; });
+  void desde; void hasta; void DN;   // (de la versión por días; el cuadro fusionado arma sus propias semanas)
+  renderCuadroFusionado(divs, hoy, ini);
+}
+/* ---- V70 · Cuadro fusionado: semanas en columnas + tira diaria dentro de cada celda ----
+   Reemplaza «Mínimo diario por división» y «Producción por semana». Filas = divisiones;
+   columnas = semanas sáb→vie (4/8/12). Cada celda: % del mínimo de esa semana y la tira de
+   sus días laborables (ATS arriba, charla abajo): lleno = todas las unidades exigidas
+   cumplieron ese día; parcial = una parte; rojo = ninguna (día ya pasado); gris = hoy, aún
+   sin subir; rayado = nadie exigido (no salió a campo, vacaciones, destaque).
+   El % de la semana en curso usa los días ya cerrados (hasta ayer) para no castigar hoy.
+   Rojo solo para semanas CERRADAS bajo el mínimo; en curso → naranja si va atrasada. */
+function renderCuadroFusionado(divs, hoy, ini){
+  var box=document.getElementById("atsMinDia"); if(!box) return;
+  APP.fzN=APP.fzN||8;
+  var nSel=document.getElementById("fzN");
+  if(nSel){
+    nSel.innerHTML=[4,8,12].map(function(n){ return '<button type="button" data-n="'+n+'" class="'+(n===APP.fzN?'on':'')+'">'+n+' sem</button>'; }).join("");
+    nSel.querySelectorAll("button").forEach(function(b){ b.onclick=function(){ APP.fzN=+b.getAttribute("data-n"); renderMinimoDiario(); }; });
   }
-  var celda=function(cnt,req,fut,tipo,esHoy){
-    if(fut) return '<i class="pq f"></i>';
-    if(!req) return '<i class="pq s" title="Nadie exigido ese día"></i>';
-    if(cnt>=req) return '<i class="pq '+tipo+'" title="'+cnt+' de '+req+'"></i>';
-    if(cnt>0) return '<i class="pq '+tipo+'" style="--p:'+Math.max(12,Math.round(cnt/req*100))+'%" title="'+cnt+' de '+req+'"></i>';
-    return esHoy ? '<i class="pq h" title="Hoy: aún sin subir (0 de '+req+')"></i>' : '<i class="pq n" title="0 de '+req+'"></i>';
+  var s0=sabadoDe(hoy), ay=parseISO(hoy); ay.setDate(ay.getDate()-1); var ayer=fechaISO(ay);
+  var MS=function(d){ return pad(d.getDate())+' '+MES3[d.getMonth()]; }, DN=["dom","lun","mar","mié","jue","vie","sáb"];
+  var semanas=[];
+  for(var w=APP.fzN-1; w>=0; w--){
+    var s=new Date(s0); s.setDate(s.getDate()-7*w); var v=new Date(s); v.setDate(v.getDate()+6);
+    if(fechaISO(v)<ini) continue;
+    var dias=[]; for(var k=0;k<7;k++){ var x=new Date(s); x.setDate(x.getDate()+k); if(esDiaLaborable(x)) dias.push(fechaISO(x)); }
+    semanas.push({ sab:s, vie:v, de:fechaISO(s), ha:fechaISO(v), dias:dias, cur:(w===0) });
+  }
+  if(!semanas.length){ box.innerHTML='<div class="load-note" style="justify-content:flex-start">Aún no hay semanas con registros de la app de campo.</div>'; return; }
+  var cuadro=function(z,cnt,tipo){
+    if(z.fut) return '<u class="f"></u>';
+    if(!z.req) return '<u class="s"></u>';
+    if(cnt>=z.req) return '<u class="'+tipo+'"></u>';
+    if(cnt>0) return '<u class="'+tipo+'" style="--p:'+Math.max(15,Math.round(cnt/z.req*100))+'%"></u>';
+    return z.hoy?'<u class="h"></u>':'<u class="n"></u>';
+  };
+  var calc=function(d,S){
+    var st=S.dias.map(function(di){
+      var z={ di:di, fut:(di>hoy || di<ini), req:0, hoy:(di===hoy), a:0, c:0 };
+      if(!z.fut){ if(d.rotativa) z.req=d.total; else d.unidades.forEach(function(u){ if(!novEnDia(d.comp,u.key,di)) z.req++; }); var x=prodSumar(d.idx,di,di); z.a=x.a; z.c=x.c; }
+      return z;
+    });
+    var de=S.de<ini?ini:S.de, ha=S.ha<hoy?S.ha:(S.cur?(ayer>=de?ayer:hoy):hoy), ev={pct:null,cls:"n"};
+    if(de<=ha){ var t=prodSumar(d.idx,de,ha); ev=prodEval(t.a,t.c,udDiv(d,de,ha),1); }
+    return { st:st, ev:ev };
   };
   var filas=divs.map(function(d){
-    var cells=dias.map(function(di){
-      var fut=di>hoy || di<ini, req=0, esHoy=(di===hoy);
-      if(d.rotativa) req=d.total;
-      else d.unidades.forEach(function(u){ if(!novEnDia(d.comp,u.key,di)) req++; });
-      var x=prodSumar(d.idx,di,di);
-      return '<td>'+celda(x.a,req,fut,"y",esHoy)+celda(x.c,req,fut,"c",esHoy)+'</td>';
-    }).join("");
-    var ev=(desde<=hasta)?prodEval(prodSumar(d.idx,desde,hasta).a,prodSumar(d.idx,desde,hasta).c,udDiv(d,desde,hasta),1):{pct:null,cls:"n"};
-    return { d:d, ev:ev, html:'<tr data-comp="'+esc(d.comp)+'" tabindex="0" role="button" title="Ver el análisis de '+esc(divName(d.comp))+'">'+
-      '<td class="md-nm"><b>'+esc(divName(d.comp))+'</b><span>'+esc(parentArea(d.comp).charAt(0)+parentArea(d.comp).slice(1).toLowerCase())+' · '+plural(d.total,d.tipo==="persona"?"persona":"cuadrilla",d.tipo==="persona"?"personas":"cuadrillas")+'</span></td>'+cells+
-      '<td class="md-pc" style="color:'+(ev.pct==null?'#a39b93':(ev.cls==="r"?'#c8402f':(ev.cls==="b"?'#2f6db5':'#2e8a57')))+'">'+(ev.pct==null?'—':ev.pct+' %')+'</td></tr>' };
-  }).sort(function(a,b){ return (a.ev.pct==null?1e9:a.ev.pct)-(b.ev.pct==null?1e9:b.ev.pct) || String(a.d.comp).localeCompare(String(b.d.comp)); });
-  box.innerHTML='<div class="md-wrap"><table class="md-grid"><thead><tr><th>División</th>'+dias.map(function(di){ var x=parseISO(di); return '<th class="'+(di===hoy?'hoy':'')+'">'+DN[x.getDay()]+' '+pad(x.getDate())+'</th>'; }).join("")+'<th class="md-pc">Cumple</th></tr></thead><tbody>'+
-    filas.map(function(r){ return r.html; }).join("")+'</tbody></table></div>';
-  box.querySelectorAll("tr[data-comp]").forEach(function(tr){
-    var ir=function(){ APP.prodSel=tr.getAttribute("data-comp"); renderProduccion(); var pc=document.getElementById("prodCard"); if(pc && pc.scrollIntoView) pc.scrollIntoView({behavior:"smooth",block:"start"}); };
-    tr.onclick=ir; tr.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); ir(); } };
+    var cs=semanas.map(function(S){ return calc(d,S); });
+    var ref=null; for(var i=cs.length-1;i>=0;i--){ if(!semanas[i].cur && cs[i].ev.pct!=null){ ref=cs[i].ev.pct; break; } }
+    return { d:d, cs:cs, ref:ref };
+  }).sort(function(a,b){ return (a.ref==null?1e9:a.ref)-(b.ref==null?1e9:b.ref) || String(a.d.comp).localeCompare(String(b.d.comp)); });
+  var sel=APP.fzSel||"";
+  var h='<div class="fz-wrap"><table class="fzt"><thead><tr><th>División</th>'+semanas.map(function(S){
+      return '<th class="'+(S.cur?'now':'')+'">'+MS(S.sab)+(S.cur?'<small>en curso</small>':'')+'</th>'; }).join("")+'</tr></thead><tbody>';
+  filas.forEach(function(F){
+    var d=F.d, esP=(d.tipo==="persona"), abierta=null;
+    h+='<tr><td class="fz-nm"><b>'+esc(divName(d.comp))+'</b><span>'+esc(parentArea(d.comp).charAt(0)+parentArea(d.comp).slice(1).toLowerCase())+' · '+plural(d.total,esP?"persona":"cuadrilla",esP?"personas":"cuadrillas")+(d.rotativa?' rotativas':'')+'</span></td>';
+    semanas.forEach(function(S,i){
+      var c=F.cs[i], key=d.comp+"|"+S.de, p=c.ev.pct;
+      var cls=p==null?'mu':(S.cur?(p>=100?'ok':'lag'):(p>=100?'ok':'bad'));
+      if(key===sel) abierta={ S:S, c:c };
+      h+='<td class="'+(S.cur?'now':'')+'"><button type="button" class="wc'+(key===sel?' sel':'')+'" data-k="'+esc(key)+'" aria-expanded="'+(key===sel)+'" title="'+esc(divName(d.comp))+' · semana del '+MS(S.sab)+'">'+
+        '<span class="p '+cls+'">'+(p==null?'—':p+' %')+(!S.cur && p!=null && p>100?'<sup>▲</sup>':'')+'</span>'+
+        '<span class="strip">'+c.st.map(function(z){ return '<i title="'+DN[parseISO(z.di).getDay()]+' '+z.di.slice(8)+(z.fut?'':(z.req?' · ATS '+z.a+'/'+z.req+' · charlas '+z.c+'/'+z.req:' · nadie exigido'))+'">'+cuadro(z,z.a,'y')+cuadro(z,z.c,'c')+'</i>'; }).join("")+'</span></button></td>';
+    });
+    h+='</tr>';
+    if(abierta){
+      var S=abierta.S, st=abierta.c.st, nd=st.length;
+      var cel=function(z,cnt){ if(z.fut) return '<span class="v mu">—</span>'; if(!z.req) return '<span class="v mu">no exigido</span>'; return '<span class="v'+(cnt<z.req && !z.hoy?' bad':'')+'">'+cnt+'/'+z.req+'</span>'; };
+      h+='<tr class="fz-det"><td colspan="'+(semanas.length+1)+'"><div class="detg" style="grid-template-columns:auto repeat('+nd+',minmax(0,1fr)) auto">'+
+        '<span class="h">Semana '+MS(S.sab)+' – '+MS(S.vie)+'</span>'+st.map(function(z){ return '<span class="d">'+DN[parseISO(z.di).getDay()]+' '+z.di.slice(8)+'</span>'; }).join("")+'<span></span>'+
+        '<span class="h">ATS</span>'+st.map(function(z){ return cel(z,z.a); }).join("")+'<span></span>'+
+        '<span class="h">Charlas</span>'+st.map(function(z){ return cel(z,z.c); }).join("")+
+        '<button type="button" class="fz-an" data-comp="'+esc(d.comp)+'">Ver análisis por '+(esP?'persona':'cuadrilla')+' →</button></div></td></tr>';
+    }
   });
+  box.innerHTML=h+'</tbody></table></div>';
+  box.querySelectorAll(".wc").forEach(function(b){ b.onclick=function(){ var k=b.getAttribute("data-k"); APP.fzSel=(APP.fzSel===k)?"":k; renderMinimoDiario(); }; });
+  box.querySelectorAll(".fz-an").forEach(function(b){ b.onclick=function(){
+    APP.prodSel=b.getAttribute("data-comp"); renderProduccion();
+    var pc=document.getElementById("prodCard"); if(pc && pc.scrollIntoView) pc.scrollIntoView({behavior:"smooth",block:"start"}); }; });
+  // La semana más reciente queda a la vista si la tabla necesita scroll horizontal.
+  var wr=box.querySelector(".fz-wrap"); if(wr) wr.scrollLeft=wr.scrollWidth;
 }
 /* ---- V70 · Cola «Por revisar» (mismos aprobar/anular que la tabla de documentos) ---- */
 function renderAtsCola(scope){
@@ -5446,6 +5494,48 @@ rosterReady = cargarAreas();
   .q-empty b{display:block;color:#2e8a57;font-weight:600}
   .q-empty span{font-size:13px;color:var(--muted)}
   #view-ats .ptile{border-top-color:var(--line)!important;box-shadow:none}
+
+  /* ---- ATS V70: cuadro fusionado (semanas + tira diaria) ---- */
+  .ats-fz{margin:22px 0 4px}
+  .ats-top{grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);align-items:start;margin:20px 0 16px}
+  .fz-n{margin-left:auto;display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .fz-n button{height:26px;padding:0 10px;border:0;border-radius:6px;background:none;cursor:pointer;font:500 12.5px "Barlow",sans-serif;color:var(--ink2)}
+  .fz-n button.on{background:#2b2622;color:#faf8f5}
+  .fz-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:auto}
+  .fzt{width:100%;border-collapse:separate;border-spacing:0}
+  .fzt th{font:600 11px "Barlow",sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--side);padding:9px 6px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+  .fzt th:first-child{text-align:left;padding-left:14px;position:sticky;left:0;z-index:2}
+  .fzt th.now{color:var(--on-ink);background:var(--on-wash)}
+  .fzt th small{display:block;font:500 10px var(--f-mono);letter-spacing:0;text-transform:none;color:var(--on-ink)}
+  .fzt td{padding:7px 4px;border-top:1px solid var(--line2);text-align:center;vertical-align:middle}
+  .fzt td.now{background:#fdf7f0}
+  .fz-nm{text-align:left!important;padding-left:14px!important;min-width:180px;position:sticky;left:0;background:var(--panel);z-index:1}
+  .fz-nm b{display:block;font-weight:600;font-size:14px;line-height:1.2}
+  .fz-nm span{font-size:12px;color:var(--muted)}
+  .wc{display:inline-flex;flex-direction:column;align-items:center;gap:5px;padding:5px 7px;border:0;border-radius:7px;background:none;cursor:pointer;font:inherit}
+  .wc:hover{background:rgba(42,37,33,.05)}
+  .wc.sel{box-shadow:0 0 0 2px var(--on);background:var(--panel)}
+  .wc .p{font:600 15px/1 var(--f-num)}
+  .wc .p.ok{color:#2e8a57} .wc .p.bad{color:#c8402f} .wc .p.lag{color:var(--on-ink)} .wc .p.mu{color:var(--soft)}
+  .wc .p sup{font-size:9px;margin-left:1px;color:#2e8a57}
+  #view-ats .strip{display:inline-flex;gap:3px}
+  #view-ats .strip i{display:flex;flex-direction:column;gap:2px}
+  #view-ats .strip u{--p:100%;display:block;width:7px;height:7px;border-radius:2px;text-decoration:none}
+  #view-ats .strip u.y{background:linear-gradient(to top,#2b2622 var(--p),#ddd6cf var(--p))}
+  #view-ats .strip u.c{background:linear-gradient(to top,#f47a1f var(--p),#fbe2cd var(--p))}
+  #view-ats .strip u.n{box-shadow:inset 0 0 0 1.4px #c8402f}
+  #view-ats .strip u.h{box-shadow:inset 0 0 0 1.4px var(--soft)}
+  #view-ats .strip u.f{box-shadow:inset 0 0 0 1px var(--line)}
+  #view-ats .strip u.s{background:repeating-linear-gradient(135deg,var(--soft) 0 1.5px,transparent 1.5px 3.5px)}
+  .md-key .strip{transform:scale(1.15);margin-right:2px}
+  .fzt tr.fz-det td{background:var(--on-wash);text-align:left;padding:12px 16px}
+  .detg{display:grid;gap:6px 14px;align-items:center;font-size:13px}
+  .detg .h{font:600 11px "Barlow",sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .detg .d{font:500 12px var(--f-mono);color:var(--ink2)}
+  .detg .v{font:600 14px var(--f-num)}
+  .detg .v.bad{color:#c8402f} .detg .v.mu{color:var(--soft);font:500 12px "Barlow",sans-serif}
+  .fz-an{background:none;border:0;cursor:pointer;color:var(--on-ink);font:600 13px "Barlow",sans-serif;white-space:nowrap;padding:0}
+  .fz-an:hover{text-decoration:underline}
   @media(max-width:1040px){ .ats-top{grid-template-columns:1fr} }
 </style>
 <script>
