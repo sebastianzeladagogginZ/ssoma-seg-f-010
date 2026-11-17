@@ -656,7 +656,8 @@
       <!-- ===== OBSERVACIONES ===== -->
       <section class="view" id="view-observaciones">
         <div class="filters">
-          <input type="search" id="search" placeholder="Buscar ítem, recurso, cuadrilla, responsable…">
+          <input type="search" id="search" placeholder="Buscar ítem, cuadrilla o responsable…">
+          <div class="lev-seg" id="levSeg" role="group" aria-label="Estado del levantamiento"></div>
           <select id="fEstado"><option value="">Todos los estados</option><option>Requiere cambio</option><option>No tiene</option></select>
           <select id="fCuadrilla"><option value="">Todas las cuadrillas</option></select>
           <select id="fSeccion"><option value="">Todas las secciones</option></select>
@@ -666,7 +667,7 @@
         </div>
         <div class="tbl-wrap">
           <table class="data">
-            <thead><tr><th class="selcol"><input type="checkbox" id="obsSelAll" aria-label="Seleccionar todas las observaciones visibles" title="Seleccionar / deseleccionar todas las visibles"></th><th>Fecha</th><th>Área</th><th>Cuadrilla</th><th>Sección</th><th>Ítem observado</th><th>Recurso / Técnico</th><th>Estado</th><th>Levantamiento</th></tr></thead>
+            <thead><tr><th class="selcol"><input type="checkbox" id="obsSelAll" aria-label="Seleccionar todas las observaciones visibles" title="Seleccionar / deseleccionar todas las visibles"></th><th>Fecha</th><th>División</th><th>Cuad.</th><th>Ítem observado</th><th>Hallazgo</th><th>Responsable</th><th>Estado</th></tr></thead>
             <tbody id="obsBody"></tbody>
           </table>
         </div>
@@ -969,6 +970,18 @@
           <span class="count-tag" id="atsCount"></span>
         </div>
         <div class="kpis" id="kpisAts"></div>
+        <!-- V70 (maqueta aprobada): mínimo diario por división + cola «Por revisar» -->
+        <div class="ats-top">
+          <div class="ats-md">
+            <div class="rs-h"><h3>Mínimo diario por división</h3><span class="ats-md-sub">1 ATS + 1 charla por día laborable</span><span class="wk-step" id="mdStep"></span></div>
+            <div id="atsMinDia"></div>
+            <div class="md-key"><span><i class="pq y"></i>ATS</span><span><i class="pq c"></i>Charla</span><span><i class="pq y" style="--p:50%"></i>Parcial</span><span><i class="pq n"></i>Faltó</span><span><i class="pq h"></i>Hoy, aún sin subir</span><span><i class="pq s"></i>No salió a campo / fuera</span><span class="md-tip">Toca una división para ver su análisis</span></div>
+          </div>
+          <div class="ats-q">
+            <div class="rs-h"><h3>Por revisar</h3><a class="rs-more" id="atsQGo" role="button" tabindex="0"></a></div>
+            <div id="atsQueue"></div>
+          </div>
+        </div>
         <div class="card" style="margin:16px 0">
           <div class="ch"><h3>Tendencia de llenado</h3><span class="sub" id="atsTrendSub"></span></div>
           <div class="cb" id="atsTrend"></div>
@@ -3268,7 +3281,7 @@ function atsKpi(bg,fg,icon,val,label,af,av){
   if(af==="") active=(!f.estado && !f.tipo);
   else if(af==="estado") active=(f.estado===av);
   else active=(f.tipo===av);
-  return '<div class="kpi clk kf'+(active?" active":"")+'" role="button" tabindex="0" aria-pressed="'+(active?"true":"false")+'" data-af="'+esc(af)+'" data-av="'+esc(av||"")+'">'+
+  return '<div class="kpi clk kf'+(active?" active":"")+(av==="Pendiente"?" hot":"")+'" role="button" tabindex="0" aria-pressed="'+(active?"true":"false")+'" data-af="'+esc(af)+'" data-av="'+esc(av||"")+'">'+
     '<div class="ic" style="background:'+bg+';color:'+fg+'">'+icon+'</div>'+
     '<div class="v tnum">'+val+'</div><div class="l">'+esc(label)+'</div></div>';
 }
@@ -3324,7 +3337,7 @@ function renderAts(){
       '<h3>No se pudo conectar con la app de campo</h3>'+
       '<p>Para no inducir a error, no se muestran datos de ejemplo. Verifica la conexión e inténtalo otra vez.</p>'+
       '<button id="atsRetry">Reintentar</button></div>';
-    ["atsTrend","prodCards","prodTabla"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML="";});
+    ["atsTrend","prodCards","prodTabla","atsMinDia","atsQueue"].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML="";});
     var tb0=document.getElementById("atsBody"); if(tb0) tb0.innerHTML='<tr><td colspan="10"><div class="load-note" style="color:#8f2e22">Sin conexión con la app de campo.</div></td></tr>';
     var rb=document.getElementById("atsRetry"); if(rb) rb.onclick=function(){ APP.atsCargado=false; cargarAts(); };
     var ct0=document.getElementById("atsCount"); if(ct0) ct0.textContent="";
@@ -3332,6 +3345,8 @@ function renderAts(){
   }
   var scope=datosAtsScope(), f=APP.filtrosAts;
   renderProduccion(scope);     // mínimo de producción (tarjetas + tabla por semana); no depende de los filtros de arriba
+  renderMinimoDiario();        // V70: grilla lun–sáb por división (usa el índice que arma renderProduccion)
+  renderAtsCola(scope);        // V70: cola «Por revisar» con aprobar/anular
   var cut=null;
   if(f.periodo){ var dd=new Date(); dd.setDate(dd.getDate()-parseInt(f.periodo,10)); cut=fechaISO(dd); }
   // baseT = alcance + período + búsqueda (SIN tipo ni estado): los tiles "ATS" y "Charlas"
@@ -3520,6 +3535,7 @@ function renderProduccion(){
   });
   var divs=prodDivisiones();
   if(!divs.length){
+    APP._prodDivs=[];   // V70: la grilla de mínimo diario no debe quedarse con el alcance anterior
     cont.innerHTML='<div class="load-note" style="justify-content:flex-start">El alcance seleccionado no tiene cuadrillas ni personas con mínimo de producción.</div>';
     tb.innerHTML=""; return;
   }
@@ -3573,6 +3589,77 @@ function renderProduccion(){
   var bx=document.getElementById("prodAnalisisX"); if(bx) bx.onclick=function(){ APP.prodSel=null; renderProduccion(); };
   wireProdUnidades();
   renderProdTabla();
+}
+/* ---- V70 · Mínimo diario por división (maqueta aprobada) ----
+   Una fila por división y una columna por día laborable de la semana sáb→vie.
+   En cada día, dos cuadros: ATS (grafito) y charla (naranja). Lleno = todas las
+   cuadrillas/personas exigidas ese día cumplieron; relleno parcial = solo una parte;
+   borde rojo = ninguna; rayado = nadie exigido (no salió a campo, vacaciones, destaque).
+   Días futuros quedan en blanco. «Cumple» = % del mínimo de la semana hasta hoy. */
+function renderMinimoDiario(){
+  var box=document.getElementById("atsMinDia"); if(!box) return;
+  var divs=APP._prodDivs||[];
+  if(!divs.length){ box.innerHTML='<div class="load-note" style="justify-content:flex-start">El alcance seleccionado no tiene cuadrillas ni personas con mínimo diario.</div>'; return; }
+  APP.mdOff=APP.mdOff||0;
+  var hoy=fechaISO(new Date()), s=sabadoDe(hoy); s.setDate(s.getDate()+7*APP.mdOff);
+  var ini=prodInicio(), dias=[], DN=["dom","lun","mar","mié","jue","vie","sáb"];
+  for(var k=0;k<7;k++){ var x=new Date(s); x.setDate(x.getDate()+k); if(esDiaLaborable(x)) dias.push(fechaISO(x)); }
+  var v=new Date(s); v.setDate(v.getDate()+6);
+  var desde=dias[0]<ini?ini:dias[0], hasta=fechaISO(v)<hoy?fechaISO(v):hoy;
+  // Selector de semana (‹ S · rango ›)
+  var st=document.getElementById("mdStep");
+  if(st){
+    var puedeAtras=fechaISO(s)>ini;
+    st.innerHTML='<button type="button" data-d="-1"'+(puedeAtras?'':' disabled')+' aria-label="Semana anterior">‹</button>'+
+      '<span class="on">'+pad(s.getDate())+' '+MES3[s.getMonth()]+' – '+pad(v.getDate())+' '+MES3[v.getMonth()]+(APP.mdOff===0?' · en curso':'')+'</span>'+
+      '<button type="button" data-d="1"'+(APP.mdOff<0?'':' disabled')+' aria-label="Semana siguiente">›</button>';
+    st.querySelectorAll("button[data-d]").forEach(function(b){ b.onclick=function(){ APP.mdOff=Math.min(0,APP.mdOff+(+b.getAttribute("data-d"))); renderMinimoDiario(); }; });
+  }
+  var celda=function(cnt,req,fut,tipo,esHoy){
+    if(fut) return '<i class="pq f"></i>';
+    if(!req) return '<i class="pq s" title="Nadie exigido ese día"></i>';
+    if(cnt>=req) return '<i class="pq '+tipo+'" title="'+cnt+' de '+req+'"></i>';
+    if(cnt>0) return '<i class="pq '+tipo+'" style="--p:'+Math.max(12,Math.round(cnt/req*100))+'%" title="'+cnt+' de '+req+'"></i>';
+    return esHoy ? '<i class="pq h" title="Hoy: aún sin subir (0 de '+req+')"></i>' : '<i class="pq n" title="0 de '+req+'"></i>';
+  };
+  var filas=divs.map(function(d){
+    var cells=dias.map(function(di){
+      var fut=di>hoy || di<ini, req=0, esHoy=(di===hoy);
+      if(d.rotativa) req=d.total;
+      else d.unidades.forEach(function(u){ if(!novEnDia(d.comp,u.key,di)) req++; });
+      var x=prodSumar(d.idx,di,di);
+      return '<td>'+celda(x.a,req,fut,"y",esHoy)+celda(x.c,req,fut,"c",esHoy)+'</td>';
+    }).join("");
+    var ev=(desde<=hasta)?prodEval(prodSumar(d.idx,desde,hasta).a,prodSumar(d.idx,desde,hasta).c,udDiv(d,desde,hasta),1):{pct:null,cls:"n"};
+    return { d:d, ev:ev, html:'<tr data-comp="'+esc(d.comp)+'" tabindex="0" role="button" title="Ver el análisis de '+esc(divName(d.comp))+'">'+
+      '<td class="md-nm"><b>'+esc(divName(d.comp))+'</b><span>'+esc(parentArea(d.comp).charAt(0)+parentArea(d.comp).slice(1).toLowerCase())+' · '+plural(d.total,d.tipo==="persona"?"persona":"cuadrilla",d.tipo==="persona"?"personas":"cuadrillas")+'</span></td>'+cells+
+      '<td class="md-pc" style="color:'+(ev.pct==null?'#a39b93':(ev.cls==="r"?'#c8402f':(ev.cls==="b"?'#2f6db5':'#2e8a57')))+'">'+(ev.pct==null?'—':ev.pct+' %')+'</td></tr>' };
+  }).sort(function(a,b){ return (a.ev.pct==null?1e9:a.ev.pct)-(b.ev.pct==null?1e9:b.ev.pct) || String(a.d.comp).localeCompare(String(b.d.comp)); });
+  box.innerHTML='<div class="md-wrap"><table class="md-grid"><thead><tr><th>División</th>'+dias.map(function(di){ var x=parseISO(di); return '<th class="'+(di===hoy?'hoy':'')+'">'+DN[x.getDay()]+' '+pad(x.getDate())+'</th>'; }).join("")+'<th class="md-pc">Cumple</th></tr></thead><tbody>'+
+    filas.map(function(r){ return r.html; }).join("")+'</tbody></table></div>';
+  box.querySelectorAll("tr[data-comp]").forEach(function(tr){
+    var ir=function(){ APP.prodSel=tr.getAttribute("data-comp"); renderProduccion(); var pc=document.getElementById("prodCard"); if(pc && pc.scrollIntoView) pc.scrollIntoView({behavior:"smooth",block:"start"}); };
+    tr.onclick=ir; tr.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); ir(); } };
+  });
+}
+/* ---- V70 · Cola «Por revisar» (mismos aprobar/anular que la tabla de documentos) ---- */
+function renderAtsCola(scope){
+  var box=document.getElementById("atsQueue"); if(!box) return;
+  var pend=atsPendientesReales(scope||[]).slice().sort(function(a,b){ return String(b.fecha||"").localeCompare(String(a.fecha||"")); });
+  var go=document.getElementById("atsQGo");
+  if(go){ go.textContent=pend.length>6?("Ver los "+pend.length+" →"):(pend.length?"Ver en la tabla →":""); go.onclick=function(){
+    APP.filtrosAts.estado="Pendiente"; var es=document.getElementById("fEstadoAts"); if(es) es.value="Pendiente"; renderAts();
+    var b=document.getElementById("atsBody"); if(b && b.scrollIntoView) b.scrollIntoView({behavior:"smooth",block:"start"}); }; }
+  if(!pend.length){ box.innerHTML='<div class="q-empty"><b>Todo al día</b><span>No hay ATS ni charlas por revisar.</span></div>'; return; }
+  box.innerHTML=pend.slice(0,6).map(function(r){
+    var per=(r.dnis&&r.dnis.length>1)?plural(r.dnis.length,"persona","personas"):(/^\d+$/.test(String(r.cuadrilla||"").trim())?'CU '+pad(+String(r.cuadrilla).trim()):(r.nombre?esc(r.nombre):'—'));
+    var sub=[per, fechaCorta(r.fecha), r.cliente?esc(r.cliente):(r.circuito?'circuito '+esc(r.circuito):'')].filter(Boolean).join(' · ');
+    return '<div class="q-it"><a class="q-doc" href="'+esc(r.carpeta||"#")+'" target="_blank" rel="noopener" title="Abrir en Drive"><i></i></a>'+
+      '<div class="q-tx"><b>'+esc(r.tipo==="Charla"?"Charla":"ATS")+' · '+esc(divName(r.area||""))+'</b><span>'+sub+'</span></div>'+
+      '<div class="q-ac"><button type="button" class="q-ok" data-c="'+esc(r.carpeta)+'">Aprobar</button><button type="button" class="q-x" data-c="'+esc(r.carpeta)+'">Anular</button></div></div>';
+  }).join("");
+  box.querySelectorAll(".q-ok").forEach(function(b){ b.onclick=function(){ atsAprobar(b.getAttribute("data-c")); }; });
+  box.querySelectorAll(".q-x").forEach(function(b){ b.onclick=function(){ atsAnular(b.getAttribute("data-c")); }; });
 }
 // Análisis detallado de UNA división en el período elegido (se abre al tocar su ficha).
 function prodAnalisisHTML(d, R, dias, per){
@@ -4119,16 +4206,21 @@ function atsModalArchivar(carpeta){
    ============================================================ */
 function renderObservaciones(){
   var d=datosArea(), f=APP.filtros;
-  var rows=d.filter(function(o){
+  // V70: primero todos los filtros MENOS el de levantamiento → conteos de los botones de estado.
+  var sinLev=d.filter(function(o){
     if(f.estado && o.estado!==f.estado) return false;
     if(f.cuadrilla && String(o.cuadrilla==null?"":o.cuadrilla).trim()!==f.cuadrilla) return false;
     if(f.seccion && o.seccion!==f.seccion) return false;
     if(f.item && o.item!==f.item) return false;
+    if(f.q){ var q=norm(f.q); if(norm(o.item+" "+o.recurso+" "+o.cuadrilla+" "+o.seccion+" "+o.area+" "+o.responsable).indexOf(q)<0) return false; }
+    return true;
+  });
+  renderLevSeg(sinLev);
+  var rows=sinLev.filter(function(o){
     if(f.lev){
       if(f.lev==="abiertas"){ if(o.levantamiento!=="pendiente" && o.levantamiento!=="en_proceso") return false; }
       else if(o.levantamiento!==f.lev) return false;
     }
-    if(f.q){ var q=norm(f.q); if(norm(o.item+" "+o.recurso+" "+o.cuadrilla+" "+o.seccion+" "+o.area+" "+o.responsable).indexOf(q)<0) return false; }
     return true;
   }).sort(function(a,b){
     if(a.area!==b.area) return a.area<b.area?-1:1;   // agrupa por área
@@ -4144,23 +4236,28 @@ function renderObservaciones(){
   Object.keys(APP.sel).forEach(function(id){ if(!visSel[id]) delete APP.sel[id]; });
   APP._selIds=selectables.map(function(o){ return o.id; });
 
-  if(!rows.length){ body.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="em">🎉</div>Sin observaciones con estos filtros.</div></td></tr>'; sincronizarSelAll(); actualizarBarraMasiva(); return; }
+  if(!rows.length){ body.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="em">🎉</div>Sin observaciones con estos filtros.</div></td></tr>'; sincronizarSelAll(); actualizarBarraMasiva(); return; }
+  var hoyD=parseISO(fechaISO(new Date())), tit=function(s){ s=String(s||"").toLowerCase(); return s.charAt(0).toUpperCase()+s.slice(1); };
   body.innerHTML=rows.map(function(o){
     var l=EST_LEV[o.levantamiento]||EST_LEV.pendiente;
-    var estCls=o.estado==="No tiene"?"bad":"warn";
     var chk=esSeleccionableMasivo(o)
       ? '<td class="selcol" data-label="Sel"><input type="checkbox" class="rowSel" data-id="'+esc(o.id)+'"'+(APP.sel[o.id]?' checked':'')+' aria-label="Seleccionar esta observación"></td>'
       : '<td class="selcol" data-label="Sel"></td>';
+    var ar=String(o.area||""), conDiv=ar.indexOf(SEP)>=0;
+    var cu=String(o.cuadrilla==null?"":o.cuadrilla).trim(), esP=esAreaPersona(ar);
+    var cuTxt=/^\d+$/.test(cu)?'CU '+pad(+cu):(esP?'<span class="o-muted">persona</span>':(cu?esc(cu):'<span class="o-muted">—</span>'));
+    var fd=parseISO(o.fecha), dias=(fd&&hoyD)?Math.round((hoyD-fd)/864e5):null;
+    var abierta=(o.levantamiento==="pendiente"||o.levantamiento==="rechazado"||o.levantamiento==="en_proceso");
+    var hace=(abierta && dias!=null && dias>=0)?'<span class="o-ago" title="Días desde la inspección">'+(dias===0?'inspección de hoy':(dias===1?'hace 1 día':'hace '+dias+' días'))+'</span>':'';
     return '<tr data-id="'+esc(o.id)+'" tabindex="0" role="button" aria-label="Ver detalle: '+esc(o.item)+'"'+(APP.sel[o.id]?' class="row-sel"':'')+'>'+
       chk+
-      '<td class="tnum" data-label="Fecha">'+esc(fechaCorta(o.fecha))+'</td>'+
-      '<td data-label="Área" style="font-size:12px;font-weight:600;color:#2b2622;white-space:normal;max-width:160px;line-height:1.25">'+esc(o.area)+'</td>'+
-      '<td data-label="Cuadrilla"><b>N° '+esc(o.cuadrilla)+'</b></td>'+
-      '<td data-label="Sección">'+esc(o.seccion)+'</td>'+
-      '<td data-label="Ítem"><b>'+esc(o.item)+'</b></td>'+
-      '<td data-label="Recurso">'+(o.recurso?esc(o.recurso):'<span style="color:#d6cfc7">—</span>')+'</td>'+
-      '<td data-label="Estado"><span class="pill '+estCls+'">'+esc(o.estado)+'</span></td>'+
-      '<td data-label="Levantamiento"><span class="pill '+l.cls+'"><span class="dot-s" style="background:'+l.dot+'"></span>'+l.label+'</span></td>'+
+      '<td class="o-date" data-label="Fecha">'+esc(fechaCorta(o.fecha))+'</td>'+
+      '<td class="o-div" data-label="División"><b>'+esc(conDiv?divName(ar):tit(ar))+'</b>'+(conDiv?'<span>'+esc(tit(parentArea(ar)))+'</span>':'')+'</td>'+
+      '<td class="o-cu" data-label="Cuadrilla">'+cuTxt+'</td>'+
+      '<td class="o-item" data-label="Ítem"><b>'+esc(o.item)+'</b><span>'+esc(o.seccion||"")+'</span></td>'+
+      '<td data-label="Hallazgo"><span class="o-ty'+(o.estado==="No tiene"?'':' rc')+'">'+esc(o.estado)+'</span></td>'+
+      '<td class="o-resp" data-label="Responsable">'+(o.recurso?esc(o.recurso):(o.responsable?'<span class="o-muted">'+esc(o.responsable)+'</span>':'<span class="o-muted">—</span>'))+'</td>'+
+      '<td data-label="Estado"><span class="o-st" style="color:'+l.dot+'"><i style="background:'+(o.levantamiento==="pendiente"?'transparent':l.dot)+';box-shadow:inset 0 0 0 1.8px '+l.dot+'"></i>'+l.label+'</span>'+hace+'</td>'+
       '</tr>';
   }).join("");
   body.querySelectorAll("tr[data-id]").forEach(function(tr){
@@ -4183,6 +4280,18 @@ function renderObservaciones(){
     renderObservaciones();
   };
   actualizarBarraMasiva();
+}
+// V70: botones de estado con su cantidad (reemplazan al selector «Todo el levantamiento»).
+function renderLevSeg(lista){
+  var box=document.getElementById("levSeg"); if(!box) return;
+  var c={pendiente:0,en_proceso:0,rechazado:0,levantado:0};
+  lista.forEach(function(o){ if(c[o.levantamiento]!=null) c[o.levantamiento]++; });
+  var lev=APP.filtros.lev||"", nf=function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g," "); };
+  var op=[["","Todas",lista.length],["pendiente","Pendientes",c.pendiente],["en_proceso","En revisión",c.en_proceso],["rechazado","Rechazadas",c.rechazado],["levantado","Levantadas",c.levantado]];
+  if(lev==="abiertas") op.splice(1,0,["abiertas","Abiertas",c.pendiente+c.en_proceso]);
+  box.innerHTML=op.map(function(x){ return '<button type="button" class="'+(x[0]===lev?'on':'')+'" data-lev="'+x[0]+'" aria-pressed="'+(x[0]===lev)+'">'+x[1]+' <b>'+nf(x[2])+'</b></button>'; }).join("");
+  box.querySelectorAll("button").forEach(function(b){ b.onclick=function(){
+    APP.filtros.lev=b.getAttribute("data-lev"); var fl=document.getElementById("fLev"); if(fl) fl.value=APP.filtros.lev; renderObservaciones(); }; });
 }
 // Marca el checkbox de cabecera como todo/nada/parcial según lo seleccionado.
 function sincronizarSelAll(){
@@ -5265,6 +5374,79 @@ rosterReady = cargarAreas();
   #view-cobertura .cb-leg .bk.full{background:#211d1a}
   #view-cobertura .cb-leg .bk.now{background:repeating-linear-gradient(135deg,#f47a1f 0 3px,#f8a463 3px 6px)}
   @media(max-width:640px){ .cob-hero{grid-template-columns:1fr;gap:8px} }
+
+  /* ---- Observaciones V70: botones de estado y tabla densa (maqueta aprobada) ---- */
+  #view-observaciones #fLev{display:none}
+  .filters input[type=search],.filters select{border-width:1px;border-radius:8px;font-family:inherit}
+  .filters input:focus,.filters select:focus{border-color:var(--on);box-shadow:0 0 0 3px var(--on-wash)}
+  .lev-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .lev-seg button{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border:0;border-radius:6px;background:none;cursor:pointer;font:500 13.5px "Barlow",sans-serif;color:var(--ink2);white-space:nowrap}
+  .lev-seg button b{font:500 11.5px var(--f-mono);color:var(--muted)}
+  .lev-seg button:hover{background:rgba(42,37,33,.05)}
+  .lev-seg button.on{background:#2b2622;color:#faf8f5}
+  .lev-seg button.on b{color:#d6cfc7}
+  #view-observaciones .tbl-wrap{border-radius:var(--r);box-shadow:none}
+  #view-observaciones table.data th{font:600 11.5px "Barlow",sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--side)}
+  #view-observaciones table.data td{vertical-align:top;font-size:14px}
+  #view-observaciones table.data tr.row-sel td{background:var(--on-wash)}
+  .o-date{font:500 12.5px var(--f-mono)!important;color:var(--ink2);white-space:nowrap}
+  .o-div b,.o-item b{display:block;font-weight:600;line-height:1.25}
+  .o-div span,.o-item span{display:block;font-size:12.5px;color:var(--muted);line-height:1.3}
+  .o-cu{font:500 12.5px var(--f-mono)!important;white-space:nowrap}
+  .o-muted{color:var(--soft);font-family:"Barlow",sans-serif}
+  .o-ty{font-size:13px;color:var(--ink2);white-space:nowrap}
+  .o-ty::before{content:"";display:inline-block;width:9px;height:9px;margin-right:7px;border-radius:2px;background:#2b2622}
+  .o-ty.rc::before{background:none;box-shadow:inset 0 0 0 1.6px #2b2622}
+  .o-st{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13px;white-space:nowrap}
+  .o-st i{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+  .o-ago{display:block;font:500 11.5px var(--f-mono);color:var(--muted);margin-top:2px}
+
+  /* ---- ATS V70: mínimo diario + cola por revisar (maqueta aprobada) ---- */
+  .kpi.hot .v{color:var(--on-ink)}
+  .ats-top{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(280px,1fr);gap:28px;margin:22px 0 8px}
+  .ats-md-sub{font-size:12.5px;color:var(--muted)}
+  .wk-step{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+  .wk-step button,.wk-step span{height:30px;display:inline-flex;align-items:center;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);font:500 12px var(--f-mono);color:var(--ink2)}
+  .wk-step button{cursor:pointer} .wk-step button:disabled{opacity:.4;cursor:default}
+  .wk-step span.on{border-color:var(--on);background:var(--on-wash);color:var(--ink)}
+  .md-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:auto}
+  .md-grid{width:100%;border-collapse:collapse}
+  .md-grid th{font:600 11px "Barlow",sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--side);padding:9px 10px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+  .md-grid th:first-child{text-align:left}
+  .md-grid th.hoy{color:var(--on-ink)}
+  .md-grid td{padding:8px 10px;border-top:1px solid var(--line2);text-align:center;white-space:nowrap}
+  .md-grid tr[data-comp]{cursor:pointer}
+  .md-grid tr[data-comp]:hover td{background:rgba(42,37,33,.03)}
+  .md-nm{text-align:left!important;white-space:normal!important;min-width:150px}
+  .md-nm b{display:block;font-weight:600;font-size:14px;line-height:1.2}
+  .md-nm span{font-size:12px;color:var(--muted)}
+  .md-pc{text-align:right!important;font:600 16px var(--f-num)}
+  .pq{--p:100%;display:inline-block;width:14px;height:14px;border-radius:3px;margin:0 2px;vertical-align:middle}
+  .pq.y{background:linear-gradient(to top,#2b2622 var(--p),#e4dfd9 var(--p))}
+  .pq.c{background:linear-gradient(to top,#f47a1f var(--p),#fbe2cd var(--p))}
+  .pq.n{box-shadow:inset 0 0 0 1.6px #c8402f}
+  .pq.s{background:repeating-linear-gradient(135deg,#a39b93 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1px var(--line)}
+  .pq.f{box-shadow:inset 0 0 0 1px var(--line2)}
+  .pq.h{box-shadow:inset 0 0 0 1.6px var(--soft)}
+  .md-key{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:10px;font-size:12.5px;color:var(--ink2)}
+  .md-key span{display:inline-flex;align-items:center;gap:6px}
+  .md-key .md-tip{margin-left:auto;color:var(--muted)}
+  .q-it{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line2)}
+  .q-doc{width:40px;height:50px;border-radius:5px;border:1px solid var(--line);background:var(--panel);display:block;position:relative}
+  .q-doc i{position:absolute;left:7px;right:9px;top:10px;height:20px;background:linear-gradient(var(--line) 0 0) 0 0/100% 2px no-repeat,linear-gradient(var(--line) 0 0) 0 6px/80% 2px no-repeat,linear-gradient(var(--line) 0 0) 0 12px/90% 2px no-repeat,linear-gradient(var(--line) 0 0) 0 18px/60% 2px no-repeat}
+  .q-doc:hover{border-color:var(--on)}
+  .q-tx b{display:block;font-weight:600;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .q-tx span{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .q-ac{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+  .q-ok{height:30px;padding:0 12px;border:0;border-radius:7px;background:#2b2622;color:#faf8f5;font:600 13px "Barlow",sans-serif;cursor:pointer}
+  .q-ok:hover{background:#3a342f}
+  .q-x{height:22px;border:0;background:none;color:var(--muted);font:500 12px "Barlow",sans-serif;cursor:pointer}
+  .q-x:hover{color:#a83526;text-decoration:underline}
+  .q-empty{padding:14px 0;border-top:1px solid var(--line2)}
+  .q-empty b{display:block;color:#2e8a57;font-weight:600}
+  .q-empty span{font-size:13px;color:var(--muted)}
+  #view-ats .ptile{border-top-color:var(--line)!important;box-shadow:none}
+  @media(max-width:1040px){ .ats-top{grid-template-columns:1fr} }
 </style>
 <script>
 /* «o» de puntos de ON en el inicio de sesión (decorativa, se dibuja una vez). */
