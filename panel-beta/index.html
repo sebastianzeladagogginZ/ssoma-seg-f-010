@@ -620,29 +620,36 @@
           #view-resumen .rs-hb .n{text-align:right;color:var(--muted)} #view-resumen .rs-hb .n b{color:var(--ink)}
           #view-resumen .rs-foot{font-size:11.5px;color:var(--muted);margin-top:6px}
         </style>
-        <div class="rs-row" style="margin-bottom:16px">
-          <div class="card">
-            <div class="ch"><h3>Observaciones por semana</h3><span class="sub" id="trendSub"></span></div>
-            <div class="cb" id="trendChart"></div>
+        <!-- V70: la cifra de levantamiento manda; la gráfica de líneas sube junto a Rechazadas
+             (en el lugar de Tipo de hallazgo y Pendientes por división, que bajan). -->
+        <div class="rs-hero" id="avanceChart"></div>
+        <div class="rs-ledger rs-top">
+          <div class="rs-cell">
+            <div class="rs-h"><h3>Observaciones por semana</h3><span class="sub" id="trendSub"></span></div>
+            <div id="trendChart"></div>
           </div>
-          <div class="card">
-            <div class="ch"><h3>Avance de levantamiento</h3><span class="sub" id="avanceSub"></span></div>
-            <div class="cb" id="avanceChart"></div>
+          <div class="rs-cell">
+            <div class="rs-h"><h3 class="rs-cap">Rechazadas por SSOMA</h3><a class="rs-more" id="rsRechGo" role="button" tabindex="0">Ver todas →</a></div>
+            <div id="rsRech"></div>
           </div>
         </div>
-        <div class="card rs-avance" style="margin-bottom:16px">
+        <div class="rs-ledger rs-mid">
+          <div class="rs-cell">
+            <div class="rs-h"><h3 class="rs-cap">Tipo de hallazgo</h3><span class="sub" id="estadoSub"></span></div>
+            <div id="estadoChart"></div>
+          </div>
+          <div class="rs-cell">
+            <div class="rs-h"><h3 class="rs-cap">Pendientes por división</h3><a class="rs-more" id="rsPendGo" role="button" tabindex="0">Ver todos →</a></div>
+            <div id="rsPendDiv"></div>
+          </div>
+          <div class="rs-cell">
+            <div class="rs-h"><h3 class="rs-cap">Por sección</h3><span class="sub" id="seccionSub"></span></div>
+            <div id="seccionChart"></div>
+          </div>
+        </div>
+        <div class="card rs-avance">
           <div class="ch"><h3>Cobertura de la semana por división</h3><span class="sub" id="rsAvanceSub"></span></div>
           <div class="cb" id="rsAvance"></div>
-        </div>
-        <div class="rs-row">
-          <div class="card">
-            <div class="ch"><h3>Observaciones por sección</h3><span class="sub" id="seccionSub"></span></div>
-            <div class="cb" id="seccionChart"></div>
-          </div>
-          <div class="card">
-            <div class="ch"><h3>Tipo de hallazgo</h3><span class="sub" id="estadoSub"></span></div>
-            <div class="cb" id="estadoChart"></div>
-          </div>
         </div>
       </section>
 
@@ -2928,18 +2935,44 @@ function renderResumen(){
   }
   document.getElementById("trendSub").textContent="sábado → viernes · últimas "+plural(tPts.length,"semana","semanas");
 
-  // ---- Avance de levantamiento: % grande + barra dividida ----
+  // ---- V70 · Cifra principal: levantamiento (una sola barra de estados, leyenda clicable) ----
   var pc=function(n){ return d.length?(n/d.length*100):0; };
+  var nf=function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g," "); };
+  var abiertas=d.length-lev;
+  var leg=[["#2e8a57","Levantadas",lev,{lev:"levantado"}],["#2b2622","Pendientes",soloPend,{lev:"pendiente"}],
+           ["#c8402f","Rechazadas por SSOMA",rech,{lev:"rechazado"}],["#2f6db5","En revisión",enRev,{lev:"en_proceso"}]];
   document.getElementById("avanceChart").innerHTML=
-    '<div class="rs-big"><b class="tnum">'+avance+'%</b><span>levantado</span></div>'+
-    '<div class="rs-seg" role="img" aria-label="Levantado '+lev+', pendiente '+soloPend+', en revisión '+enRev+', rechazado '+rech+'">'+
-      '<i style="width:'+pc(lev).toFixed(2)+'%;background:#2e8a57"></i><i style="width:'+pc(enRev).toFixed(2)+'%;background:#2f6db5"></i>'+
-      '<i style="width:'+pc(soloPend).toFixed(2)+'%;background:#a39b93"></i><i style="width:'+pc(rech).toFixed(2)+'%;background:#c8402f"></i></div>'+
-    '<div class="rs-lr"><span><i style="background:#2e8a57"></i>Levantado</span><b class="tnum">'+lev+'</b></div>'+
-    '<div class="rs-lr"><span><i style="background:#a39b93"></i>Pendiente</span><b class="tnum">'+soloPend+'</b></div>'+
-    '<div class="rs-lr"><span><i style="background:#c8402f"></i>Rechazado por SSOMA</span><b class="tnum">'+rech+'</b></div>'+
-    '<div class="rs-lr"><span><i style="background:#2f6db5"></i>En revisión</span><b class="tnum">'+enRev+'</b></div>';
-  document.getElementById("avanceSub").textContent=lev+" de "+d.length+" cerradas";
+    '<div class="rh-top"><div><div class="rh-lead">Levantamiento de observaciones</div>'+
+      '<div class="rh-big">'+nf(lev)+' de '+nf(d.length)+' levantadas'+(abiertas?' <em>· quedan '+nf(abiertas)+' abiertas</em>':'')+'</div></div>'+
+      '<div class="rh-pct tnum">'+avance+'<small>%</small></div></div>'+
+    '<div class="rh-bar" role="img" aria-label="Levantadas '+lev+', pendientes '+soloPend+', rechazadas '+rech+', en revisión '+enRev+'">'+
+      '<i style="width:'+pc(lev).toFixed(2)+'%;background:#2e8a57"></i><i style="width:'+pc(soloPend).toFixed(2)+'%;background:#2b2622"></i>'+
+      '<i style="width:'+pc(rech).toFixed(2)+'%;background:#c8402f"></i><i style="width:'+pc(enRev).toFixed(2)+'%;background:#2f6db5"></i></div>'+
+    '<div class="rh-leg">'+leg.map(function(x){ return '<button type="button" data-goto=\''+JSON.stringify(x[3])+'\' title="Ver en Observaciones"><i style="background:'+x[0]+'"></i><span>'+x[1]+'</span><b class="tnum">'+nf(x[2])+'</b></button>'; }).join("")+'</div>';
+  document.querySelectorAll("#avanceChart .rh-leg button").forEach(function(b){ b.onclick=function(){ irAObservaciones(JSON.parse(b.getAttribute("data-goto"))); }; });
+
+  // ---- Rechazadas por SSOMA: cuántas y las más antiguas (por fecha de inspección) ----
+  var rechL=d.filter(function(o){ return o.levantamiento==="rechazado"; })
+    .sort(function(a,b){ return String(a.fecha||"").localeCompare(String(b.fecha||"")); });
+  var fCorta=function(iso){ var x=parseISO(iso); return x?pad(x.getDate())+" "+MES3[x.getMonth()]:"—"; };
+  document.getElementById("rsRech").innerHTML=rech?
+    '<div class="rr-big"><b class="tnum">'+nf(rech)+'</b><span>'+(rech===1?'evidencia por corregir':'evidencias por corregir')+'</span></div>'+
+    '<div class="rr-sub">Las más antiguas · fecha de inspección</div>'+
+    rechL.slice(0,4).map(function(o){ var cu=String(o.cuadrilla||"").trim();
+      return '<div class="rr-row" title="'+esc((o.item||"")+" · "+(o.area||""))+'"><span><b>'+esc(o.item||o.seccion||"Ítem")+'</b> · '+esc(divName(o.area||""))+(/^\d+$/.test(cu)?' CU '+esc(cu):'')+'</span><span>'+fCorta(o.fecha)+'</span></div>'; }).join("")
+    : '<div class="rr-big ok"><b>0</b><span>sin evidencias rechazadas</span></div>';
+  var rg=document.getElementById("rsRechGo"); if(rg){ rg.style.display=rech?"":"none"; rg.onclick=function(){ irAObservaciones({lev:"rechazado"}); }; }
+
+  // ---- Pendientes por división (pendiente + en revisión) ----
+  var pdv={}; d.forEach(function(o){ if(o.levantamiento==="pendiente"||o.levantamiento==="en_proceso"){ var k=o.area||"—"; pdv[k]=(pdv[k]||0)+1; } });
+  var pks=Object.keys(pdv).sort(function(a,b){ return pdv[b]-pdv[a] || a.localeCompare(b); }), top=pks.slice(0,5), resto=pks.slice(5);
+  var pMax=top.length?pdv[top[0]]:1, tit=function(s){ s=String(s||"").toLowerCase(); return s.charAt(0).toUpperCase()+s.slice(1); };
+  var restoN=resto.reduce(function(a,k){ return a+pdv[k]; },0);
+  document.getElementById("rsPendDiv").innerHTML=pks.length?
+    top.map(function(k){ return '<div class="rp-r"><span class="rp-n" title="'+esc(k)+'">'+esc(divName(k))+' <small>· '+esc(tit(parentArea(k)))+'</small></span><span class="rp-bar"><i style="width:'+(pdv[k]/pMax*100).toFixed(1)+'%"></i></span><b class="tnum">'+pdv[k]+'</b></div>'; }).join("")+
+    (resto.length?'<div class="rp-r otros"><span class="rp-n">'+plural(resto.length,"otra división","otras divisiones")+'</span><span class="rp-bar"><i style="width:'+Math.min(100,restoN/pMax*100).toFixed(1)+'%"></i></span><b class="tnum">'+restoN+'</b></div>':'')
+    : '<div class="rr-big ok"><b>0</b><span>sin pendientes</span></div>';
+  var pg=document.getElementById("rsPendGo"); if(pg){ pg.textContent=pend?("Ver los "+nf(pend)+" →"):""; pg.onclick=function(){ irAObservaciones({lev:"abiertas"}); }; }
 
   // ---- Tipo de hallazgo: No tiene vs. Requiere cambio ----
   var tot=req+not, pN=tot?Math.round(not/tot*100):0, pR=tot?100-pN:0;
@@ -5127,6 +5160,62 @@ rosterReady = cargarAreas();
   .rs-avance .av-ct small{display:block;font-size:11.5px;font-weight:600;color:var(--muted)}
   .rs-avance .av-ct small.lag{color:var(--on-ink)} .rs-avance .av-ct small.ok{color:#2e8a57} .rs-avance .av-ct small.bad{color:#c8402f}
   @media(max-width:640px){ .rs-avance .av-row{grid-template-columns:1fr 92px} .rs-avance .av-track{grid-column:1/-1;order:3} }
+
+  /* ---- Resumen V70: cifra principal + franjas con líneas finas (maqueta aprobada) ---- */
+  #view-resumen #kpis{display:none}
+  .rs-hero{padding:4px 0 20px}
+  .rh-top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:24px}
+  .rh-lead{font:600 12.5px "Barlow",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .rh-big{font:600 clamp(28px,3vw,44px)/1.05 var(--f-num);margin-top:6px;letter-spacing:-.01em}
+  .rh-big em{font-style:normal;color:var(--muted);font-weight:500}
+  .rh-pct{font:700 clamp(54px,5.6vw,80px)/.9 var(--f-num);letter-spacing:-.02em}
+  .rh-pct small{font-size:.45em;color:var(--muted);font-weight:600;margin-left:2px}
+  .rh-bar{display:flex;gap:2px;height:16px;border-radius:5px;overflow:hidden;background:var(--line2);margin-top:16px}
+  .rh-bar i{display:block;height:100%}
+  .rh-leg{display:flex;flex-wrap:wrap;gap:4px 26px;margin-top:12px}
+  .rh-leg button{display:inline-flex;align-items:baseline;gap:8px;background:none;border:0;padding:3px 0;cursor:pointer;font:500 14px "Barlow",sans-serif;color:var(--ink2)}
+  .rh-leg button:hover span{text-decoration:underline}
+  .rh-leg i{width:9px;height:9px;border-radius:50%;display:inline-block;transform:translateY(-1px)}
+  .rh-leg b{font:600 18px var(--f-num);color:var(--ink)}
+  .rs-ledger{display:grid;border-top:1px solid var(--line)}
+  .rs-top{grid-template-columns:minmax(0,2.4fr) minmax(250px,1fr)}
+  .rs-mid{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1.3fr);border-bottom:1px solid var(--line);margin-bottom:22px}
+  .rs-cell{padding:18px 24px 20px;min-width:0}
+  .rs-cell:first-child{padding-left:0}
+  .rs-cell:last-child{padding-right:0}
+  .rs-cell+.rs-cell{border-left:1px solid var(--line)}
+  .rs-h{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;min-width:0}
+  .rs-h h3{margin:0;font:600 18px var(--f-num)}
+  .rs-h h3.rs-cap{font:600 12.5px "Barlow",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .rs-h .sub{margin-left:auto;font:500 11px var(--f-mono);color:var(--muted);white-space:nowrap}
+  .rs-more{margin-left:auto;font:600 13px "Barlow",sans-serif;color:var(--on-ink);cursor:pointer;text-decoration:none;white-space:nowrap}
+  .rs-more:hover{text-decoration:underline}
+  .rr-big{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+  .rr-big b{font:700 46px/1 var(--f-num);color:#c8402f}
+  .rr-big.ok b{color:#2e8a57}
+  .rr-big span{color:var(--ink2)}
+  .rr-sub{font:500 11px var(--f-mono);color:var(--muted);margin:10px 0 2px}
+  .rr-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line2);font-size:13.5px}
+  .rr-row span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
+  .rr-row span:first-child b{color:var(--ink);font-weight:600}
+  .rr-row span:last-child{font:500 11.5px var(--f-mono);color:#c8402f;white-space:nowrap}
+  .rp-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(50px,90px) 38px;gap:10px;align-items:center;padding:6px 0}
+  .rp-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+  .rp-n small{color:var(--muted);font-size:12.5px}
+  .rp-bar{height:6px;border-radius:3px;background:var(--line2);overflow:hidden;display:block}
+  .rp-bar i{display:block;height:100%;background:#2b2622}
+  .rp-r>b{text-align:right;font:600 16px var(--f-num)}
+  .rp-r.otros .rp-n{color:var(--muted)} .rp-r.otros .rp-bar i{background:var(--soft)}
+  #view-resumen .rs-note{background:none;border:0;padding:0;margin-top:10px;color:var(--muted)}
+  #view-resumen .rs-hb{grid-template-columns:minmax(80px,140px) minmax(0,1fr) 92px}
+  #view-resumen .rs-avance{background:none;border:0;border-radius:0}
+  #view-resumen .rs-avance .ch,#view-resumen .rs-avance .cb{padding-left:0;padding-right:0}
+  @media(max-width:1040px){
+    .rs-top,.rs-mid{grid-template-columns:1fr}
+    .rs-cell{padding-left:0!important;padding-right:0!important}
+    .rs-cell+.rs-cell{border-left:0;border-top:1px solid var(--line)}
+    .rh-top{grid-template-columns:1fr}
+  }
 </style>
 <script>
 /* «o» de puntos de ON en el inicio de sesión (decorativa, se dibuja una vez). */
