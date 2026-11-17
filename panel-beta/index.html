@@ -2390,6 +2390,7 @@ function cargarCobertura(){
   if(APP.historico){ renderCobertura(); return; }
   var cont=document.getElementById("cobContent");
   if(cont) cont.innerHTML='<div class="load-note"><span class="spinner"></span> Cargando inspecciones…</div>';
+  if(APP._histPidiendo) return;     // V70: ya hay una precarga en curso (desde el Resumen); al terminar pinta esta vista
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=historico"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){return r.json();}).then(function(data){
     if(data && data.error==="sesion_invalida"){ sesionExpirada(); return; }
@@ -3064,7 +3065,7 @@ function renderAvanceResumen(){
 function precargarHistorico(){
   if(APP._histPidiendo) return; APP._histPidiendo=true;
   cargarMetasCuadrillas(); cargarNovedades(function(){ if(vistaActual()==="resumen") renderAvanceResumen(); });
-  var fin=function(){ APP._histPidiendo=false; if(vistaActual()==="resumen") renderAvanceResumen(); };
+  var fin=function(){ APP._histPidiendo=false; var v=vistaActual(); if(v==="resumen") renderAvanceResumen(); else if(v==="cobertura") renderCobertura(); };
   if(!tieneEndpoint()){ APP.historico=APP.historico||historicoDemo(); APP.historicoTotalGlobal=APP.historico.length; fin(); return; }
   var url=CONFIG.ENDPOINT_URL+(CONFIG.ENDPOINT_URL.indexOf("?")>=0?"&":"?")+"action=historico"+(APP.token?"&token="+encodeURIComponent(APP.token):"");
   fetch(url).then(function(r){ return r.json(); }).then(function(data){
@@ -3074,6 +3075,7 @@ function precargarHistorico(){
     fin();
   }).catch(function(){
     APP._histPidiendo=false;
+    if(vistaActual()==="cobertura"){ cargarCobertura(); return; }   // la vista Cobertura reintenta con su propio aviso
     var b=document.getElementById("rsAvance");
     if(b) b.innerHTML='<div class="load-note" style="color:#8f2e22">No se pudo cargar la cobertura. <button id="rsAvRetry" class="mini-btn" style="margin-left:8px">Reintentar</button></div>';
     var rb=document.getElementById("rsAvRetry"); if(rb) rb.onclick=renderAvanceResumen;
