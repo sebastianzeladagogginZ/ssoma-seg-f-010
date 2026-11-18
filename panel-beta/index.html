@@ -21,6 +21,9 @@
   var t=localStorage.getItem("panelTema");
   var osc=t ? (t==="oscuro") : !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
   if(osc) document.documentElement.classList.add("oscuro");
+  // Los campos nativos (textos, listas) siguen el tema del PANEL, no el del sistema: con el teléfono
+  // en oscuro y el panel en claro, el navegador los pintaba negros.
+  document.documentElement.style.colorScheme=osc?"dark":"light";
 }catch(e){} })();
 </script>
 <style>
@@ -1037,6 +1040,7 @@
     --f-mono:"IBM Plex Mono",ui-monospace,monospace;
   }
   body{font-family:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14.5px;font-variant-numeric:tabular-nums;background:var(--bg)}
+  .msg-input,#atsAnularMsg{background:var(--panel);color:var(--ink)}   /* cuadros de mensaje con fondo propio, no el del sistema */
   h1,h2,h3{font-family:var(--f-num);font-weight:600;letter-spacing:0}
 
   /* ---- Inicio de sesión: arte ON a la izquierda, formulario a la derecha ---- */
@@ -1801,6 +1805,7 @@ html.oscuro #view-ats .tp-dot.ok{border-color:#231f1b;background:#86d4a2;box-sha
 html.oscuro #view-ats .tp-dash{border-top:2px dashed #86d4a2}
 html.oscuro{--on:#f4832c;--on-ink:#fd9e72;--on-soft:#402303;--on-wash:#2a231b;--ink:#ddd6d1;--ink2:#b6aea8;--muted:#827b76;--soft:#716a64;--line:#413d39;--line2:#383531;--panel:#231f1b;--bg:#181513;--bg2:#1d1916;--side:#1c1916;--info:#7fb8fe;--infobg:#22252a;--shadow-lg:0 12px 32px rgba(0,0,0,0.31)}
 html.oscuro body{background:var(--bg)}
+html.oscuro .msg-input,html.oscuro #atsAnularMsg{background:var(--panel);color:var(--ink)}
 html.oscuro #login{background:var(--panel)}
 html.oscuro #login .login-art{background:#dcd5d0;color:#181513}
 html.oscuro #login .la-k{color:#35302a}
@@ -6491,7 +6496,7 @@ rosterReady = cargarAreas();
    el modo oscuro traduce sus colores por CSS. */
 (function(){
   var b=document.getElementById("temaBtn"), t=document.getElementById("temaTxt"), root=document.documentElement;
-  var pintar=function(){ var o=root.classList.contains("oscuro"); if(t) t.textContent=o?"Modo claro":"Modo oscuro"; if(b){ b.setAttribute("aria-pressed",o?"true":"false"); b.title=o?"Cambiar a modo claro":"Cambiar a modo oscuro"; } };
+  var pintar=function(){ var o=root.classList.contains("oscuro"); root.style.colorScheme=o?"dark":"light"; if(t) t.textContent=o?"Modo claro":"Modo oscuro"; if(b){ b.setAttribute("aria-pressed",o?"true":"false"); b.title=o?"Cambiar a modo claro":"Cambiar a modo oscuro"; } };
   // en la barra de solo íconos (tableta) el nombre de cada sección aparece al pasar el cursor
   [].forEach.call(document.querySelectorAll("aside .nav-item, aside .epp-btn"),function(n){ if(!n.title) n.title=n.textContent.replace(/\s+/g," ").trim(); });
   if(b) b.onclick=function(){ var o=!root.classList.contains("oscuro"); root.classList.toggle("oscuro",o); try{ localStorage.setItem("panelTema",o?"oscuro":"claro"); }catch(e){} pintar(); };
