@@ -4920,7 +4920,7 @@ function renderMinimoDiario(){
    Rojo solo para semanas CERRADAS bajo el mínimo; en curso → naranja si va atrasada. */
 function renderCuadroFusionado(divs, hoy, ini){
   var box=document.getElementById("atsMinDia"); if(!box) return;
-  APP.fzN=APP.fzN||8;
+  APP.fzN=APP.fzN||4;   // abre en 4 semanas; 8 y 12 a un clic
   var nSel=document.getElementById("fzN");
   if(nSel){
     nSel.innerHTML=[4,8,12].map(function(n){ return '<button type="button" data-n="'+n+'" class="'+(n===APP.fzN?'on':'')+'">'+n+' sem</button>'; }).join("");
