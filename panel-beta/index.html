@@ -2680,8 +2680,9 @@ var IDB={ db:null, _p:null,
   abrir:function(){
     if(IDB._p) return IDB._p;
     IDB._p=new Promise(function(res){
-      try{ var rq=indexedDB.open("panelSSOMA",1);
-        rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore("c"); }catch(e){} };
+      // v2: la APK 1.3.x usó esta misma base (v1, almacén «datos»); al subir de versión se crea «c» si falta y se borra el viejo.
+      try{ var rq=indexedDB.open("panelSSOMA",2);
+        rq.onupgradeneeded=function(){ try{ var b=rq.result; if(!b.objectStoreNames.contains("c")) b.createObjectStore("c"); if(b.objectStoreNames.contains("datos")) b.deleteObjectStore("datos"); }catch(e){} };
         rq.onsuccess=function(){ IDB.db=rq.result; res(IDB.db); };
         rq.onerror=function(){ res(null); }; rq.onblocked=function(){ res(null); };
       }catch(e){ res(null); }
